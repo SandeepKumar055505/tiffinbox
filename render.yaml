@@ -5,8 +5,8 @@ services:
     runtime: node
     plan: free
     rootDir: backend
-    buildCommand: npm install --include=dev && npm run build
-    startCommand: node dist/index.js
+    buildCommand: npm install --include=dev && npm run build && cp -r src/db/migrations dist/db/migrations
+    startCommand: node dist/db/migrate.js && node dist/db/seed.js && node dist/index.js
     healthCheckPath: /api/health
     envVars:
       - key: NODE_ENV
