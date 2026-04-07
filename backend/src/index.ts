@@ -1,0 +1,118 @@
+import 'dotenv/config';
+
+import express from 'express';
+import cors from 'cors';
+import rateLimit from 'express-rate-limit';
+import morgan from 'morgan';
+import { env } from './config/env';
+import { startJobWorkers } from './jobs/index';
+
+// Routes — user
+import authRoutes from './routes/auth';
+import personRoutes from './routes/persons';
+import menuRoutes from './routes/menu';
+import subscriptionRoutes from './routes/subscriptions';
+import skipRoutes from './routes/skip';
+import paymentRoutes from './routes/payments';
+import walletRoutes from './routes/wallet';
+import notificationRoutes from './routes/notifications';
+import supportRoutes from './routes/support';
+import streakRoutes from './routes/streaks';
+
+// Routes — upload
+import uploadRoutes from './routes/upload';
+
+// Routes — admin
+import adminDashboardRoutes from './routes/admin/dashboard';
+import adminSubscriptionRoutes from './routes/admin/subscriptions';
+import adminSkipRoutes from './routes/admin/skip';
+import adminMenuRoutes from './routes/admin/menu';
+import adminSupportRoutes from './routes/admin/support';
+import adminSettingsRoutes from './routes/admin/settings';
+
+const app = express();
+
+// Catch async errors in Express route handlers (Express 4 doesn't do this natively)
+require('express-async-errors');
+
+// ── Middleware ────────────────────────────────────────────────────────────────
+app.use(morgan(env.isDev ? 'dev' : 'combined'));
+app.use(cors({ 
+  origin: env.isDev ? true : env.FRONTEND_URL, 
+  credentials: true 
+}));
+
+// Raw body for Razorpay webhook signature verification
+app.use('/api/payments/webhook', express.raw({ type: 'application/json' }));
+app.use(express.json());
+
+// Rate limiting
+const limiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 200, standardHeaders: true });
+const authLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 20, standardHeaders: true });
+app.use('/api', limiter);
+app.use('/api/auth', authLimiter);
+
+// ── Routes ────────────────────────────────────────────────────────────────────
+app.use('/api/auth', authRoutes);
+app.use('/api/persons', personRoutes);
+app.use('/api/menu', menuRoutes);
+app.use('/api/subscriptions', subscriptionRoutes);
+app.use('/api/skip', skipRoutes);
+app.use('/api/payments', paymentRoutes);
+app.use('/api/wallet', walletRoutes);
+app.use('/api/notifications', notificationRoutes);
+app.use('/api/support', supportRoutes);
+app.use('/api/streaks', streakRoutes);
+app.use('/api/upload', uploadRoutes);
+
+// Admin routes
+app.use('/api/admin', adminDashboardRoutes);
+app.use('/api/admin/subscriptions', adminSubscriptionRoutes);
+app.use('/api/admin/skip', adminSkipRoutes);
+app.use('/api/admin/menu', adminMenuRoutes);
+app.use('/api/admin/support', adminSupportRoutes);
+app.use('/api/admin/settings', adminSettingsRoutes);
+
+app.get('/api/health', (_req, res) => res.json({ status: 'ok', ts: new Date().toISOString() }));
+
+// ── Error handler ─────────────────────────────────────────────────────────────
+app.use((err: any, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
+  console.error(err);
+  res.status(500).json({ error: 'Internal server error' });
+});
+
+// ── Export for Vercel serverless ──────────────────────────────────────────────
+export { app };
+
+// ── Start (only when NOT on Vercel) ───────────────────────────────────────────
+if (!process.env.VERCEL) {
+  async function main() {
+    app.listen(env.PORT, () => {
+      console.log(`TiffinBox backend running on port ${env.PORT}`);
+    });
+    // Start pg-boss in background — don't block HTTP server
+    startJobWorkers().catch(err => {
+      console.error('pg-boss failed to start (will retry on next request):', err.message);
+    });
+  }
+
+  main().catch(err => {
+    console.error('Failed to start:', err);
+    process.exit(1);
+  });
+}
+
+// ── Graceful shutdown ─────────────────────────────────────────────────────────
+async function shutdown(signal: string) {
+  console.log(`${signal} received — shutting down`);
+  try {
+    const { boss } = await import('./jobs/index');
+    await boss.stop();
+  } catch {}
+  process.exit(0);
+}
+process.on('SIGTERM', () => shutdown('SIGTERM'));
+process.on('SIGINT', () => shutdown('SIGINT'));
+process.on('unhandledRejection', (err: any) => {
+  console.error('Unhandled rejection (non-fatal):', err?.message || err);
+});

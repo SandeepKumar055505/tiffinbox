@@ -1,0 +1,158 @@
+<h2>TiffinBox — Section 3: API Design</h2>
+<p class="subtitle">Existing domains (grey) · Modified (yellow) · New (green) · All under /api</p>
+
+<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-top:14px">
+
+  <!-- EXISTING UNCHANGED -->
+  <div>
+    <div class="label" style="color:#64748B;margin-bottom:8px">EXISTING — UNCHANGED</div>
+    <div style="display:flex;flex-direction:column;gap:5px">
+      <div style="background:rgba(15,32,53,0.6);border:1px solid rgba(148,163,184,0.12);border-radius:8px;padding:8px 10px">
+        <div style="font-size:11px;font-weight:700;color:#64748B">/api/auth</div>
+        <div style="font-size:10px;color:#475569">Google OAuth · admin login · /me</div>
+      </div>
+      <div style="background:rgba(15,32,53,0.6);border:1px solid rgba(148,163,184,0.12);border-radius:8px;padding:8px 10px">
+        <div style="font-size:11px;font-weight:700;color:#64748B">/api/persons</div>
+        <div style="font-size:10px;color:#475569">CRUD family members</div>
+      </div>
+      <div style="background:rgba(15,32,53,0.6);border:1px solid rgba(148,163,184,0.12);border-radius:8px;padding:8px 10px">
+        <div style="font-size:11px;font-weight:700;color:#64748B">/api/meals</div>
+        <div style="font-size:10px;color:#475569">List meal items + GET by id</div>
+      </div>
+      <div style="background:rgba(15,32,53,0.6);border:1px solid rgba(148,163,184,0.12);border-radius:8px;padding:8px 10px">
+        <div style="font-size:11px;font-weight:700;color:#64748B">/api/menu</div>
+        <div style="font-size:10px;color:#475569">Default menu grid + week format</div>
+      </div>
+      <div style="background:rgba(15,32,53,0.6);border:1px solid rgba(148,163,184,0.12);border-radius:8px;padding:8px 10px">
+        <div style="font-size:11px;font-weight:700;color:#64748B">/api/extras</div>
+        <div style="font-size:10px;color:#475569">Add / remove extras per day</div>
+      </div>
+      <div style="background:rgba(15,32,53,0.6);border:1px solid rgba(148,163,184,0.12);border-radius:8px;padding:8px 10px">
+        <div style="font-size:11px;font-weight:700;color:#64748B">/api/notifications</div>
+        <div style="font-size:10px;color:#475569">List · mark read · mark all read</div>
+      </div>
+      <div style="background:rgba(15,32,53,0.6);border:1px solid rgba(148,163,184,0.12);border-radius:8px;padding:8px 10px">
+        <div style="font-size:11px;font-weight:700;color:#64748B">/api/users/:id</div>
+        <div style="font-size:10px;color:#475569">GET profile · PATCH name</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODIFIED -->
+  <div>
+    <div class="label" style="color:#FBBF24;margin-bottom:8px">MODIFIED (breaking changes noted)</div>
+    <div style="display:flex;flex-direction:column;gap:5px">
+      <div style="background:rgba(251,191,36,0.06);border:1px solid rgba(251,191,36,0.3);border-radius:8px;padding:8px 10px">
+        <div style="font-size:11px;font-weight:700;color:#FBBF24">/api/subscriptions</div>
+        <div style="font-size:10px;color:#64748B;line-height:1.6">POST: + idempotency_key required<br>POST: plan_days → plan_config_id<br>POST: emits SUBSCRIPTION_CREATED event<br>+ PATCH /:id/pause (new action)<br>+ PATCH /:id/resume (new action)<br>+ PATCH /:id/cancel → exit intercept flow</div>
+      </div>
+      <div style="background:rgba(251,191,36,0.06);border:1px solid rgba(251,191,36,0.3);border-radius:8px;padding:8px 10px">
+        <div style="font-size:11px;font-weight:700;color:#FBBF24">/api/skips</div>
+        <div style="font-size:10px;color:#64748B;line-height:1.6">POST: routes through Policy Engine<br>POST: auto-approve → ledger entry created<br>POST response: + ledger_credit field<br>+ GET /:id/cancel (before cutoff)</div>
+      </div>
+      <div style="background:rgba(251,191,36,0.06);border:1px solid rgba(251,191,36,0.3);border-radius:8px;padding:8px 10px">
+        <div style="font-size:11px;font-weight:700;color:#FBBF24">/api/pricing/calculate</div>
+        <div style="font-size:10px;color:#64748B;line-height:1.6">+ wallet_balance in response<br>+ plan_config_id replaces plan_days<br>+ wallet_applied amount in breakdown<br>Response: + wallet_balance, wallet_applied</div>
+      </div>
+      <div style="background:rgba(251,191,36,0.06);border:1px solid rgba(251,191,36,0.3);border-radius:8px;padding:8px 10px">
+        <div style="font-size:11px;font-weight:700;color:#FBBF24">/api/payments</div>
+        <div style="font-size:10px;color:#64748B;line-height:1.6">POST /create-order: + idempotency_key<br>POST /verify: emits PAYMENT_SUCCESS/FAILED<br>+ POST /retry (retry failed payment)<br>payment_attempts logged per attempt</div>
+      </div>
+      <div style="background:rgba(251,191,36,0.06);border:1px solid rgba(251,191,36,0.3);border-radius:8px;padding:8px 10px">
+        <div style="font-size:11px;font-weight:700;color:#FBBF24">/api/support/tickets</div>
+        <div style="font-size:10px;color:#64748B;line-height:1.6">POST: + ticket_type field required<br>Auto-tagged by keyword on create<br>+ GET /:id/chat → live chat thread<br>+ POST /:id/chat/messages → send chat msg</div>
+      </div>
+      <div style="background:rgba(251,191,36,0.06);border:1px solid rgba(251,191,36,0.3);border-radius:8px;padding:8px 10px">
+        <div style="font-size:11px;font-weight:700;color:#FBBF24">/api/admin/deliveries</div>
+        <div style="font-size:10px;color:#64748B;line-height:1.6">bulk-status: + 'failed' status<br>PATCH /:id/failed → auto ledger credit<br>emits DELIVERY_FAILED event → pg-boss</div>
+      </div>
+      <div style="background:rgba(251,191,36,0.06);border:1px solid rgba(251,191,36,0.3);border-radius:8px;padding:8px 10px">
+        <div style="font-size:11px;font-weight:700;color:#FBBF24">/api/admin/settings</div>
+        <div style="font-size:10px;color:#64748B;line-height:1.6">Existing settings kept<br>PATCH: all changes → audit_log entry<br>PUT /discounts → PUT /plan-config/:id<br>+ GET /config (app_config key-value store)</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- NEW -->
+  <div>
+    <div class="label" style="color:#34D399;margin-bottom:8px">NEW ENDPOINTS</div>
+    <div style="display:flex;flex-direction:column;gap:5px">
+      <div style="background:rgba(34,211,153,0.06);border:1px solid rgba(34,211,153,0.3);border-radius:8px;padding:8px 10px">
+        <div style="font-size:11px;font-weight:700;color:#34D399">/api/wallet</div>
+        <div style="font-size:10px;color:#64748B;line-height:1.6">GET /balance → current balance + recent credits<br>GET /history → paginated ledger entries<br>PATCH /preferences → auto_apply toggle</div>
+      </div>
+      <div style="background:rgba(34,211,153,0.06);border:1px solid rgba(34,211,153,0.3);border-radius:8px;padding:8px 10px">
+        <div style="font-size:11px;font-weight:700;color:#34D399">/api/streaks</div>
+        <div style="font-size:10px;color:#64748B;line-height:1.6">GET /:person_id → current streak, longest, next reward<br>GET /rewards → active streak ladder (public)<br>POST /:person_id/claim → claim pending reward</div>
+      </div>
+      <div style="background:rgba(34,211,153,0.06);border:1px solid rgba(34,211,153,0.3);border-radius:8px;padding:8px 10px">
+        <div style="font-size:11px;font-weight:700;color:#34D399">/api/plans</div>
+        <div style="font-size:10px;color:#64748B;line-height:1.6">GET / → available plan configs for user<br>(filters by unlock eligibility)<br>GET /eligible → which plans user can buy now</div>
+      </div>
+      <div style="background:rgba(34,211,153,0.06);border:1px solid rgba(34,211,153,0.3);border-radius:8px;padding:8px 10px">
+        <div style="font-size:11px;font-weight:700;color:#34D399">/api/admin/kitchen</div>
+        <div style="font-size:10px;color:#64748B;line-height:1.6">GET /daily?date= → prep counts by meal type<br>GET /items?date= → item-wise quantities<br>PATCH /items/:id/substitute → mark substitution<br>GET /forecast?days= → N-day ingredient forecast</div>
+      </div>
+      <div style="background:rgba(34,211,153,0.06);border:1px solid rgba(34,211,153,0.3);border-radius:8px;padding:8px 10px">
+        <div style="font-size:11px;font-weight:700;color:#34D399">/api/admin/ledger</div>
+        <div style="font-size:10px;color:#64748B;line-height:1.6">GET / → all entries paginated<br>GET /user/:id → entries for a user<br>POST /credit → manual credit (admin only)<br>→ always creates audit_log entry</div>
+      </div>
+      <div style="background:rgba(34,211,153,0.06);border:1px solid rgba(34,211,153,0.3);border-radius:8px;padding:8px 10px">
+        <div style="font-size:11px;font-weight:700;color:#34D399">/api/admin/plan-config</div>
+        <div style="font-size:10px;color:#64748B;line-height:1.6">GET / → all plan configs<br>POST / → create new plan duration<br>PATCH /:id → update (discount, unlock, visibility)<br>DELETE /:id → deactivate (soft)</div>
+      </div>
+      <div style="background:rgba(34,211,153,0.06);border:1px solid rgba(34,211,153,0.3);border-radius:8px;padding:8px 10px">
+        <div style="font-size:11px;font-weight:700;color:#34D399">/api/admin/streak-rewards</div>
+        <div style="font-size:10px;color:#64748B;line-height:1.6">GET / → all tiers<br>POST / → create tier<br>PATCH /:id → edit (threshold, reward, expiry)<br>DELETE /:id → deactivate</div>
+      </div>
+      <div style="background:rgba(34,211,153,0.06);border:1px solid rgba(34,211,153,0.3);border-radius:8px;padding:8px 10px">
+        <div style="font-size:11px;font-weight:700;color:#34D399">/api/admin/audit-logs</div>
+        <div style="font-size:10px;color:#64748B;line-height:1.6">GET / → paginated, filter by entity/admin/action<br>Immutable (no DELETE, no PATCH)</div>
+      </div>
+      <div style="background:rgba(34,211,153,0.06);border:1px solid rgba(34,211,153,0.3);border-radius:8px;padding:8px 10px">
+        <div style="font-size:11px;font-weight:700;color:#34D399">/api/admin/analytics</div>
+        <div style="font-size:10px;color:#64748B;line-height:1.6">GET /revenue?range= → daily/weekly totals<br>GET /churn → cancellation reasons + rate<br>GET /streaks → milestone hit rates<br>GET /kitchen → delivery success/failure rate</div>
+      </div>
+      <div style="background:rgba(34,211,153,0.06);border:1px solid rgba(34,211,153,0.3);border-radius:8px;padding:8px 10px">
+        <div style="font-size:11px;font-weight:700;color:#34D399">/api/admin/config</div>
+        <div style="font-size:10px;color:#64748B;line-height:1.6">GET / → all app_config keys<br>PATCH /:key → update value<br>→ writes to app_config_history + audit_log<br>GET /history → config change history</div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- EVENT BUS WIRING -->
+<div style="margin-top:12px;background:rgba(0,168,150,0.04);border:1px solid rgba(0,168,150,0.2);border-radius:10px;padding:12px">
+  <div class="label" style="color:#00A896;margin-bottom:8px">EVENT BUS WIRING (pg-boss) — What triggers what</div>
+  <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;font-size:10px">
+    <div style="background:rgba(15,32,53,0.6);border-radius:6px;padding:8px">
+      <div style="color:#34D399;font-weight:700;margin-bottom:4px">PAYMENT_SUCCESS</div>
+      <div style="color:#64748B;line-height:1.7">→ generate meal_cells job<br>→ send confirmation email<br>→ create ledger entry<br>→ update subscription state</div>
+    </div>
+    <div style="background:rgba(15,32,53,0.6);border-radius:6px;padding:8px">
+      <div style="color:#F87171;font-weight:700;margin-bottom:4px">DELIVERY_FAILED</div>
+      <div style="color:#64748B;line-height:1.7">→ auto-credit ledger<br>→ notify user<br>→ mark SLA breach<br>→ admin alert job</div>
+    </div>
+    <div style="background:rgba(15,32,53,0.6);border-radius:6px;padding:8px">
+      <div style="color:#FBBF24;font-weight:700;margin-bottom:4px">PLAN_EXPIRING (2d before)</div>
+      <div style="color:#64748B;line-height:1.7">→ send renewal reminder<br>→ show monthly unlock (if eligible)<br>→ streak preservation nudge</div>
+    </div>
+    <div style="background:rgba(15,32,53,0.6);border-radius:6px;padding:8px">
+      <div style="color:#C084FC;font-weight:700;margin-bottom:4px">MEAL_SKIPPED</div>
+      <div style="color:#64748B;line-height:1.7">→ update ledger (if auto)<br>→ break streak check<br>→ notify user of credit<br>→ kitchen ops update</div>
+    </div>
+    <div style="background:rgba(15,32,53,0.6);border-radius:6px;padding:8px">
+      <div style="color:#60A5FA;font-weight:700;margin-bottom:4px">NIGHTLY_CRON (11:30 PM)</div>
+      <div style="color:#64748B;line-height:1.7">→ generate tomorrow's meals<br>→ streak check all users<br>→ kitchen prep report<br>→ menu preview notifications</div>
+    </div>
+    <div style="background:rgba(15,32,53,0.6);border-radius:6px;padding:8px">
+      <div style="color:#34D399;font-weight:700;margin-bottom:4px">TICKET_CREATED</div>
+      <div style="color:#64748B;line-height:1.7">→ admin dashboard badge<br>→ auto-tag by keyword<br>→ priority escalation if CRITICAL<br>→ admin email alert</div>
+    </div>
+  </div>
+</div>
+
+<div style="margin-top:10px;padding:10px;background:rgba(0,168,150,0.05);border-radius:8px;font-size:12px;color:#94A3B8;text-align:center">
+  Does the API design look right? Any endpoints to add, change, or reconsider before Section 4: UX Flows?
+</div>

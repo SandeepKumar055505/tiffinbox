@@ -1,0 +1,144 @@
+<h2>TiffinBox — Production Architecture v2</h2>
+<p class="subtitle">11 systems · free-only stack · retention-first · operations-grade</p>
+
+<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-top:16px">
+
+  <!-- TIER 1: FOUNDATION -->
+  <div style="grid-column:1/-1">
+    <div class="label" style="color:#F87171;margin-bottom:8px;text-align:center;letter-spacing:3px">── TIER 1: FOUNDATION (build first) ──</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px">
+      <div style="background:rgba(248,113,113,0.08);border:1px solid rgba(248,113,113,0.3);border-radius:12px;padding:14px">
+        <div class="label" style="color:#F87171;margin-bottom:6px">⚙️ SUBSCRIPTION ENGINE</div>
+        <div style="font-size:11px;color:#94A3B8;line-height:1.7">State machine · 8 states<br>Idempotency keys<br>Post-payment: lock commercial / allow operational<br>Per-sub price versioning</div>
+      </div>
+      <div style="background:rgba(248,113,113,0.08);border:1px solid rgba(248,113,113,0.3);border-radius:12px;padding:14px">
+        <div class="label" style="color:#F87171;margin-bottom:6px">💰 PRICING ENGINE</div>
+        <div style="font-size:11px;color:#94A3B8;line-height:1.7">Per-day calc (not average)<br>Mixed meal days handled<br>Wallet + promo stacking<br>Admin change → new subs only</div>
+      </div>
+      <div style="background:rgba(248,113,113,0.08);border:1px solid rgba(248,113,113,0.3);border-radius:12px;padding:14px">
+        <div class="label" style="color:#F87171;margin-bottom:6px">📅 SCHEDULING ENGINE</div>
+        <div style="font-size:11px;color:#94A3B8;line-height:1.7">Nightly job → meal_cells rows<br>Skip applied pre-generation<br>Delivery slot assignment<br><span style="color:#34D399">Free: pg-boss or Vercel Cron</span></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- TIER 2: RULES & MONEY -->
+  <div style="grid-column:1/-1;margin-top:4px">
+    <div class="label" style="color:#FBBF24;margin-bottom:8px;text-align:center;letter-spacing:3px">── TIER 2: RULES & MONEY (build second) ──</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+      <div style="background:rgba(251,191,36,0.08);border:1px solid rgba(251,191,36,0.3);border-radius:12px;padding:14px">
+        <div class="label" style="color:#FBBF24;margin-bottom:6px">📋 POLICY ENGINE <span style="color:#94A3B8;font-size:10px">(NEW)</span></div>
+        <div style="font-size:11px;color:#94A3B8;line-height:1.7">Single source of rule truth<br>Skip eligibility · Pause eligibility<br>Cutoff validation · Refund eligibility<br>Admin override permissions<br>Plan lock rules<br><span style="color:#34D399">Free: pure code layer, no service</span></div>
+      </div>
+      <div style="background:rgba(251,191,36,0.08);border:1px solid rgba(251,191,36,0.3);border-radius:12px;padding:14px">
+        <div class="label" style="color:#FBBF24;margin-bottom:6px">🏦 BILLING / LEDGER <span style="color:#94A3B8;font-size:10px">(NEW)</span></div>
+        <div style="font-size:11px;color:#94A3B8;line-height:1.7">Financial source of truth<br>Ledger table: every ₹ in/out<br>Types: payment, credit, refund, promo, skip-comp, delivery-comp<br>Wallet = ledger balance (derived)<br><span style="color:#34D399">Free: PostgreSQL ledger table</span></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- TIER 3: OPERATIONS -->
+  <div style="grid-column:1/-1;margin-top:4px">
+    <div class="label" style="color:#34D399;margin-bottom:8px;text-align:center;letter-spacing:3px">── TIER 3: OPERATIONS (build third) ──</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px">
+      <div style="background:rgba(52,211,153,0.08);border:1px solid rgba(52,211,153,0.3);border-radius:12px;padding:14px">
+        <div class="label" style="color:#34D399;margin-bottom:6px">🍳 KITCHEN OPS <span style="color:#94A3B8;font-size:10px">(NEW)</span></div>
+        <div style="font-size:11px;color:#94A3B8;line-height:1.7">Prep counts per meal type<br>Item-wise quantities<br>Packaging counts<br>Substitution rules (item unavailable)<br>Ingredient forecast<br><span style="color:#34D399">Free: PostgreSQL views + cron</span></div>
+      </div>
+      <div style="background:rgba(52,211,153,0.08);border:1px solid rgba(52,211,153,0.3);border-radius:12px;padding:14px">
+        <div class="label" style="color:#34D399;margin-bottom:6px">🚚 DELIVERY SYSTEM</div>
+        <div style="font-size:11px;color:#94A3B8;line-height:1.7">scheduled→preparing→out→delivered<br>Delivery failed → auto ledger credit<br>Late → SLA breach + compensation<br>Bulk mark delivered<br><span style="color:#34D399">Free: PostgreSQL + polling</span></div>
+      </div>
+      <div style="background:rgba(52,211,153,0.08);border:1px solid rgba(52,211,153,0.3);border-radius:12px;padding:14px">
+        <div class="label" style="color:#34D399;margin-bottom:6px">⏱️ SKIP ENGINE</div>
+        <div style="font-size:11px;color:#94A3B8;line-height:1.7">Pre-cutoff → auto via Policy Engine<br>Post-cutoff → admin approval<br>Emergency → admin override<br>Skip value → ledger credit entry<br>Day still counts for plan validity</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- TIER 4: SUPPORT & COMMS -->
+  <div style="grid-column:1/-1;margin-top:4px">
+    <div class="label" style="color:#60A5FA;margin-bottom:8px;text-align:center;letter-spacing:3px">── TIER 4: SUPPORT & COMMS ──</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px">
+      <div style="background:rgba(96,165,250,0.08);border:1px solid rgba(96,165,250,0.3);border-radius:12px;padding:14px">
+        <div class="label" style="color:#60A5FA;margin-bottom:6px">🎫 TICKETING <span style="color:#94A3B8;font-size:10px">(split from support)</span></div>
+        <div style="font-size:11px;color:#94A3B8;line-height:1.7">Types: DELIVERY/FOOD/PAYMENT/OTHER<br>Priority: LOW/HIGH/CRITICAL<br>Auto-tag by keyword<br>Admin: reply/refund to ledger/escalate<br><span style="color:#34D399">Free: PostgreSQL</span></div>
+      </div>
+      <div style="background:rgba(96,165,250,0.08);border:1px solid rgba(96,165,250,0.3);border-radius:12px;padding:14px">
+        <div class="label" style="color:#60A5FA;margin-bottom:6px">💬 LIVE CHAT <span style="color:#94A3B8;font-size:10px">(split from support)</span></div>
+        <div style="font-size:11px;color:#94A3B8;line-height:1.7">Quick back-and-forth on active issues<br>Chat-style thread (user ↔ admin)<br>Poll 15s or SSE for updates<br>Links to ticket on escalation<br><span style="color:#34D399">Free: PostgreSQL + SSE or polling</span></div>
+      </div>
+      <div style="background:rgba(96,165,250,0.08);border:1px solid rgba(96,165,250,0.3);border-radius:12px;padding:14px">
+        <div class="label" style="color:#60A5FA;margin-bottom:6px">🔔 NOTIFICATION SYSTEM</div>
+        <div style="font-size:11px;color:#94A3B8;line-height:1.7">Event triggers (onEvent)<br>Channels: in-app + email<br>User prefs: mute rules per type<br>Types: transactional/operational/critical/retention<br><span style="color:#34D399">Free: Gmail SMTP / Resend 3K/mo</span></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- TIER 5: RETENTION & CONTROL -->
+  <div style="grid-column:1/-1;margin-top:4px">
+    <div class="label" style="color:#C084FC;margin-bottom:8px;text-align:center;letter-spacing:3px">── TIER 5: RETENTION & CONTROL (after ops stable) ──</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px">
+      <div style="background:rgba(192,132,252,0.08);border:1px solid rgba(192,132,252,0.3);border-radius:12px;padding:14px">
+        <div class="label" style="color:#C084FC;margin-bottom:6px">🔁 RETENTION ENGINE</div>
+        <div style="font-size:11px;color:#94A3B8;line-height:1.7">Smart pause (not cancel)<br>Exit interception + offer<br>Streak system + rewards<br>Missed meal recovery → wallet<br>Menu preview daily notif<br><span style="color:#94A3B8;font-style:italic">Sits on top of subs + notifs + support</span></div>
+      </div>
+      <div style="background:rgba(192,132,252,0.08);border:1px solid rgba(192,132,252,0.3);border-radius:12px;padding:14px">
+        <div class="label" style="color:#C084FC;margin-bottom:6px">⚙️ ADMIN CONTROL SYSTEM</div>
+        <div style="font-size:11px;color:#94A3B8;line-height:1.7">Override anything via Policy Engine<br>Bulk: menu change, notifications<br>Kitchen prep forecast<br>Revenue + churn dashboard<br>Tomorrow delivery count</div>
+      </div>
+      <div style="background:rgba(192,132,252,0.08);border:1px solid rgba(192,132,252,0.3);border-radius:12px;padding:14px">
+        <div class="label" style="color:#C084FC;margin-bottom:6px">📋 AUDIT LOG <span style="color:#94A3B8;font-size:10px">(NEW)</span></div>
+        <div style="font-size:11px;color:#94A3B8;line-height:1.7">Every sensitive admin action logged<br>who changed price<br>who approved skip / refund<br>who cancelled plan / changed meal<br><span style="color:#34D399">Free: PostgreSQL audit_logs table</span></div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- EVENT BUS -->
+<div style="margin-top:14px;background:rgba(0,168,150,0.05);border:2px solid rgba(0,168,150,0.4);border-radius:12px;padding:14px">
+  <div class="label" style="color:#00A896;margin-bottom:8px;text-align:center">⚡ EVENT BUS / JOB QUEUE — The Invisible Backbone</div>
+  <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:8px;font-size:11px;text-align:center">
+    <div style="padding:6px;background:rgba(15,32,53,0.6);border-radius:6px;color:#94A3B8">Nightly meal<br>generation</div>
+    <div style="padding:6px;background:rgba(15,32,53,0.6);border-radius:6px;color:#94A3B8">Email / notif<br>sending</div>
+    <div style="padding:6px;background:rgba(15,32,53,0.6);border-radius:6px;color:#94A3B8">Refund credit<br>processing</div>
+    <div style="padding:6px;background:rgba(15,32,53,0.6);border-radius:6px;color:#94A3B8">Kitchen prep<br>report</div>
+    <div style="padding:6px;background:rgba(15,32,53,0.6);border-radius:6px;color:#94A3B8">Retention<br>triggers</div>
+  </div>
+  <div style="margin-top:10px;font-size:12px;color:#64748B;text-align:center">Implementation options below ↓</div>
+</div>
+
+<!-- QUESTION -->
+<div style="margin-top:14px">
+  <div class="label" style="color:#F0F4F8;margin-bottom:10px;text-align:center">QUESTION: Which Event Bus / Job Queue approach? (free only)</div>
+  <div class="options">
+    <div class="option" data-choice="a" onclick="toggleSelect(this)">
+      <div class="letter">A</div>
+      <div class="content">
+        <h3>pg-boss (PostgreSQL-based)</h3>
+        <p>Jobs stored in Neon DB. Zero new services. Runs inside your Express backend. Free forever. Best fit — you already have PostgreSQL.</p>
+        <div style="margin-top:6px;font-size:11px;color:#34D399">✓ Zero infra cost · Zero new service · Survives restarts · Retry + cron built-in</div>
+        <div style="font-size:11px;color:#F87171">✗ Slightly slower than Redis-based queues</div>
+      </div>
+    </div>
+    <div class="option" data-choice="b" onclick="toggleSelect(this)">
+      <div class="letter">B</div>
+      <div class="content">
+        <h3>Vercel Cron Jobs (native)</h3>
+        <p>Vercel's built-in cron. Calls your API endpoints on a schedule. No separate job queue — just HTTP triggers at set intervals.</p>
+        <div style="margin-top:6px;font-size:11px;color:#34D399">✓ Zero setup · Native to Vercel · Free on hobby plan</div>
+        <div style="font-size:11px;color:#F87171">✗ Min interval 1 min · No job state/retry · Not good for event-driven jobs</div>
+      </div>
+    </div>
+    <div class="option" data-choice="c" onclick="toggleSelect(this)">
+      <div class="letter">C</div>
+      <div class="content">
+        <h3>Upstash QStash (HTTP queue)</h3>
+        <p>Free 500 messages/day HTTP-based queue. Push a message, QStash calls your endpoint. Retry + delay built-in.</p>
+        <div style="margin-top:6px;font-size:11px;color:#34D399">✓ Free 500/day · Retry built-in · No server needed</div>
+        <div style="font-size:11px;color:#F87171">✗ 500/day may be tight · External service dependency</div>
+      </div>
+    </div>
+  </div>
+</div>

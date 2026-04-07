@@ -1,0 +1,195 @@
+<h2>TiffinBox — Section 4: UX Flows</h2>
+<p class="subtitle">Starting with Dashboard — the screen users open every day. Pick a layout direction.</p>
+
+<div class="cards" style="grid-template-columns:1fr 1fr 1fr">
+
+  <!-- Option A: Stats-first -->
+  <div class="card" data-choice="a" onclick="toggleSelect(this)">
+    <div class="card-image" style="background:#0A1628;padding:12px;min-height:320px">
+      <!-- Header -->
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+        <div style="font-size:11px;font-weight:900;color:#F0F4F8">Good morning, Raj 👋</div>
+        <div style="width:24px;height:24px;border-radius:50%;background:#00A896;opacity:0.5"></div>
+      </div>
+      <!-- Wallet card prominent -->
+      <div style="background:rgba(0,168,150,0.15);border:1px solid rgba(0,168,150,0.4);border-radius:10px;padding:10px;margin-bottom:8px">
+        <div style="font-size:9px;color:#00A896;font-weight:800;text-transform:uppercase;letter-spacing:1px">Wallet Balance</div>
+        <div style="font-size:22px;font-weight:900;color:#F0F4F8;margin:2px 0">₹240</div>
+        <div style="font-size:9px;color:#64748B">Auto-applied at checkout · View history →</div>
+      </div>
+      <!-- Streak card -->
+      <div style="background:rgba(192,132,252,0.1);border:1px solid rgba(192,132,252,0.3);border-radius:10px;padding:8px;margin-bottom:8px;display:flex;justify-content:space-between;align-items:center">
+        <div>
+          <div style="font-size:9px;color:#C084FC;font-weight:800;text-transform:uppercase">🔥 Streak</div>
+          <div style="font-size:16px;font-weight:900;color:#F0F4F8">12 days</div>
+        </div>
+        <div style="text-align:right">
+          <div style="font-size:9px;color:#64748B">Next reward at</div>
+          <div style="font-size:11px;color:#C084FC;font-weight:700">14 days</div>
+        </div>
+      </div>
+      <!-- Active plan small -->
+      <div style="background:rgba(15,32,53,0.7);border:1px solid rgba(148,163,184,0.1);border-radius:8px;padding:8px">
+        <div style="font-size:9px;color:#64748B;font-weight:700">ACTIVE PLAN · Amit</div>
+        <div style="font-size:11px;color:#F0F4F8;margin:2px 0">1-Week · Day 3/7</div>
+        <div style="display:flex;gap:3px;margin-top:4px">
+          <div style="flex:1;height:3px;border-radius:2px;background:#00A896"></div>
+          <div style="flex:1;height:3px;border-radius:2px;background:#00A896"></div>
+          <div style="flex:1;height:3px;border-radius:2px;background:#132D4A"></div>
+          <div style="flex:1;height:3px;border-radius:2px;background:#132D4A"></div>
+          <div style="flex:1;height:3px;border-radius:2px;background:#132D4A"></div>
+          <div style="flex:1;height:3px;border-radius:2px;background:#132D4A"></div>
+          <div style="flex:1;height:3px;border-radius:2px;background:#132D4A"></div>
+        </div>
+      </div>
+      <!-- Today meals tiny -->
+      <div style="margin-top:8px;display:flex;gap:4px">
+        <div style="flex:1;background:rgba(34,211,153,0.1);border-radius:6px;padding:5px;text-align:center">
+          <div style="font-size:8px;color:#34D399">🌅 B</div><div style="font-size:8px;color:#64748B">Delivered</div>
+        </div>
+        <div style="flex:1;background:rgba(0,168,150,0.1);border-radius:6px;padding:5px;text-align:center">
+          <div style="font-size:8px;color:#00A896">☀️ L</div><div style="font-size:8px;color:#64748B">On way</div>
+        </div>
+        <div style="flex:1;background:rgba(15,32,53,0.7);border-radius:6px;padding:5px;text-align:center">
+          <div style="font-size:8px;color:#64748B">🌙 D</div><div style="font-size:8px;color:#64748B">Scheduled</div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>A — Stats-first</h3>
+      <p>Wallet + streak are the hero elements. Users see their "account value" immediately. Plan progress is secondary.</p>
+      <div style="margin-top:6px;font-size:11px;color:#34D399">✓ Maximizes wallet retention loop · streak visibility</div>
+      <div style="font-size:11px;color:#F87171">✗ Food/delivery is secondary — may feel like a finance app</div>
+    </div>
+  </div>
+
+  <!-- Option B: Today's meals first -->
+  <div class="card" data-choice="b" onclick="toggleSelect(this)">
+    <div class="card-image" style="background:#0A1628;padding:12px;min-height:320px">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+        <div style="font-size:11px;font-weight:900;color:#F0F4F8">Today's Meals</div>
+        <div style="font-size:9px;color:#64748B">Sat, 5 Apr</div>
+      </div>
+      <!-- Today meals HERO -->
+      <div style="background:rgba(0,168,150,0.08);border:1px solid rgba(0,168,150,0.25);border-radius:10px;padding:10px;margin-bottom:8px">
+        <div style="display:flex;gap:6px;margin-bottom:6px">
+          <div style="width:32px;height:32px;border-radius:6px;background:rgba(34,211,153,0.2);display:flex;align-items:center;justify-content:center;font-size:14px">🍱</div>
+          <div>
+            <div style="font-size:10px;font-weight:700;color:#F0F4F8">Poha + Chai</div>
+            <div style="font-size:8px;color:#34D399">✓ Delivered 8:02am</div>
+          </div>
+        </div>
+        <div style="display:flex;gap:6px;margin-bottom:6px">
+          <div style="width:32px;height:32px;border-radius:6px;background:rgba(0,168,150,0.2);display:flex;align-items:center;justify-content:center;font-size:14px">🍛</div>
+          <div>
+            <div style="font-size:10px;font-weight:700;color:#F0F4F8">Dal Makhani + Roti</div>
+            <div style="font-size:8px;color:#00A896">🛵 Out for delivery</div>
+          </div>
+        </div>
+        <div style="display:flex;gap:6px">
+          <div style="width:32px;height:32px;border-radius:6px;background:rgba(15,32,53,0.8);display:flex;align-items:center;justify-content:center;font-size:14px">🥘</div>
+          <div>
+            <div style="font-size:10px;font-weight:700;color:#64748B">Khichdi</div>
+            <div style="font-size:8px;color:#64748B">Scheduled · 7:30pm</div>
+          </div>
+        </div>
+      </div>
+      <!-- Stats row -->
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:5px;margin-bottom:8px">
+        <div style="background:rgba(0,168,150,0.1);border-radius:6px;padding:6px;text-align:center">
+          <div style="font-size:11px;font-weight:900;color:#00A896">₹240</div>
+          <div style="font-size:8px;color:#64748B">Wallet</div>
+        </div>
+        <div style="background:rgba(192,132,252,0.1);border-radius:6px;padding:6px;text-align:center">
+          <div style="font-size:11px;font-weight:900;color:#C084FC">🔥12</div>
+          <div style="font-size:8px;color:#64748B">Streak</div>
+        </div>
+        <div style="background:rgba(15,32,53,0.7);border-radius:6px;padding:6px;text-align:center">
+          <div style="font-size:11px;font-weight:900;color:#F0F4F8">4</div>
+          <div style="font-size:8px;color:#64748B">Days left</div>
+        </div>
+      </div>
+      <!-- Active sub small -->
+      <div style="background:rgba(15,32,53,0.6);border:1px solid rgba(148,163,184,0.1);border-radius:8px;padding:7px">
+        <div style="display:flex;justify-content:space-between;align-items:center">
+          <div>
+            <div style="font-size:9px;color:#64748B">1-Week · Amit · Day 3/7</div>
+            <div style="font-size:10px;color:#F0F4F8;font-weight:700">Active ●</div>
+          </div>
+          <div style="font-size:9px;color:#00A896">View →</div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>B — Today-first <span style="font-size:10px;color:#00A896">★ Recommended</span></h3>
+      <p>Today's meals are the hero. Wallet + streak as compact stats row. Users answer "what am I getting today?" in 1 second.</p>
+      <div style="margin-top:6px;font-size:11px;color:#34D399">✓ Food-native feel · daily engagement · delivery status visible</div>
+      <div style="font-size:11px;color:#F87171">✗ Wallet slightly less prominent (still visible)</div>
+    </div>
+  </div>
+
+  <!-- Option C: Plan-first -->
+  <div class="card" data-choice="c" onclick="toggleSelect(this)">
+    <div class="card-image" style="background:#0A1628;padding:12px;min-height:320px">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+        <div style="font-size:11px;font-weight:900;color:#F0F4F8">My Plans</div>
+        <div style="font-size:9px;background:rgba(0,168,150,0.15);color:#00A896;padding:2px 6px;border-radius:4px;font-weight:700">+ New Plan</div>
+      </div>
+      <!-- Plan card hero -->
+      <div style="background:rgba(0,168,150,0.1);border:1px solid rgba(0,168,150,0.3);border-radius:10px;padding:10px;margin-bottom:8px">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px">
+          <div>
+            <div style="font-size:9px;color:#00A896;font-weight:800">ACTIVE · FOR AMIT</div>
+            <div style="font-size:13px;font-weight:900;color:#F0F4F8">1-Week Plan</div>
+            <div style="font-size:9px;color:#64748B">Apr 3 – Apr 9 · Day 3 of 7</div>
+          </div>
+          <div style="font-size:9px;color:#34D399;background:rgba(34,211,153,0.1);padding:2px 6px;border-radius:4px">Active</div>
+        </div>
+        <div style="display:flex;gap:2px;margin:6px 0">
+          <div style="flex:1;height:4px;border-radius:2px;background:#34D399"></div>
+          <div style="flex:1;height:4px;border-radius:2px;background:#34D399"></div>
+          <div style="flex:1;height:4px;border-radius:2px;background:#00A896"></div>
+          <div style="flex:1;height:4px;border-radius:2px;background:#132D4A"></div>
+          <div style="flex:1;height:4px;border-radius:2px;background:#132D4A"></div>
+          <div style="flex:1;height:4px;border-radius:2px;background:#132D4A"></div>
+          <div style="flex:1;height:4px;border-radius:2px;background:#132D4A"></div>
+        </div>
+        <!-- Today chips -->
+        <div style="display:flex;gap:3px">
+          <div style="font-size:8px;background:rgba(34,211,153,0.15);color:#34D399;padding:2px 5px;border-radius:4px">B ✓</div>
+          <div style="font-size:8px;background:rgba(0,168,150,0.15);color:#00A896;padding:2px 5px;border-radius:4px">L 🛵</div>
+          <div style="font-size:8px;background:rgba(15,32,53,0.7);color:#64748B;padding:2px 5px;border-radius:4px">D sch</div>
+        </div>
+      </div>
+      <!-- Wallet + streak row -->
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:5px;margin-bottom:8px">
+        <div style="background:rgba(0,168,150,0.08);border-radius:8px;padding:8px">
+          <div style="font-size:8px;color:#00A896;font-weight:700">WALLET</div>
+          <div style="font-size:14px;font-weight:900;color:#F0F4F8">₹240</div>
+          <div style="font-size:8px;color:#64748B">2 credits</div>
+        </div>
+        <div style="background:rgba(192,132,252,0.08);border-radius:8px;padding:8px">
+          <div style="font-size:8px;color:#C084FC;font-weight:700">🔥 STREAK</div>
+          <div style="font-size:14px;font-weight:900;color:#F0F4F8">12d</div>
+          <div style="font-size:8px;color:#64748B">Next: 14d</div>
+        </div>
+      </div>
+      <!-- Add plan nudge -->
+      <div style="background:rgba(15,32,53,0.5);border:1px dashed rgba(148,163,184,0.2);border-radius:8px;padding:7px;text-align:center">
+        <div style="font-size:9px;color:#64748B">Plan for Priya ends in 2 days</div>
+        <div style="font-size:9px;color:#00A896;font-weight:700;margin-top:2px">Renew now →</div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>C — Plan-first</h3>
+      <p>Active subscription card is the hero. Wallet + streak as equal secondary cards. Renewal nudge inline.</p>
+      <div style="margin-top:6px;font-size:11px;color:#34D399">✓ Clear plan overview · renewal nudge prominent</div>
+      <div style="font-size:11px;color:#F87171">✗ Today's meal detail less immediate than B</div>
+    </div>
+  </div>
+
+</div>
+
+<div style="margin-top:12px;padding:10px;background:rgba(0,168,150,0.05);border-radius:8px;font-size:12px;color:#94A3B8;text-align:center">
+  Which dashboard layout feels right? I recommend B (today-first) — answers the user's daily question instantly.
+</div>

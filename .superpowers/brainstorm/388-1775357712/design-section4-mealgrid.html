@@ -1,0 +1,204 @@
+<h2>Meal Grid — Core UX Design</h2>
+<p class="subtitle">The feature no competitor has. Rows = days · Columns = B/L/D · Real-time pricing.</p>
+
+<div class="split">
+
+  <!-- LEFT: The grid mockup -->
+  <div class="mockup">
+    <div class="mockup-header">Meal Grid (Step 2 of Subscribe Flow)</div>
+    <div class="mockup-body" style="background:#0A1628;padding:12px;font-family:-apple-system,BlinkMacSystemFont,sans-serif">
+
+      <!-- Top bar -->
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+        <div>
+          <div style="font-size:13px;font-weight:900;color:#F0F4F8">Your Meal Plan</div>
+          <div style="font-size:9px;color:#64748B">Uncheck meals to skip · tap dish to swap</div>
+        </div>
+        <div style="font-size:9px;background:rgba(251,191,36,0.1);color:#FBBF24;padding:3px 7px;border-radius:6px;border:1px solid rgba(251,191,36,0.25)">1 of 2 days off used</div>
+      </div>
+
+      <!-- Column headers -->
+      <div style="display:grid;grid-template-columns:52px 1fr 1fr 1fr;gap:4px;margin-bottom:4px">
+        <div></div>
+        <div style="text-align:center;font-size:8px;font-weight:800;color:#64748B;text-transform:uppercase;letter-spacing:1px">Breakfast<br><span style="color:#00A896">₹100</span></div>
+        <div style="text-align:center;font-size:8px;font-weight:800;color:#64748B;text-transform:uppercase;letter-spacing:1px">Lunch<br><span style="color:#00A896">₹120</span></div>
+        <div style="text-align:center;font-size:8px;font-weight:800;color:#64748B;text-transform:uppercase;letter-spacing:1px">Dinner<br><span style="color:#00A896">₹100</span></div>
+      </div>
+
+      <!-- Row: Mon (normal) -->
+      <div style="display:grid;grid-template-columns:52px 1fr 1fr 1fr;gap:4px;margin-bottom:4px">
+        <div style="display:flex;flex-direction:column;justify-content:center;padding:4px">
+          <div style="font-size:9px;font-weight:800;color:#F0F4F8">Mon</div>
+          <div style="font-size:8px;color:#64748B">Apr 7</div>
+        </div>
+        <!-- B cell - checked -->
+        <div style="background:rgba(0,168,150,0.08);border:1px solid rgba(0,168,150,0.3);border-radius:8px;padding:5px;position:relative;cursor:pointer">
+          <div style="position:absolute;top:3px;right:3px;width:12px;height:12px;border-radius:3px;background:#00A896;display:flex;align-items:center;justify-content:center">
+            <span style="color:white;font-size:8px;font-weight:900">✓</span>
+          </div>
+          <div style="width:100%;aspect-ratio:1;border-radius:5px;background:linear-gradient(135deg,#1a3a2a,#0d2018);display:flex;align-items:center;justify-content:center;font-size:16px;margin-bottom:3px">🍱</div>
+          <div style="font-size:8px;font-weight:700;color:#F0F4F8;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Poha</div>
+        </div>
+        <!-- L cell - checked -->
+        <div style="background:rgba(0,168,150,0.08);border:1px solid rgba(0,168,150,0.3);border-radius:8px;padding:5px;position:relative;cursor:pointer">
+          <div style="position:absolute;top:3px;right:3px;width:12px;height:12px;border-radius:3px;background:#00A896;display:flex;align-items:center;justify-content:center">
+            <span style="color:white;font-size:8px;font-weight:900">✓</span>
+          </div>
+          <div style="width:100%;aspect-ratio:1;border-radius:5px;background:linear-gradient(135deg,#2a1a10,#1a0d08);display:flex;align-items:center;justify-content:center;font-size:16px;margin-bottom:3px">🍛</div>
+          <div style="font-size:8px;font-weight:700;color:#F0F4F8;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Dal Makhani</div>
+        </div>
+        <!-- D cell - unchecked (SKIPPED) -->
+        <div style="background:rgba(15,32,53,0.4);border:1px solid rgba(148,163,184,0.1);border-radius:8px;padding:5px;position:relative;cursor:pointer;opacity:0.5">
+          <div style="position:absolute;top:3px;right:3px;width:12px;height:12px;border-radius:3px;border:1.5px solid #64748B"></div>
+          <div style="width:100%;aspect-ratio:1;border-radius:5px;background:rgba(15,32,53,0.8);display:flex;align-items:center;justify-content:center;font-size:16px;margin-bottom:3px;filter:grayscale(1)">🥘</div>
+          <div style="font-size:8px;font-weight:700;color:#475569;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Khichdi</div>
+        </div>
+      </div>
+
+      <!-- Row: Tue (all checked) -->
+      <div style="display:grid;grid-template-columns:52px 1fr 1fr 1fr;gap:4px;margin-bottom:4px">
+        <div style="display:flex;flex-direction:column;justify-content:center;padding:4px">
+          <div style="font-size:9px;font-weight:800;color:#F0F4F8">Tue</div>
+          <div style="font-size:8px;color:#64748B">Apr 8</div>
+        </div>
+        <div style="background:rgba(0,168,150,0.08);border:1px solid rgba(0,168,150,0.3);border-radius:8px;padding:5px;position:relative;cursor:pointer">
+          <div style="position:absolute;top:3px;right:3px;width:12px;height:12px;border-radius:3px;background:#00A896;display:flex;align-items:center;justify-content:center"><span style="color:white;font-size:8px;font-weight:900">✓</span></div>
+          <div style="width:100%;aspect-ratio:1;border-radius:5px;background:linear-gradient(135deg,#1a2a1a,#0d180d);display:flex;align-items:center;justify-content:center;font-size:16px;margin-bottom:3px">🥣</div>
+          <div style="font-size:8px;font-weight:700;color:#F0F4F8">Upma</div>
+        </div>
+        <div style="background:rgba(0,168,150,0.08);border:1px solid rgba(0,168,150,0.3);border-radius:8px;padding:5px;position:relative;cursor:pointer">
+          <div style="position:absolute;top:3px;right:3px;width:12px;height:12px;border-radius:3px;background:#00A896;display:flex;align-items:center;justify-content:center"><span style="color:white;font-size:8px;font-weight:900">✓</span></div>
+          <div style="width:100%;aspect-ratio:1;border-radius:5px;background:linear-gradient(135deg,#2a2010,#1a1008);display:flex;align-items:center;justify-content:center;font-size:16px;margin-bottom:3px">🫘</div>
+          <div style="font-size:8px;font-weight:700;color:#F0F4F8">Rajma Chawal</div>
+        </div>
+        <div style="background:rgba(0,168,150,0.08);border:1px solid rgba(0,168,150,0.3);border-radius:8px;padding:5px;position:relative;cursor:pointer">
+          <div style="position:absolute;top:3px;right:3px;width:12px;height:12px;border-radius:3px;background:#00A896;display:flex;align-items:center;justify-content:center"><span style="color:white;font-size:8px;font-weight:900">✓</span></div>
+          <div style="width:100%;aspect-ratio:1;border-radius:5px;background:linear-gradient(135deg,#1a2520,#0d1810);display:flex;align-items:center;justify-content:center;font-size:16px;margin-bottom:3px">🫕</div>
+          <div style="font-size:8px;font-weight:700;color:#F0F4F8">Dosa</div>
+        </div>
+      </div>
+
+      <!-- Row: Wed (FULL DAY OFF) -->
+      <div style="display:grid;grid-template-columns:52px 1fr 1fr 1fr;gap:4px;margin-bottom:4px">
+        <div style="display:flex;flex-direction:column;justify-content:center;padding:4px">
+          <div style="font-size:9px;font-weight:800;color:#64748B">Wed</div>
+          <div style="font-size:8px;color:#64748B">Apr 9</div>
+          <div style="font-size:7px;color:#FBBF24;font-weight:700">Day off</div>
+        </div>
+        <div style="grid-column:span 3;background:rgba(251,191,36,0.04);border:1px dashed rgba(251,191,36,0.2);border-radius:8px;padding:8px;display:flex;align-items:center;justify-content:center">
+          <div style="font-size:9px;color:#64748B;text-align:center">All meals skipped · ₹0<br><span style="color:#475569;font-size:8px">Tap any meal to include it</span></div>
+        </div>
+      </div>
+
+      <!-- Sticky price bar -->
+      <div style="background:rgba(0,168,150,0.12);border:1px solid rgba(0,168,150,0.3);border-radius:10px;padding:10px;margin-top:8px">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:5px">
+          <div style="font-size:9px;color:#64748B">Subtotal</div>
+          <div style="font-size:9px;color:#64748B">₹1,120</div>
+        </div>
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:5px">
+          <div style="font-size:9px;color:#34D399">Plan discount (1-week)</div>
+          <div style="font-size:9px;color:#34D399">−₹105</div>
+        </div>
+        <div style="display:flex;justify-content:space-between;align-items:center">
+          <div style="font-size:11px;font-weight:800;color:#F0F4F8">Total</div>
+          <div style="font-size:13px;font-weight:900;color:#00A896">₹1,015</div>
+        </div>
+        <div style="margin-top:8px;background:#00A896;border-radius:8px;padding:8px;text-align:center;font-size:11px;font-weight:800;color:white">Review & Pay →</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- RIGHT: Interaction rules + dish swap modal -->
+  <div class="mockup">
+    <div class="mockup-header">Interactions & Dish Swap Modal</div>
+    <div class="mockup-body" style="background:#0A1628;padding:12px">
+
+      <!-- Interaction rules -->
+      <div style="margin-bottom:10px">
+        <div style="font-size:9px;font-weight:800;color:#00A896;text-transform:uppercase;letter-spacing:1px;margin-bottom:6px">Interaction Rules</div>
+        <div style="display:flex;flex-direction:column;gap:5px">
+          <div style="display:flex;gap:8px;align-items:flex-start">
+            <div style="font-size:10px;min-width:16px;color:#00A896">✓</div>
+            <div style="font-size:10px;color:#94A3B8"><strong style="color:#F0F4F8">Tap checkbox</strong> → toggle include/skip. Price updates instantly (&lt;100ms, client-side).</div>
+          </div>
+          <div style="display:flex;gap:8px;align-items:flex-start">
+            <div style="font-size:10px;min-width:16px;color:#00A896">✓</div>
+            <div style="font-size:10px;color:#94A3B8"><strong style="color:#F0F4F8">Tap dish image/name</strong> → Dish Swap modal opens (bottom sheet on mobile).</div>
+          </div>
+          <div style="display:flex;gap:8px;align-items:flex-start">
+            <div style="font-size:10px;min-width:16px;color:#FBBF24">⚠</div>
+            <div style="font-size:10px;color:#94A3B8"><strong style="color:#FBBF24">Unchecking 3rd zero-meal day</strong> → checkbox disabled + tooltip "You've used your 2 free days off".</div>
+          </div>
+          <div style="display:flex;gap:8px;align-items:flex-start">
+            <div style="font-size:10px;min-width:16px;color:#34D399">💡</div>
+            <div style="font-size:10px;color:#94A3B8"><strong style="color:#F0F4F8">Smart suggestion</strong> below grid: "Most users choose Rajma Chawal on Monday".</div>
+          </div>
+          <div style="display:flex;gap:8px;align-items:flex-start">
+            <div style="font-size:10px;min-width:16px;color:#60A5FA">📱</div>
+            <div style="font-size:10px;color:#94A3B8"><strong style="color:#F0F4F8">Long press on mobile</strong> → quick swap (shows alternatives as small chips without full modal).</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Dish swap modal mockup -->
+      <div style="background:rgba(15,32,53,0.9);border:1px solid rgba(148,163,184,0.15);border-radius:12px;padding:10px">
+        <div style="font-size:9px;font-weight:800;color:#64748B;text-transform:uppercase;letter-spacing:1px;margin-bottom:8px">Dish Swap Modal — Monday Lunch</div>
+
+        <!-- Current -->
+        <div style="font-size:8px;color:#64748B;margin-bottom:4px">CURRENTLY SELECTED</div>
+        <div style="display:flex;gap:8px;align-items:center;background:rgba(0,168,150,0.1);border:1px solid rgba(0,168,150,0.4);border-radius:8px;padding:7px;margin-bottom:8px">
+          <div style="font-size:18px">🍛</div>
+          <div>
+            <div style="font-size:11px;font-weight:700;color:#F0F4F8">Dal Makhani + Roti</div>
+            <div style="font-size:8px;color:#64748B">₹120 included · Vegetarian</div>
+          </div>
+          <div style="margin-left:auto;font-size:9px;color:#00A896;font-weight:700">Current ✓</div>
+        </div>
+
+        <!-- Alternatives -->
+        <div style="font-size:8px;color:#64748B;margin-bottom:4px">ALTERNATIVES</div>
+        <div style="display:flex;flex-direction:column;gap:4px">
+          <div style="display:flex;gap:8px;align-items:center;background:rgba(15,32,53,0.6);border:1px solid rgba(148,163,184,0.1);border-radius:8px;padding:7px;cursor:pointer">
+            <div style="font-size:18px">🫘</div>
+            <div>
+              <div style="font-size:11px;font-weight:700;color:#F0F4F8">Rajma Chawal</div>
+              <div style="font-size:8px;color:#64748B">₹120 included · Vegetarian</div>
+            </div>
+            <div style="margin-left:auto;font-size:8px;color:#64748B">Tap to select</div>
+          </div>
+          <div style="display:flex;gap:8px;align-items:center;background:rgba(15,32,53,0.6);border:1px solid rgba(148,163,184,0.1);border-radius:8px;padding:7px;cursor:pointer">
+            <div style="font-size:18px">🍲</div>
+            <div>
+              <div style="font-size:11px;font-weight:700;color:#F0F4F8">Chole Bhature</div>
+              <div style="font-size:8px;color:#64748B">₹120 included · Vegan</div>
+            </div>
+            <div style="margin-left:auto;font-size:8px;color:#64748B">Tap to select</div>
+          </div>
+        </div>
+
+        <!-- Smart tip -->
+        <div style="margin-top:8px;background:rgba(96,165,250,0.08);border-radius:6px;padding:6px">
+          <div style="font-size:9px;color:#60A5FA">💡 80% of users pick Rajma Chawal on Mondays</div>
+        </div>
+      </div>
+
+      <!-- Pricing logic note -->
+      <div style="margin-top:10px;background:rgba(34,211,153,0.05);border:1px solid rgba(34,211,153,0.2);border-radius:8px;padding:8px">
+        <div style="font-size:9px;font-weight:800;color:#34D399;margin-bottom:5px">PRICING LOGIC (client-side, instant)</div>
+        <div style="font-size:9px;color:#64748B;line-height:1.7;font-family:monospace">
+          for each day:<br>
+          &nbsp;&nbsp;meal_count = checked meals that day<br>
+          &nbsp;&nbsp;discount = discountTable[plan][meal_count]<br>
+          &nbsp;&nbsp;day_total = sum(meal prices) − discount<br>
+          total = sum(all days) + extras
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<div style="margin-top:12px;padding:10px;background:rgba(0,168,150,0.05);border-radius:8px;font-size:12px;color:#94A3B8;text-align:center">
+  Does the meal grid design look right? Any interaction patterns to change before we design the Checkout + Wallet UX?
+</div>

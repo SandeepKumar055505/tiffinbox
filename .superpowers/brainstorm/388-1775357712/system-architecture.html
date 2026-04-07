@@ -1,0 +1,120 @@
+<h2>TiffinBox — Upgraded System Architecture</h2>
+<p class="subtitle">8 core systems. This is a retention + operations platform, not a food app.</p>
+
+<div class="section" style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:16px">
+
+  <div style="background:rgba(0,168,150,0.08);border:1px solid rgba(0,168,150,0.3);border-radius:12px;padding:16px">
+    <div class="label" style="color:#00A896;margin-bottom:8px">🔁 RETENTION ENGINE <span style="color:#ff6b6b;font-size:10px">MOST CRITICAL</span></div>
+    <ul style="margin:0;padding-left:16px;font-size:13px;line-height:1.8">
+      <li>Smart Pause (instead of cancel)</li>
+      <li>Exit interception + discount offer</li>
+      <li>Meal streak system + rewards</li>
+      <li>Missed meal recovery → wallet</li>
+      <li>Daily menu preview notification</li>
+      <li>Meal rating loop</li>
+    </ul>
+  </div>
+
+  <div style="background:rgba(15,32,53,0.5);border:1px solid rgba(148,163,184,0.15);border-radius:12px;padding:16px">
+    <div class="label" style="color:#60A5FA;margin-bottom:8px">⚙️ SUBSCRIPTION ENGINE</div>
+    <ul style="margin:0;padding-left:16px;font-size:13px;line-height:1.8">
+      <li>State machine (8 states)</li>
+      <li>DRAFT → PENDING → ACTIVE → …</li>
+      <li>Idempotent checkout (no duplicates)</li>
+      <li>Post-payment lock (no edits)</li>
+      <li>Per-subscription price versioning</li>
+    </ul>
+  </div>
+
+  <div style="background:rgba(15,32,53,0.5);border:1px solid rgba(148,163,184,0.15);border-radius:12px;padding:16px">
+    <div class="label" style="color:#FBBF24;margin-bottom:8px">💰 PRICING ENGINE</div>
+    <ul style="margin:0;padding-left:16px;font-size:13px;line-height:1.8">
+      <li>Per-day calculation (not average)</li>
+      <li>Mixed meal days handled correctly</li>
+      <li>Admin price change → new subs only</li>
+      <li>Wallet credit on skip/delivery fail</li>
+      <li>Promo code + wallet stacking</li>
+    </ul>
+  </div>
+
+  <div style="background:rgba(15,32,53,0.5);border:1px solid rgba(148,163,184,0.15);border-radius:12px;padding:16px">
+    <div class="label" style="color:#34D399;margin-bottom:8px">📅 SCHEDULING ENGINE</div>
+    <ul style="margin:0;padding-left:16px;font-size:13px;line-height:1.8">
+      <li>Nightly job → generates daily meals</li>
+      <li>meal_cells rows per date × meal_type</li>
+      <li>Skip applied before generation</li>
+      <li>Delivery slot assignment</li>
+      <li>Kitchen prep count output</li>
+    </ul>
+  </div>
+
+  <div style="background:rgba(15,32,53,0.5);border:1px solid rgba(148,163,184,0.15);border-radius:12px;padding:16px">
+    <div class="label" style="color:#F87171;margin-bottom:8px">⏱️ SKIP ENGINE</div>
+    <ul style="margin:0;padding-left:16px;font-size:13px;line-height:1.8">
+      <li>Pre-cutoff → auto-approve + wallet</li>
+      <li>Post-cutoff → admin approval flow</li>
+      <li>Emergency skip → admin override</li>
+      <li>Skip value → wallet_balance</li>
+      <li>Day still counts for plan validity</li>
+    </ul>
+  </div>
+
+  <div style="background:rgba(15,32,53,0.5);border:1px solid rgba(148,163,184,0.15);border-radius:12px;padding:16px">
+    <div class="label" style="color:#F87171;margin-bottom:8px">🚚 DELIVERY SYSTEM</div>
+    <ul style="margin:0;padding-left:16px;font-size:13px;line-height:1.8">
+      <li>Status: scheduled→preparing→out→delivered</li>
+      <li>Delivery failed → auto wallet credit</li>
+      <li>Late delivery → compensation credit</li>
+      <li>SLA breach tracking</li>
+      <li>Bulk mark delivered (admin)</li>
+    </ul>
+  </div>
+
+  <div style="background:rgba(15,32,53,0.5);border:1px solid rgba(148,163,184,0.15);border-radius:12px;padding:16px">
+    <div class="label" style="color:#C084FC;margin-bottom:8px">💬 SUPPORT SYSTEM</div>
+    <ul style="margin:0;padding-left:16px;font-size:13px;line-height:1.8">
+      <li>Ticket types: DELIVERY/FOOD/PAYMENT/OTHER</li>
+      <li>Priority: LOW/HIGH/CRITICAL</li>
+      <li>Auto-tag by keyword</li>
+      <li>Admin: reply / refund to wallet / escalate</li>
+      <li>Live update polling</li>
+    </ul>
+  </div>
+
+  <div style="background:rgba(15,32,53,0.5);border:1px solid rgba(148,163,184,0.15);border-radius:12px;padding:16px">
+    <div class="label" style="color:#60A5FA;margin-bottom:8px">⚙️ ADMIN CONTROL SYSTEM</div>
+    <ul style="margin:0;padding-left:16px;font-size:13px;line-height:1.8">
+      <li>Override anything (skip/price/schedule/meal)</li>
+      <li>Bulk actions (menu change, notifications)</li>
+      <li>Meal load prediction (kitchen prep)</li>
+      <li>Tomorrow's delivery count</li>
+      <li>Revenue + churn dashboard</li>
+    </ul>
+  </div>
+
+</div>
+
+<div style="margin-top:20px;background:rgba(0,168,150,0.05);border:1px solid rgba(0,168,150,0.2);border-radius:12px;padding:16px">
+  <div class="label" style="color:#00A896;margin-bottom:10px">🔔 NOTIFICATION MATRIX</div>
+  <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:8px;font-size:12px">
+    <div style="text-align:center;padding:8px;background:rgba(15,32,53,0.5);border-radius:8px"><div style="color:#34D399;font-weight:700">Transactional</div><div style="color:#94A3B8;margin-top:4px">Order confirmed<br>Payment receipt<br>Skip approved</div></div>
+    <div style="text-align:center;padding:8px;background:rgba(15,32,53,0.5);border-radius:8px"><div style="color:#FBBF24;font-weight:700">Operational</div><div style="color:#94A3B8;margin-top:4px">Tomorrow's menu<br>Meal on the way<br>Delivered</div></div>
+    <div style="text-align:center;padding:8px;background:rgba(15,32,53,0.5);border-radius:8px"><div style="color:#F87171;font-weight:700">Critical</div><div style="color:#94A3B8;margin-top:4px">Delivery failed<br>Skip denied<br>Plan expiring</div></div>
+    <div style="text-align:center;padding:8px;background:rgba(15,32,53,0.5);border-radius:8px"><div style="color:#C084FC;font-weight:700">Retention</div><div style="color:#94A3B8;margin-top:4px">Streak milestone<br>Come back offer<br>Renew reminder</div></div>
+  </div>
+</div>
+
+<div style="margin-top:16px;background:rgba(248,113,113,0.05);border:1px solid rgba(248,113,113,0.2);border-radius:12px;padding:16px">
+  <div class="label" style="color:#F87171;margin-bottom:8px">🔴 CRITICAL EDGE CASES HANDLED</div>
+  <div style="display:flex;flex-wrap:wrap;gap:8px;font-size:12px">
+    <span style="padding:4px 10px;background:rgba(15,32,53,0.6);border-radius:6px;color:#94A3B8">Payment success + API fail → retry job</span>
+    <span style="padding:4px 10px;background:rgba(15,32,53,0.6);border-radius:6px;color:#94A3B8">Double-click checkout → idempotency key</span>
+    <span style="padding:4px 10px;background:rgba(15,32,53,0.6);border-radius:6px;color:#94A3B8">Timezone → always UTC + local convert</span>
+    <span style="padding:4px 10px;background:rgba(15,32,53,0.6);border-radius:6px;color:#94A3B8">Offline during selection → autosave draft</span>
+    <span style="padding:4px 10px;background:rgba(15,32,53,0.6);border-radius:6px;color:#94A3B8">Admin price change → old subs frozen</span>
+  </div>
+</div>
+
+<div style="margin-top:16px;padding:12px;background:rgba(0,168,150,0.08);border-radius:8px;font-size:13px;color:#94A3B8;text-align:center">
+  Does this system architecture look right to you? Any systems to add, remove, or change priority?
+</div>

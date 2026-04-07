@@ -1,0 +1,133 @@
+<h2>TiffinBox — Full Product Design</h2>
+<p class="subtitle">Section 1 of 4: System Architecture & Build Order</p>
+
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:16px">
+
+  <!-- PHASE 1 -->
+  <div style="background:rgba(248,113,113,0.06);border:1px solid rgba(248,113,113,0.35);border-radius:14px;padding:16px">
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px">
+      <div style="background:rgba(248,113,113,0.2);border-radius:8px;padding:4px 10px;font-size:11px;font-weight:800;color:#F87171;text-transform:uppercase;letter-spacing:1px">Phase 1 — Foundation</div>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:8px">
+      <div style="background:rgba(15,32,53,0.6);border-radius:8px;padding:10px 12px">
+        <div style="font-size:12px;font-weight:700;color:#F0F4F8;margin-bottom:3px">Auth System</div>
+        <div style="font-size:11px;color:#64748B">Google OAuth (users) · Email/bcrypt (admin) · JWT · requireAuth middleware</div>
+      </div>
+      <div style="background:rgba(15,32,53,0.6);border-radius:8px;padding:10px 12px">
+        <div style="font-size:12px;font-weight:700;color:#F0F4F8;margin-bottom:3px">Subscription Engine</div>
+        <div style="font-size:11px;color:#64748B">8-state machine · Idempotency keys · Plan config table (admin-controlled durations + unlock rules) · Soft commercial lock post-payment</div>
+      </div>
+      <div style="background:rgba(15,32,53,0.6);border-radius:8px;padding:10px 12px">
+        <div style="font-size:12px;font-weight:700;color:#F0F4F8;margin-bottom:3px">Pricing Engine</div>
+        <div style="font-size:11px;color:#64748B">Per-day calc · Mixed meal days · Admin-configurable discount table · Price versions frozen at purchase · Wallet + promo stacking at checkout</div>
+      </div>
+      <div style="background:rgba(15,32,53,0.6);border-radius:8px;padding:10px 12px">
+        <div style="font-size:12px;font-weight:700;color:#F0F4F8;margin-bottom:3px">Policy Engine</div>
+        <div style="font-size:11px;color:#64748B">Central rule layer: skip eligibility · pause eligibility · cutoff validation · refund rules · admin override permissions · plan lock rules · plan unlock rules (30-day)</div>
+      </div>
+      <div style="background:rgba(15,32,53,0.6);border-radius:8px;padding:10px 12px">
+        <div style="font-size:12px;font-weight:700;color:#F0F4F8;margin-bottom:3px">Billing / Ledger</div>
+        <div style="font-size:11px;color:#64748B">ledger_entries table · Types: payment/credit/refund/promo/skip-comp/delivery-comp/streak-reward · Wallet balance = ledger sum · Human-language descriptions</div>
+      </div>
+      <div style="background:rgba(15,32,53,0.6);border-radius:8px;padding:10px 12px">
+        <div style="font-size:12px;font-weight:700;color:#F0F4F8;margin-bottom:3px">Event Bus (pg-boss)</div>
+        <div style="font-size:11px;color:#64748B">DomainEvent enum · emitEvent() dispatch · Job handlers wired per event · Retry + backoff · Job table archiving</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- PHASE 2 -->
+  <div style="background:rgba(251,191,36,0.06);border:1px solid rgba(251,191,36,0.3);border-radius:14px;padding:16px">
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px">
+      <div style="background:rgba(251,191,36,0.2);border-radius:8px;padding:4px 10px;font-size:11px;font-weight:800;color:#FBBF24;text-transform:uppercase;letter-spacing:1px">Phase 2 — Operations</div>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:8px">
+      <div style="background:rgba(15,32,53,0.6);border-radius:8px;padding:10px 12px">
+        <div style="font-size:12px;font-weight:700;color:#F0F4F8;margin-bottom:3px">Scheduling Engine</div>
+        <div style="font-size:11px;color:#64748B">pg-boss cron: 11:30PM nightly · Generate meal_cells for next day · Apply pending skips · Assign delivery slots · Kitchen prep counts output</div>
+      </div>
+      <div style="background:rgba(15,32,53,0.6);border-radius:8px;padding:10px 12px">
+        <div style="font-size:12px;font-weight:700;color:#F0F4F8;margin-bottom:3px">Kitchen Operations</div>
+        <div style="font-size:11px;color:#64748B">Prep counts per meal type · Item-wise quantities · Packaging counts · Substitution rules (item unavailable) · Admin-readable daily report</div>
+      </div>
+      <div style="background:rgba(15,32,53,0.6);border-radius:8px;padding:10px 12px">
+        <div style="font-size:12px;font-weight:700;color:#F0F4F8;margin-bottom:3px">Skip Engine</div>
+        <div style="font-size:11px;color:#64748B">Routes through Policy Engine · Pre-cutoff: auto-approve → ledger credit · Post-cutoff: admin approval queue · Emergency: admin override · Day validity preserved</div>
+      </div>
+      <div style="background:rgba(15,32,53,0.6);border-radius:8px;padding:10px 12px">
+        <div style="font-size:12px;font-weight:700;color:#F0F4F8;margin-bottom:3px">Delivery System</div>
+        <div style="font-size:11px;color:#64748B">scheduled→preparing→out→delivered · Failed: auto ledger credit via pg-boss · Late: SLA breach + compensation · Bulk actions · Admin override any status</div>
+      </div>
+      <div style="background:rgba(15,32,53,0.6);border-radius:8px;padding:10px 12px">
+        <div style="font-size:12px;font-weight:700;color:#F0F4F8;margin-bottom:3px">Admin Control System</div>
+        <div style="font-size:11px;color:#64748B">Override anything via Policy Engine · Bulk actions · All sensitive actions → Audit Log · Meal load prediction · Revenue + skip dashboard</div>
+      </div>
+      <div style="background:rgba(15,32,53,0.6);border-radius:8px;padding:10px 12px">
+        <div style="font-size:12px;font-weight:700;color:#F0F4F8;margin-bottom:3px">Audit Log</div>
+        <div style="font-size:11px;color:#64748B">audit_logs table · Every sensitive admin action: who · what · when · old value → new value · Non-deletable</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- PHASE 3 -->
+  <div style="background:rgba(96,165,250,0.06);border:1px solid rgba(96,165,250,0.3);border-radius:14px;padding:16px">
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px">
+      <div style="background:rgba(96,165,250,0.2);border-radius:8px;padding:4px 10px;font-size:11px;font-weight:800;color:#60A5FA;text-transform:uppercase;letter-spacing:1px">Phase 3 — Support & Comms</div>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:8px">
+      <div style="background:rgba(15,32,53,0.6);border-radius:8px;padding:10px 12px">
+        <div style="font-size:12px;font-weight:700;color:#F0F4F8;margin-bottom:3px">Ticketing System</div>
+        <div style="font-size:11px;color:#64748B">Types: DELIVERY/FOOD/PAYMENT/OTHER · Priority: LOW/HIGH/CRITICAL · Auto-tag by keyword · Admin: reply / refund-to-ledger / escalate / close</div>
+      </div>
+      <div style="background:rgba(15,32,53,0.6);border-radius:8px;padding:10px 12px">
+        <div style="font-size:12px;font-weight:700;color:#F0F4F8;margin-bottom:3px">Live Chat</div>
+        <div style="font-size:11px;color:#64748B">Quick back-and-forth on active issues · 15s poll or SSE · Escalates to ticket · Linked to subscription/delivery context</div>
+      </div>
+      <div style="background:rgba(15,32,53,0.6);border-radius:8px;padding:10px 12px">
+        <div style="font-size:12px;font-weight:700;color:#F0F4F8;margin-bottom:3px">Notification System</div>
+        <div style="font-size:11px;color:#64748B">Event triggers → pg-boss jobs · Channels: in-app + email (Gmail SMTP / Resend) · User mute prefs per type · 4 types: transactional/operational/critical/retention</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- PHASE 4 -->
+  <div style="background:rgba(192,132,252,0.06);border:1px solid rgba(192,132,252,0.3);border-radius:14px;padding:16px">
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px">
+      <div style="background:rgba(192,132,252,0.2);border-radius:8px;padding:4px 10px;font-size:11px;font-weight:800;color:#C084FC;text-transform:uppercase;letter-spacing:1px">Phase 4 — Retention</div>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:8px">
+      <div style="background:rgba(15,32,53,0.6);border-radius:8px;padding:10px 12px">
+        <div style="font-size:12px;font-weight:700;color:#F0F4F8;margin-bottom:3px">Wallet UX</div>
+        <div style="font-size:11px;color:#64748B">Prominent dashboard card · Credit history with human copy · Auto-apply at checkout (toggle) · "We added ₹X back because…" microcopy</div>
+      </div>
+      <div style="background:rgba(15,32,53,0.6);border-radius:8px;padding:10px 12px">
+        <div style="font-size:12px;font-weight:700;color:#F0F4F8;margin-bottom:3px">Streak Ladder</div>
+        <div style="font-size:11px;color:#64748B">Admin-configurable tiers · Reward types: wallet credit / free extra / renewal discount / mix · streak_rewards config table · pg-boss daily check job</div>
+      </div>
+      <div style="background:rgba(15,32,53,0.6);border-radius:8px;padding:10px 12px">
+        <div style="font-size:12px;font-weight:700;color:#F0F4F8;margin-bottom:3px">Smart Pause & Exit Flow</div>
+        <div style="font-size:11px;color:#64748B">Cancel → intercept → offer pause · Pause instead of cancel flow · Renewal nudges 2 days before expiry · "Going somewhere? Pause instead"</div>
+      </div>
+      <div style="background:rgba(15,32,53,0.6);border-radius:8px;padding:10px 12px">
+        <div style="font-size:12px;font-weight:700;color:#F0F4F8;margin-bottom:3px">Plan Unlock System</div>
+        <div style="font-size:11px;color:#64748B">30-day plan locked until 1 completed plan · Admin configures unlock conditions · "Best Value" badge shown after user qualifies · Renewal-only pricing tier</div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- TECH STACK -->
+<div style="margin-top:14px;background:rgba(0,168,150,0.04);border:1px solid rgba(0,168,150,0.25);border-radius:12px;padding:14px">
+  <div class="label" style="color:#00A896;margin-bottom:10px;text-align:center">FREE-ONLY TECH STACK</div>
+  <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;font-size:11px">
+    <div style="text-align:center;padding:8px;background:rgba(15,32,53,0.5);border-radius:8px"><div style="color:#F0F4F8;font-weight:700;margin-bottom:3px">Frontend</div><div style="color:#64748B">React 18 + TS<br>Tailwind v4 + Vite<br>React Query<br>i18n: EN + HI</div></div>
+    <div style="text-align:center;padding:8px;background:rgba(15,32,53,0.5);border-radius:8px"><div style="color:#F0F4F8;font-weight:700;margin-bottom:3px">Backend</div><div style="color:#64748B">Node.js + Express + TS<br>Zod validation<br>pg-boss jobs<br>Helmet + rate-limit</div></div>
+    <div style="text-align:center;padding:8px;background:rgba(15,32,53,0.5);border-radius:8px"><div style="color:#F0F4F8;font-weight:700;margin-bottom:3px">Data & Jobs</div><div style="color:#64748B">PostgreSQL (Neon free)<br>Knex.js queries<br>pg-boss queue<br>No Redis needed</div></div>
+    <div style="text-align:center;padding:8px;background:rgba(15,32,53,0.5);border-radius:8px"><div style="color:#F0F4F8;font-weight:700;margin-bottom:3px">Services</div><div style="color:#64748B">Vercel (hosting)<br>Razorpay UPI (free)<br>Gmail SMTP / Resend<br>Cloudinary (images)</div></div>
+  </div>
+</div>
+
+<div style="margin-top:12px;padding:12px;background:rgba(0,168,150,0.06);border-radius:8px;font-size:13px;color:#94A3B8;text-align:center">
+  Does Section 1 (Architecture & Build Order) look right? Any system to add, remove, or move between phases?
+</div>

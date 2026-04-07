@@ -1,0 +1,92 @@
+import { Router } from 'express';
+import { db } from '../../config/db';
+import { requireAdmin } from '../../middleware/auth';
+import { emitEvent, DomainEvent } from '../../jobs/events';
+
+const router = Router();
+
+// GET /api/admin/skip — pending skip requests
+router.get('/', requireAdmin, async (req, res) => {
+  const status = req.query.status || 'pending';
+  const rows = await db('skip_requests as sr')
+    .join('subscriptions as s', 's.id', 'sr.subscription_id')
+    .join('users as u', 'u.id', 's.user_id')
+    .join('persons as p', 'p.id', 's.person_id')
+    .where({ 'sr.status': status })
+    .orderBy('sr.requested_at', 'asc')
+    .select('sr.*', 'u.name as user_name', 'p.name as person_name');
+  res.json(rows);
+});
+
+// POST /api/admin/skip/:id/approve
+router.post('/:id/approve', requireAdmin, async (req, res) => {
+  const request = await db('skip_requests').where({ id: req.params.id, status: 'pending' }).first();
+  if (!request) return res.status(404).json({ error: 'Skip request not found or already processed' });
+
+  await db('skip_requests').where({ id: request.id }).update({
+    status: 'approved',
+    admin_note: req.body.note || null,
+  });
+
+  if (request.meal_cell_id) {
+    await db('meal_cells').where({ id: request.meal_cell_id }).update({
+      is_included: false,
+      delivery_status: 'skipped',
+    });
+  }
+
+  const sub = await db('subscriptions').where({ id: request.subscription_id }).first();
+  if (sub) {
+    await emitEvent(DomainEvent.MEAL_SKIPPED, {
+      meal_cell_id: request.meal_cell_id,
+      user_id: sub.user_id,
+      subscription_id: sub.id,
+      meal_type: request.meal_type,
+      date: request.date,
+    });
+  }
+
+  await db('audit_logs').insert({
+    admin_id: req.adminId,
+    action: 'skip.approve',
+    target_type: 'skip_request',
+    target_id: request.id,
+    note: req.body.note,
+  });
+
+  res.json({ success: true });
+});
+
+// POST /api/admin/skip/:id/deny
+router.post('/:id/deny', requireAdmin, async (req, res) => {
+  const request = await db('skip_requests').where({ id: req.params.id, status: 'pending' }).first();
+  if (!request) return res.status(404).json({ error: 'Skip request not found or already processed' });
+
+  await db('skip_requests').where({ id: request.id }).update({
+    status: 'denied',
+    admin_note: req.body.note || null,
+  });
+
+  // Notify user
+  const sub = await db('subscriptions').where({ id: request.subscription_id }).first();
+  if (sub) {
+    await db('notifications').insert({
+      user_id: sub.user_id,
+      title: 'Skip request denied',
+      message: `Your skip request for ${request.meal_type} on ${request.date} was denied.${req.body.note ? ' Reason: ' + req.body.note : ''}`,
+      type: 'info',
+    });
+  }
+
+  await db('audit_logs').insert({
+    admin_id: req.adminId,
+    action: 'skip.deny',
+    target_type: 'skip_request',
+    target_id: request.id,
+    note: req.body.note,
+  });
+
+  res.json({ success: true });
+});
+
+export default router;

@@ -1,0 +1,164 @@
+<h2>TiffinBox — Section 2: Data Model</h2>
+<p class="subtitle">Existing tables (grey) · New tables (coloured) · Modified tables (outlined)</p>
+
+<!-- LEGEND -->
+<div style="display:flex;gap:12px;margin:12px 0;flex-wrap:wrap;font-size:11px">
+  <span style="padding:3px 10px;background:rgba(15,32,53,0.7);border:1px solid rgba(148,163,184,0.2);border-radius:6px;color:#64748B">■ Existing (unchanged)</span>
+  <span style="padding:3px 10px;background:rgba(34,211,153,0.08);border:1px solid rgba(34,211,153,0.4);border-radius:6px;color:#34D399">■ New table</span>
+  <span style="padding:3px 10px;background:rgba(251,191,36,0.08);border:1px solid rgba(251,191,36,0.4);border-radius:6px;color:#FBBF24">■ Modified</span>
+  <span style="padding:3px 10px;background:rgba(248,113,113,0.08);border:1px solid rgba(248,113,113,0.4);border-radius:6px;color:#F87171">■ Replaced</span>
+</div>
+
+<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px">
+
+  <!-- USERS & AUTH -->
+  <div>
+    <div class="label" style="color:#60A5FA;margin-bottom:8px">AUTH</div>
+    <div style="display:flex;flex-direction:column;gap:6px">
+      <div style="background:rgba(251,191,36,0.06);border:1px solid rgba(251,191,36,0.35);border-radius:8px;padding:10px">
+        <div style="font-size:12px;font-weight:700;color:#FBBF24;margin-bottom:4px">users <span style="font-size:10px;opacity:0.6">(modified)</span></div>
+        <div style="font-size:10px;color:#64748B;line-height:1.7">+ wallet_auto_apply BOOL DEFAULT true<br>+ notification_mutes TEXT[] DEFAULT '{}'<br>+ language VARCHAR(5) DEFAULT 'en'<br>+ theme VARCHAR(10) DEFAULT 'dark'</div>
+      </div>
+      <div style="background:rgba(15,32,53,0.6);border:1px solid rgba(148,163,184,0.12);border-radius:8px;padding:10px">
+        <div style="font-size:12px;font-weight:700;color:#64748B;margin-bottom:4px">admins</div>
+        <div style="font-size:10px;color:#64748B">unchanged</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- PLAN CONFIG -->
+  <div>
+    <div class="label" style="color:#34D399;margin-bottom:8px">PLAN CONFIG (new)</div>
+    <div style="display:flex;flex-direction:column;gap:6px">
+      <div style="background:rgba(34,211,153,0.06);border:1px solid rgba(34,211,153,0.35);border-radius:8px;padding:10px">
+        <div style="font-size:12px;font-weight:700;color:#34D399;margin-bottom:4px">plan_config <span style="font-size:10px;opacity:0.6">(new)</span></div>
+        <div style="font-size:10px;color:#64748B;line-height:1.7">id · plan_days · label · is_active<br>requires_completed_plans (0=no lock)<br>is_renewal_only BOOL</div>
+      </div>
+      <div style="background:rgba(248,113,113,0.06);border:1px solid rgba(248,113,113,0.3);border-radius:8px;padding:10px">
+        <div style="font-size:12px;font-weight:700;color:#F87171;margin-bottom:4px">plan_discounts <span style="font-size:10px;opacity:0.6">(replaced)</span></div>
+        <div style="font-size:10px;color:#64748B;line-height:1.7">→ plan_discount_config<br>plan_config_id FK · meals_per_day<br>discount_amount · is_active</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SUBSCRIPTIONS -->
+  <div>
+    <div class="label" style="color:#FBBF24;margin-bottom:8px">SUBSCRIPTIONS (modified)</div>
+    <div style="background:rgba(251,191,36,0.06);border:1px solid rgba(251,191,36,0.35);border-radius:8px;padding:10px">
+      <div style="font-size:12px;font-weight:700;color:#FBBF24;margin-bottom:4px">subscriptions</div>
+      <div style="font-size:10px;color:#64748B;line-height:1.7">+ state VARCHAR(30) — state machine<br>&nbsp;&nbsp;(DRAFT|PENDING_PAYMENT|ACTIVE|<br>&nbsp;&nbsp;PAUSED|PARTIALLY_SKIPPED|<br>&nbsp;&nbsp;COMPLETED|CANCELLED|FAILED_PAYMENT)<br>+ price_snapshot JSONB — frozen at purchase<br>+ plan_config_id FK → plan_config<br>+ idempotency_key VARCHAR(64) UNIQUE<br>+ pause_reason TEXT<br>+ paused_at TIMESTAMPTZ<br>+ resume_at DATE</div>
+    </div>
+  </div>
+
+  <!-- BILLING / LEDGER -->
+  <div>
+    <div class="label" style="color:#34D399;margin-bottom:8px">BILLING / LEDGER (new)</div>
+    <div style="display:flex;flex-direction:column;gap:6px">
+      <div style="background:rgba(34,211,153,0.06);border:1px solid rgba(34,211,153,0.35);border-radius:8px;padding:10px">
+        <div style="font-size:12px;font-weight:700;color:#34D399;margin-bottom:4px">ledger_entries <span style="font-size:10px;opacity:0.6">(new)</span></div>
+        <div style="font-size:10px;color:#64748B;line-height:1.7">id · user_id FK · amount (paise, +/-)<br>type: payment|credit|refund|promo|<br>&nbsp;&nbsp;skip_comp|delivery_comp|<br>&nbsp;&nbsp;streak_reward|wallet_applied<br>description TEXT — human language<br>reference_id · reference_type<br>created_at</div>
+      </div>
+      <div style="background:rgba(15,32,53,0.6);border:1px solid rgba(148,163,184,0.12);border-radius:8px;padding:10px">
+        <div style="font-size:12px;font-weight:700;color:#64748B;margin-bottom:4px">payments</div>
+        <div style="font-size:10px;color:#64748B">+ ledger_entry_id FK (links payment to ledger)</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- RETENTION -->
+  <div>
+    <div class="label" style="color:#C084FC;margin-bottom:8px">RETENTION (new)</div>
+    <div style="display:flex;flex-direction:column;gap:6px">
+      <div style="background:rgba(192,132,252,0.06);border:1px solid rgba(192,132,252,0.35);border-radius:8px;padding:10px">
+        <div style="font-size:12px;font-weight:700;color:#C084FC;margin-bottom:4px">streak_rewards <span style="font-size:10px;opacity:0.6">(new)</span></div>
+        <div style="font-size:10px;color:#64748B;line-height:1.7">id · streak_threshold (unique)<br>reward_type: wallet|extra|discount|mix<br>wallet_amount · extra_item_id FK<br>discount_percent · expiry_days<br>eligible_plan_days TEXT[] · is_active</div>
+      </div>
+      <div style="background:rgba(192,132,252,0.06);border:1px solid rgba(192,132,252,0.35);border-radius:8px;padding:10px">
+        <div style="font-size:12px;font-weight:700;color:#C084FC;margin-bottom:4px">user_streaks <span style="font-size:10px;opacity:0.6">(new)</span></div>
+        <div style="font-size:10px;color:#64748B;line-height:1.7">id · user_id FK (unique)<br>current_streak · longest_streak<br>last_meal_date · updated_at</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SUPPORT (modified) -->
+  <div>
+    <div class="label" style="color:#FBBF24;margin-bottom:8px">SUPPORT (modified)</div>
+    <div style="display:flex;flex-direction:column;gap:6px">
+      <div style="background:rgba(251,191,36,0.06);border:1px solid rgba(251,191,36,0.35);border-radius:8px;padding:10px">
+        <div style="font-size:12px;font-weight:700;color:#FBBF24;margin-bottom:4px">support_tickets</div>
+        <div style="font-size:10px;color:#64748B;line-height:1.7">+ ticket_type: delivery|food|payment|other<br>+ priority: low|high|critical<br>+ auto_tagged BOOL DEFAULT false<br>+ chat_id FK → support_chats</div>
+      </div>
+      <div style="background:rgba(34,211,153,0.06);border:1px solid rgba(34,211,153,0.35);border-radius:8px;padding:10px">
+        <div style="font-size:12px;font-weight:700;color:#34D399;margin-bottom:4px">support_chats <span style="font-size:10px;opacity:0.6">(new)</span></div>
+        <div style="font-size:10px;color:#64748B;line-height:1.7">id · ticket_id FK · user_id FK<br>status: open|closed<br>created_at · closed_at</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SHARED PLATFORM -->
+  <div>
+    <div class="label" style="color:#34D399;margin-bottom:8px">SHARED PLATFORM (new)</div>
+    <div style="display:flex;flex-direction:column;gap:6px">
+      <div style="background:rgba(34,211,153,0.06);border:1px solid rgba(34,211,153,0.35);border-radius:8px;padding:10px">
+        <div style="font-size:12px;font-weight:700;color:#34D399;margin-bottom:4px">audit_logs <span style="font-size:10px;opacity:0.6">(new)</span></div>
+        <div style="font-size:10px;color:#64748B;line-height:1.7">id · admin_id FK · action<br>entity_type · entity_id<br>old_value JSONB · new_value JSONB<br>ip_address · created_at (immutable)</div>
+      </div>
+      <div style="background:rgba(34,211,153,0.06);border:1px solid rgba(34,211,153,0.35);border-radius:8px;padding:10px">
+        <div style="font-size:12px;font-weight:700;color:#34D399;margin-bottom:4px">app_config <span style="font-size:10px;opacity:0.6">(new — extends app_settings)</span></div>
+        <div style="font-size:10px;color:#64748B;line-height:1.7">id · key VARCHAR(100) UNIQUE<br>value TEXT · type: string|number|bool|json<br>description · updated_by FK · updated_at<br><span style="color:#34D399">Feature flags, cutoffs, limits all here</span></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MEAL CELLS modified -->
+  <div>
+    <div class="label" style="color:#FBBF24;margin-bottom:8px">SCHEDULING (modified)</div>
+    <div style="background:rgba(251,191,36,0.06);border:1px solid rgba(251,191,36,0.35);border-radius:8px;padding:10px">
+      <div style="font-size:12px;font-weight:700;color:#FBBF24;margin-bottom:4px">meal_cells</div>
+      <div style="font-size:10px;color:#64748B;line-height:1.7">+ generated_at TIMESTAMPTZ<br>+ substituted BOOL DEFAULT false<br>+ original_item_id FK (if substituted)<br>+ sla_breach BOOL DEFAULT false<br>Delivery statuses += 'failed'</div>
+    </div>
+  </div>
+
+  <!-- UNCHANGED -->
+  <div>
+    <div class="label" style="color:#64748B;margin-bottom:8px">UNCHANGED</div>
+    <div style="display:flex;flex-wrap:wrap;gap:4px">
+      <span style="padding:4px 8px;background:rgba(15,32,53,0.6);border-radius:6px;font-size:10px;color:#64748B">persons</span>
+      <span style="padding:4px 8px;background:rgba(15,32,53,0.6);border-radius:6px;font-size:10px;color:#64748B">meal_items</span>
+      <span style="padding:4px 8px;background:rgba(15,32,53,0.6);border-radius:6px;font-size:10px;color:#64748B">default_menu</span>
+      <span style="padding:4px 8px;background:rgba(15,32,53,0.6);border-radius:6px;font-size:10px;color:#64748B">default_menu_alternatives</span>
+      <span style="padding:4px 8px;background:rgba(15,32,53,0.6);border-radius:6px;font-size:10px;color:#64748B">day_extras</span>
+      <span style="padding:4px 8px;background:rgba(15,32,53,0.6);border-radius:6px;font-size:10px;color:#64748B">skip_requests</span>
+      <span style="padding:4px 8px;background:rgba(15,32,53,0.6);border-radius:6px;font-size:10px;color:#64748B">notifications</span>
+      <span style="padding:4px 8px;background:rgba(15,32,53,0.6);border-radius:6px;font-size:10px;color:#64748B">offers</span>
+      <span style="padding:4px 8px;background:rgba(15,32,53,0.6);border-radius:6px;font-size:10px;color:#64748B">support_messages</span>
+      <span style="padding:4px 8px;background:rgba(15,32,53,0.6);border-radius:6px;font-size:10px;color:#64748B">app_settings</span>
+    </div>
+    <div style="margin-top:8px;font-size:10px;color:#475569">pg-boss creates its own tables automatically (pgboss.*) — no manual migration needed.</div>
+  </div>
+
+</div>
+
+<!-- MIGRATION COUNT -->
+<div style="margin-top:12px;display:grid;grid-template-columns:repeat(4,1fr);gap:8px;font-size:12px">
+  <div style="text-align:center;padding:8px;background:rgba(34,211,153,0.06);border:1px solid rgba(34,211,153,0.3);border-radius:8px">
+    <div style="font-size:20px;font-weight:900;color:#34D399">8</div>
+    <div style="color:#64748B">New tables</div>
+  </div>
+  <div style="text-align:center;padding:8px;background:rgba(251,191,36,0.06);border:1px solid rgba(251,191,36,0.3);border-radius:8px">
+    <div style="font-size:20px;font-weight:900;color:#FBBF24">6</div>
+    <div style="color:#64748B">Modified tables</div>
+  </div>
+  <div style="text-align:center;padding:8px;background:rgba(248,113,113,0.06);border:1px solid rgba(248,113,113,0.3);border-radius:8px">
+    <div style="font-size:20px;font-weight:900;color:#F87171">1</div>
+    <div style="color:#64748B">Replaced table</div>
+  </div>
+  <div style="text-align:center;padding:8px;background:rgba(15,32,53,0.5);border:1px solid rgba(148,163,184,0.15);border-radius:8px">
+    <div style="font-size:20px;font-weight:900;color:#64748B">10</div>
+    <div style="color:#64748B">Unchanged</div>
+  </div>
+</div>
+
+<div style="margin-top:12px;padding:12px;background:rgba(0,168,150,0.06);border-radius:8px;font-size:13px;color:#94A3B8;text-align:center">
+  Does this data model look right? Any tables to add, change, or remove before Section 3: API Design?
+</div>
