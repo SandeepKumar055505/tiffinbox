@@ -3,9 +3,9 @@ import { Link } from 'react-router-dom';
 
 // TODO_USER: replace the placeholders below with real phone number and exact address
 // before submitting the site for Razorpay KYC review.
-const BUSINESS_PHONE = '+91-XXXXXXXXXX';
-const BUSINESS_ADDRESS_LINE1 = 'M/S TiffinPoint Services';
-const BUSINESS_ADDRESS_LINE2 = 'Delhi NCR, India';
+const BUSINESS_PHONE = '+91-8901221068';
+const BUSINESS_ADDRESS_LINE1 = 'TiffinPoint Services';
+const BUSINESS_ADDRESS_LINE2 = 'Gurugram, Haryana, India';
 const BUSINESS_HOURS = 'Mon – Sat, 9:00 AM – 9:00 PM IST';
 
 export default function ContactUs() {
@@ -24,7 +24,7 @@ export default function ContactUs() {
             <div className="space-y-4 text-body-sm t-text-secondary">
               <div className="space-y-1">
                 <p className="font-bold text-teal-400 uppercase tracking-widest text-[10px]">Email</p>
-                <a href="mailto:support@mytiffinpoint.com" className="hover:text-teal-400">support@mytiffinpoint.com</a>
+                <a href="mailto:info@mypinnakle.com" className="hover:text-teal-400">info@mypinnakle.com</a>
               </div>
               <div className="space-y-1">
                 <p className="font-bold text-teal-400 uppercase tracking-widest text-[10px]">Phone</p>
@@ -52,7 +52,7 @@ export default function ContactUs() {
               <h3 className="font-bold text-teal-400 uppercase tracking-widest text-[10px]">Grievance Officer</h3>
               <div className="text-body-sm t-text-secondary">
                 <p>Sandeep Kumar</p>
-                <p><a href="mailto:support@mytiffinpoint.com" className="hover:text-teal-400">support@mytiffinpoint.com</a></p>
+                <p><a href="mailto:info@mypinnakle.com" className="hover:text-teal-400">info@mypinnakle.com</a></p>
               </div>
             </div>
           </div>

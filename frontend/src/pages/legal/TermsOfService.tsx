@@ -14,7 +14,7 @@ export default function TermsOfService() {
         <section className="glass p-8 md:p-12 space-y-8 leading-relaxed">
           <div className="space-y-3">
             <p className="t-text-secondary">
-              These Terms of Service ("Terms") govern your use of the website <strong>mytiffinpoint.com</strong> and the meal subscription services offered by M/S TiffinPoint Services ("TiffinPoint", "we", "us", "our"). By creating an account or placing an order, you agree to be bound by these Terms.
+              These Terms of Service ("Terms") govern your use of the website <strong>mytiffinpoint.com</strong> and the meal subscription services offered by TiffinPoint Services ("TiffinPoint", "we", "us", "our"). By creating an account or placing an order, you agree to be bound by these Terms.
             </p>
           </div>
 
@@ -42,7 +42,7 @@ export default function TermsOfService() {
           <div className="space-y-3">
             <h2 className="text-h2 !text-2xl">4. Orders &amp; Payment</h2>
             <p className="t-text-secondary">
-              All payments are processed securely through Razorpay. Accepted methods include UPI, credit/debit cards, net banking, and supported wallets. Your subscription becomes active only after successful payment confirmation. Prices are inclusive of applicable taxes unless otherwise stated. Invoices are available on request at support@mytiffinpoint.com.
+              All payments are processed securely through Razorpay. Accepted methods include UPI, credit/debit cards, net banking, and supported wallets. Your subscription becomes active only after successful payment confirmation. Prices are inclusive of applicable taxes unless otherwise stated. Invoices are available on request at info@mypinnakle.com.
             </p>
           </div>
 
@@ -80,7 +80,7 @@ export default function TermsOfService() {
           <div className="space-y-3">
             <h2 className="text-h2 !text-2xl">9. Intellectual Property</h2>
             <p className="t-text-secondary">
-              All content on mytiffinpoint.com — logos, text, images, software — is owned by M/S TiffinPoint Services or its licensors and is protected by applicable intellectual property laws. You may not copy, modify, or distribute it without our prior written consent.
+              All content on mytiffinpoint.com — logos, text, images, software — is owned by TiffinPoint Services or its licensors and is protected by applicable intellectual property laws. You may not copy, modify, or distribute it without our prior written consent.
             </p>
           </div>
 
@@ -101,7 +101,7 @@ export default function TermsOfService() {
           <div className="space-y-3">
             <h2 className="text-h2 !text-2xl">12. Governing Law &amp; Dispute Resolution</h2>
             <p className="t-text-secondary">
-              These Terms are governed by the laws of India. Any dispute arising out of or in connection with these Terms shall be subject to the exclusive jurisdiction of the courts at Delhi, India. Before initiating legal action, you agree to first contact us at support@mytiffinpoint.com in good faith to attempt resolution.
+              These Terms are governed by the laws of India. Any dispute arising out of or in connection with these Terms shall be subject to the exclusive jurisdiction of the courts at Delhi, India. Before initiating legal action, you agree to first contact us at info@mypinnakle.com in good faith to attempt resolution.
             </p>
           </div>
 
@@ -115,7 +115,7 @@ export default function TermsOfService() {
           <div className="space-y-3">
             <h2 className="text-h2 !text-2xl">14. Contact</h2>
             <p className="t-text-secondary">
-              Questions about these Terms? Email <strong>support@mytiffinpoint.com</strong> or see our <Link to="/contact" className="text-teal-400 underline">Contact Us</Link> page.
+              Questions about these Terms? Email <strong>info@mypinnakle.com</strong> or see our <Link to="/contact" className="text-teal-400 underline">Contact Us</Link> page.
             </p>
           </div>
         </section>

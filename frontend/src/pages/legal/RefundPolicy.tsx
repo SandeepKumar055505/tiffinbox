@@ -14,7 +14,7 @@ export default function RefundPolicy() {
         <section className="glass p-8 md:p-12 space-y-8 leading-relaxed">
           <div className="space-y-3">
             <p className="t-text-secondary">
-              This Refund Policy explains how refunds and cancellations work for subscriptions placed on <strong>mytiffinpoint.com</strong>, operated by M/S TiffinPoint Services. By placing an order you agree to the terms below.
+              This Refund Policy explains how refunds and cancellations work for subscriptions placed on <strong>mytiffinpoint.com</strong>, operated by TiffinPoint Services. By placing an order you agree to the terms below.
             </p>
           </div>
 
@@ -28,7 +28,7 @@ export default function RefundPolicy() {
           <div className="space-y-3">
             <h2 className="text-h2 !text-2xl">2. Missed, Late, or Unsatisfactory Deliveries</h2>
             <p className="t-text-secondary">
-              If we fail to deliver a meal, deliver it materially late, or the meal is damaged, spoiled, or incorrect, please contact us at <strong>support@mytiffinpoint.com</strong> or via the in-app support within 4 hours of the delivery window. Once verified, the full cost of the affected meal will be credited to your TiffinPoint Wallet within 24 hours.
+              If we fail to deliver a meal, deliver it materially late, or the meal is damaged, spoiled, or incorrect, please contact us at <strong>info@mypinnakle.com</strong> or via the in-app support within 4 hours of the delivery window. Once verified, the full cost of the affected meal will be credited to your TiffinPoint Wallet within 24 hours.
             </p>
           </div>
 
@@ -55,7 +55,7 @@ export default function RefundPolicy() {
               <li>Unused wallet balance at account closure, upon written request.</li>
             </ul>
             <p className="t-text-secondary">
-              To request a bank refund, email <strong>support@mytiffinpoint.com</strong> with your order ID and reason. Approved refunds are initiated within 2 business days and are credited to your original payment method (UPI, card, or bank account) by Razorpay within <strong>5–7 business days</strong>, depending on your bank.
+              To request a bank refund, email <strong>info@mypinnakle.com</strong> with your order ID and reason. Approved refunds are initiated within 2 business days and are credited to your original payment method (UPI, card, or bank account) by Razorpay within <strong>5–7 business days</strong>, depending on your bank.
             </p>
           </div>
 
@@ -76,7 +76,7 @@ export default function RefundPolicy() {
           <div className="space-y-3">
             <h2 className="text-h2 !text-2xl">7. How to Reach Us</h2>
             <p className="t-text-secondary">
-              Email: <strong>support@mytiffinpoint.com</strong><br />
+              Email: <strong>info@mypinnakle.com</strong><br />
               In-app: Open the Support section from your dashboard.<br />
               See our <Link to="/contact" className="text-teal-400 underline">Contact Us</Link> page for full details.
             </p>

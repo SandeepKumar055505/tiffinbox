@@ -14,14 +14,14 @@ export default function ShippingPolicy() {
         <section className="glass p-8 md:p-12 space-y-8 leading-relaxed">
           <div className="space-y-3">
             <p className="t-text-secondary">
-              TiffinPoint (M/S TiffinPoint Services) delivers freshly prepared tiffin meals to customers in Delhi NCR. This policy explains how, when, and where we deliver.
+              TiffinPoint (TiffinPoint Services) delivers freshly prepared tiffin meals to customers in Delhi NCR. This policy explains how, when, and where we deliver.
             </p>
           </div>
 
           <div className="space-y-3">
             <h2 className="text-h2 !text-2xl">1. Service Area</h2>
             <p className="t-text-secondary">
-              We currently deliver within Delhi NCR (Delhi, Noida, Gurugram, Ghaziabad, and Faridabad). During checkout, your delivery address is checked against our serviceable pincodes. If your pincode is not supported, the order cannot be placed. To request expansion to your area, email <strong>support@mytiffinpoint.com</strong>.
+              We currently deliver within Delhi NCR (Delhi, Noida, Gurugram, Ghaziabad, and Faridabad). During checkout, your delivery address is checked against our serviceable pincodes. If your pincode is not supported, the order cannot be placed. To request expansion to your area, email <strong>info@mypinnakle.com</strong>.
             </p>
           </div>
 
@@ -69,7 +69,7 @@ export default function ShippingPolicy() {
           <div className="space-y-3">
             <h2 className="text-h2 !text-2xl">7. Contact</h2>
             <p className="t-text-secondary">
-              Delivery questions? Email <strong>support@mytiffinpoint.com</strong> or open Support from your dashboard.
+              Delivery questions? Email <strong>info@mypinnakle.com</strong> or open Support from your dashboard.
             </p>
           </div>
         </section>

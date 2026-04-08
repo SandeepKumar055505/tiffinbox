@@ -14,7 +14,7 @@ export default function PrivacyPolicy() {
         <section className="glass p-8 md:p-12 space-y-8 leading-relaxed">
           <div className="space-y-3">
             <p className="t-text-secondary">
-              This Privacy Policy explains how M/S TiffinPoint Services ("TiffinPoint", "we", "us", "our") collects, uses, shares, and protects information about you when you use our website <strong>mytiffinpoint.com</strong> and the meal subscription services offered through it.
+              This Privacy Policy explains how TiffinPoint Services ("TiffinPoint", "we", "us", "our") collects, uses, shares, and protects information about you when you use our website <strong>mytiffinpoint.com</strong> and the meal subscription services offered through it.
             </p>
           </div>
 
@@ -58,14 +58,14 @@ export default function PrivacyPolicy() {
           <div className="space-y-3">
             <h2 className="text-h2 !text-2xl">4. Data Retention</h2>
             <p className="t-text-secondary">
-              We retain your account information for as long as your account is active. Order, payment, and invoice records are retained for 8 years, as required under Indian tax and accounting laws. You may request deletion of your account at any time by writing to <strong>support@mytiffinpoint.com</strong>; we will delete personal data except records we are legally required to keep.
+              We retain your account information for as long as your account is active. Order, payment, and invoice records are retained for 8 years, as required under Indian tax and accounting laws. You may request deletion of your account at any time by writing to <strong>info@mypinnakle.com</strong>; we will delete personal data except records we are legally required to keep.
             </p>
           </div>
 
           <div className="space-y-3">
             <h2 className="text-h2 !text-2xl">5. Your Rights</h2>
             <p className="t-text-secondary">
-              Under the Digital Personal Data Protection Act, 2023, you have the right to access, correct, or request deletion of your personal data, and to withdraw consent. To exercise these rights, email <strong>support@mytiffinpoint.com</strong>.
+              Under the Digital Personal Data Protection Act, 2023, you have the right to access, correct, or request deletion of your personal data, and to withdraw consent. To exercise these rights, email <strong>info@mypinnakle.com</strong>.
             </p>
           </div>
 
@@ -102,8 +102,9 @@ export default function PrivacyPolicy() {
             <p className="t-text-secondary">
               For any complaints or concerns about your personal data, please contact our Grievance Officer:<br />
               <strong>Name:</strong> Sandeep Kumar<br />
-              <strong>Email:</strong> support@mytiffinpoint.com<br />
-              <strong>Address:</strong> M/S TiffinPoint Services, Delhi NCR, India
+              <strong>Email:</strong> info@mypinnakle.com<br />
+              <strong>Phone:</strong> +91-8901221068<br />
+              <strong>Address:</strong> TiffinPoint Services, Gurugram, Haryana, India
             </p>
           </div>
         </section>
