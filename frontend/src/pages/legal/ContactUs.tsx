@@ -1,11 +1,17 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 
-// TODO_USER: replace the placeholders below with real phone number and exact address
-// before submitting the site for Razorpay KYC review.
+// TODO_USER: fill the real street, locality, and pincode below before Razorpay KYC submission.
+// These must match EXACTLY what appears on your address-proof document (utility bill / rent
+// agreement / bank statement) that you upload to Razorpay.
+const BUSINESS_NAME = 'TiffinPoint Services';
 const BUSINESS_PHONE = '+91-8901221068';
-const BUSINESS_ADDRESS_LINE1 = 'TiffinPoint Services';
-const BUSINESS_ADDRESS_LINE2 = 'Gurugram, Haryana, India';
+const BUSINESS_STREET = 'TODO_USER: House / Building no., Street name';
+const BUSINESS_LOCALITY = 'TODO_USER: Sector / Area / Landmark';
+const BUSINESS_CITY = 'Gurugram';
+const BUSINESS_STATE = 'Haryana';
+const BUSINESS_PINCODE = 'TODO_USER: 122xxx';
+const BUSINESS_COUNTRY = 'India';
 const BUSINESS_HOURS = 'Mon – Sat, 9:00 AM – 9:00 PM IST';
 
 export default function ContactUs() {
@@ -43,9 +49,12 @@ export default function ContactUs() {
 
           <div className="space-y-6">
             <h2 className="text-h2 !text-2xl">Registered Address</h2>
-            <div className="space-y-2 text-body-sm t-text-secondary">
-              <p className="font-bold">{BUSINESS_ADDRESS_LINE1}</p>
-              <p>{BUSINESS_ADDRESS_LINE2}</p>
+            <div className="space-y-1 text-body-sm t-text-secondary">
+              <p className="font-bold">{BUSINESS_NAME}</p>
+              <p>{BUSINESS_STREET}</p>
+              <p>{BUSINESS_LOCALITY}</p>
+              <p>{BUSINESS_CITY}, {BUSINESS_STATE} {BUSINESS_PINCODE}</p>
+              <p>{BUSINESS_COUNTRY}</p>
             </div>
 
             <div className="pt-4 space-y-2">

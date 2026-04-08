@@ -1,10 +1,14 @@
 import React from 'react';
+import { useLocation } from 'react-router-dom';
+import Footer from './Footer';
 
 interface GlassLayoutProps {
   children: React.ReactNode;
 }
 
 export default function GlassLayout({ children }: GlassLayoutProps) {
+  const { pathname } = useLocation();
+  const showFooter = !pathname.startsWith('/admin');
   return (
     <div className="min-h-screen bg-bg-primary relative overflow-hidden selection:bg-accent/30 selection:text-accent font-sans">
       {/* Ambient background blobs */}
@@ -27,8 +31,9 @@ export default function GlassLayout({ children }: GlassLayoutProps) {
       </div>
 
       {/* Content wrapper */}
-      <div className="relative z-10 w-full max-w-7xl mx-auto min-h-screen">
-        {children}
+      <div className="relative z-10 w-full max-w-7xl mx-auto min-h-screen flex flex-col">
+        <div className="flex-1">{children}</div>
+        {showFooter && <Footer />}
       </div>
     </div>
   );
