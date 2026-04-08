@@ -165,7 +165,33 @@ export async function startJobWorkers(): Promise<void> {
     }
   });
 
-  // ── Plan expiring → renewal nudge ──────────────────────────────────────────
+  // ── Payment failed → notify user ────────────────────────────────────────────
+  await boss.work(DomainEvent.PAYMENT_FAILED, async (job: any) => {
+    const { subscription_id, user_id } = job.data;
+    await db('subscriptions')
+      .where({ id: subscription_id })
+      .update({ state: 'failed_payment', updated_at: db.fn.now() });
+    await sendNotification(user_id,
+      'Payment failed',
+      'We couldn\'t process your payment. Please retry from your subscription page.',
+      'system'
+    );
+  });
+
+  // ── Delivery completed → notify user ────────────────────────────────────────
+  await boss.work(DomainEvent.DELIVERY_COMPLETED, async (job: any) => {
+    const { meal_cell_id, user_id, meal_type, date } = job.data;
+    await db('meal_cells')
+      .where({ id: meal_cell_id })
+      .update({ delivery_status: 'delivered', updated_at: db.fn.now() });
+    await sendNotification(user_id,
+      'Delivery confirmed ✓',
+      `Your ${meal_type} for ${date} has been delivered. Enjoy your meal!`,
+      'info'
+    );
+  });
+
+
   await boss.work(DomainEvent.PLAN_EXPIRING, async (job: any) => {
     const { user_id, end_date, subscription_id } = job.data;
     await sendNotification(user_id,
@@ -184,7 +210,7 @@ export async function startJobWorkers(): Promise<void> {
 
   // ── Streak milestone → reward ───────────────────────────────────────────────
   await boss.work(DomainEvent.STREAK_MILESTONE, async (job: any) => {
-    const { user_id, streak_days, reward } = job.data;
+    const { user_id, person_id, streak_days, reward } = job.data;
     let msg = `🎉 ${streak_days}-day streak!`;
     let walletAmount = 0;
     if ((reward.reward_type === 'wallet' || reward.reward_type === 'both') && reward.wallet_amount > 0) {
@@ -196,7 +222,7 @@ export async function startJobWorkers(): Promise<void> {
         direction: 'credit',
         amount: walletAmount,
         description: `🎉 ${streak_days}-day streak reward! ₹${walletAmount} added to wallet.`,
-        idempotency_key: `streak_reward_${streak_days}_${user_id}`,
+        idempotency_key: `streak_reward_${streak_days}_${user_id}_${person_id}`,
         created_by: 'system',
       });
     }

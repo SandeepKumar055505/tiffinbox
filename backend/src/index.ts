@@ -6,6 +6,14 @@ import rateLimit from 'express-rate-limit';
 import morgan from 'morgan';
 import { env } from './config/env';
 import { startJobWorkers } from './jobs/index';
+import * as Sentry from "@sentry/node";
+
+if (env.SENTRY_DSN) {
+  Sentry.init({
+    dsn: env.SENTRY_DSN,
+    environment: env.NODE_ENV,
+  });
+}
 
 // Routes — user
 import authRoutes from './routes/auth';
@@ -75,7 +83,16 @@ app.use('/api/admin/settings', adminSettingsRoutes);
 
 app.get('/api/health', (_req, res) => res.json({ status: 'ok', ts: new Date().toISOString() }));
 
+// Root redirect — fail-safe for when the custom domain hits the API instead of the UI
+app.get('/', (_req, res) => {
+  res.redirect(env.FRONTEND_URL);
+});
+
 // ── Error handler ─────────────────────────────────────────────────────────────
+if (env.SENTRY_DSN) {
+  Sentry.setupExpressErrorHandler(app);
+}
+
 app.use((err: any, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
   console.error(err);
   res.status(500).json({ error: 'Internal server error' });

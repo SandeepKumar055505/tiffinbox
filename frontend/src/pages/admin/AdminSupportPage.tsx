@@ -34,11 +34,11 @@ export default function AdminSupportPage() {
   return (
     <div className="p-6 space-y-5 h-screen flex flex-col">
       <div className="flex items-center gap-4">
-        <h1 className="text-xl font-bold text-white">Support Tickets</h1>
+        <h1 className="text-xl font-bold t-text">Support Tickets</h1>
         <div className="flex gap-2 ml-auto">
           {['open', 'pending', 'resolved'].map(s => (
             <button key={s} onClick={() => setFilter(s)}
-              className={`px-3 py-1 rounded-lg text-xs ${filter === s ? 'bg-teal-500 text-white' : 'glass text-gray-400 hover:text-white'}`}>
+              className={`px-3 py-1 rounded-lg text-xs ${filter === s ? 'bg-teal-500 text-white' : 'glass t-text-secondary hover:t-text'}`}>
               {s}
             </button>
           ))}
@@ -48,12 +48,12 @@ export default function AdminSupportPage() {
       <div className="flex gap-4 flex-1 min-h-0">
         {/* Ticket list */}
         <div className="w-72 shrink-0 space-y-2 overflow-y-auto">
-          {tickets.length === 0 && <div className="glass p-5 text-center text-gray-500 text-sm">No {filter} tickets</div>}
+          {tickets.length === 0 && <div className="glass p-5 text-center t-text-muted text-sm">No {filter} tickets</div>}
           {tickets.map((t: any) => (
             <button key={t.id} onClick={() => setSelected(t.id)}
-              className={`w-full glass p-3 text-left transition-all ${selected === t.id ? 'teal-glow' : 'glass-hover'}`}>
-              <p className="text-sm font-medium text-white truncate">{t.subject}</p>
-              <p className="text-xs text-gray-500">{t.user_name} · {new Date(t.updated_at).toLocaleDateString('en-IN')}</p>
+              className={`w-full glass p-3 text-left transition-all ${selected === t.id ? 'border-accent' : 'glass-hover'}`}>
+              <p className="text-sm font-medium t-text truncate">{t.subject}</p>
+              <p className="text-xs t-text-muted">{t.user_name} · {new Date(t.updated_at).toLocaleDateString('en-IN')}</p>
             </button>
           ))}
         </div>
@@ -61,15 +61,15 @@ export default function AdminSupportPage() {
         {/* Thread */}
         {thread ? (
           <div className="flex-1 glass rounded-xl flex flex-col min-h-0">
-            <div className="p-4 border-b border-white/5 flex items-center justify-between">
+            <div className="p-4 border-b border-border/10 flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-white">{thread.ticket.subject}</p>
-                <p className="text-xs text-gray-500">{thread.ticket.user_name}</p>
+                <p className="text-sm font-medium t-text">{thread.ticket.subject}</p>
+                <p className="text-xs t-text-muted">{thread.ticket.user_name}</p>
               </div>
               <div className="flex gap-2">
                 {['open', 'pending', 'resolved'].map(s => (
                   <button key={s} onClick={() => updateStatus.mutate(s)}
-                    className={`text-xs px-2 py-1 rounded ${thread.ticket.status === s ? 'bg-teal-500 text-white' : 'glass text-gray-400 hover:text-white'}`}>
+                    className={`text-xs px-2 py-1 rounded ${thread.ticket.status === s ? 'bg-teal-500 text-white' : 'glass t-text-secondary hover:t-text'}`}>
                     {s}
                   </button>
                 ))}
@@ -89,12 +89,12 @@ export default function AdminSupportPage() {
               ))}
             </div>
 
-            <div className="p-3 border-t border-white/5 flex gap-2">
+            <div className="p-3 border-t border-border/10 flex gap-2">
               <input
                 value={reply}
                 onChange={e => setReply(e.target.value)}
                 placeholder="Type reply..."
-                className="flex-1 bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-teal-500"
+                className="flex-1 glass border-transparent rounded-lg px-3 py-2 text-sm t-text outline-none focus:border-accent"
                 onKeyDown={e => e.key === 'Enter' && !e.shiftKey && sendReply.mutate()}
               />
               <button
@@ -107,7 +107,7 @@ export default function AdminSupportPage() {
             </div>
           </div>
         ) : (
-          <div className="flex-1 glass rounded-xl flex items-center justify-center text-gray-600 text-sm">
+          <div className="flex-1 glass rounded-xl flex items-center justify-center t-text-muted text-sm">
             Select a ticket
           </div>
         )}

@@ -3,12 +3,12 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { adminDashboard } from '../../services/adminApi';
 
 const STATUS_COLORS: Record<string, string> = {
-  scheduled: 'bg-gray-700 text-gray-300',
+  scheduled: 'glass t-text-muted',
   preparing: 'bg-blue-500/20 text-blue-400',
   out_for_delivery: 'bg-yellow-500/20 text-yellow-400',
   delivered: 'bg-teal-500/20 text-teal-400',
   failed: 'bg-red-500/20 text-red-400',
-  skipped: 'bg-gray-800 text-gray-600',
+  skipped: 'bg-gray-800/50 t-text-secondary',
 };
 
 const NEXT_STATUS: Record<string, string> = {
@@ -57,7 +57,7 @@ export default function AdminDeliveryPage() {
           type="date"
           value={date}
           onChange={e => setDate(e.target.value)}
-          className="t-input px-3 py-1.5 text-sm rounded-lg outline-none"
+          className="glass px-3 py-1.5 text-sm rounded-lg outline-none t-text"
         />
         <div className="flex gap-2 ml-auto">
           {['all', 'breakfast', 'lunch', 'dinner'].map(m => (
@@ -74,9 +74,9 @@ export default function AdminDeliveryPage() {
 
       {/* Summary */}
       {data && (
-        <div className="flex gap-4 text-sm flex-wrap">
-          <span className="t-text-secondary">Total: <strong className="text-white">{data.total}</strong></span>
-          <span className="text-teal-400">Delivered: <strong>{allCells.filter(c => c.delivery_status === 'delivered').length}</strong></span>
+        <div className="flex gap-4 text-sm flex-wrap items-center">
+          <span className="t-text-secondary">Total: <strong className="t-text">{data.total}</strong></span>
+          <span className="text-teal-500">Delivered: <strong>{allCells.filter(c => c.delivery_status === 'delivered').length}</strong></span>
           <span className="text-red-400">Failed: <strong>{allCells.filter(c => c.delivery_status === 'failed').length}</strong></span>
           <span className="text-yellow-400">Pending: <strong>{allCells.filter(c => ['scheduled','preparing','out_for_delivery'].includes(c.delivery_status)).length}</strong></span>
           <button
@@ -101,7 +101,7 @@ export default function AdminDeliveryPage() {
               <p className="text-xs t-text-muted">{cell.meal_type} · {cell.item_name}</p>
             </div>
 
-            <span className={`text-xs px-2 py-0.5 rounded-full ${STATUS_COLORS[cell.delivery_status] || 'bg-gray-700 t-text-secondary'}`}>
+            <span className={`text-xs px-2 py-0.5 rounded-full ${STATUS_COLORS[cell.delivery_status] || 'glass t-text-secondary'}`}>
               {cell.delivery_status}
             </span>
 
@@ -128,7 +128,7 @@ export default function AdminDeliveryPage() {
         ))}
 
         {filtered.length === 0 && (
-          <div className="glass p-8 text-center text-gray-500">No deliveries for this filter</div>
+          <div className="glass p-8 text-center t-text-muted text-sm">No deliveries for this filter</div>
         )}
       </div>
     </div>

@@ -167,6 +167,14 @@ router.post('/', requireUser, validate(createSchema), async (req, res) => {
   }
   if (cellRows.length > 0) await db('meal_cells').insert(cellRows);
 
+  // Emit event as per spec
+  const { boss } = await import('../jobs/index');
+  const { DomainEvent } = await import('../jobs/events');
+  await boss.send(DomainEvent.SUBSCRIPTION_CREATED, {
+    subscription_id: sub.id,
+    user_id: sub.user_id,
+  });
+
   // Add extras
   if (body.extras.length > 0) {
     await db('day_extras').insert(
@@ -256,6 +264,7 @@ async function validatePromoCode(code: string, user_id: number, base_total?: num
 
   if (!promo) return { discount: 0 };
   if (promo.usage_limit && promo.used_count >= promo.usage_limit) return { discount: 0 };
+  if (promo.min_order_amount && base_total && base_total < promo.min_order_amount) return { discount: 0 };
   if (promo.discount_type === 'flat') return { discount: promo.value };
   if (promo.discount_type === 'percent' && base_total) {
     return { discount: Math.round(base_total * promo.value / 100) };

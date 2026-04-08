@@ -26,13 +26,13 @@ export default function AdminSkipPage() {
   return (
     <div className="p-6 space-y-5">
       <div className="flex items-center gap-4">
-        <h1 className="text-xl font-bold text-white">Skip Requests</h1>
+        <h1 className="text-xl font-bold t-text">Skip Requests</h1>
         <div className="flex gap-2 ml-auto">
           {['pending', 'approved', 'denied'].map(s => (
             <button
               key={s}
               onClick={() => setFilter(s)}
-              className={`px-3 py-1 rounded-lg text-xs transition-colors ${filter === s ? 'bg-teal-500 text-white' : 'glass text-gray-400 hover:text-white'}`}
+              className={`px-3 py-1 rounded-lg text-xs transition-colors ${filter === s ? 'bg-teal-500 text-white' : 'glass t-text-secondary hover:t-text'}`}
             >
               {s}
             </button>
@@ -42,17 +42,17 @@ export default function AdminSkipPage() {
 
       <div className="space-y-3">
         {requests.length === 0 && (
-          <div className="glass p-8 text-center text-gray-500">No {filter} skip requests</div>
+          <div className="glass p-8 text-center t-text-muted text-sm">No {filter} skip requests</div>
         )}
         {requests.map((req: any) => (
           <div key={req.id} className="glass p-4 space-y-3">
             <div className="flex items-start justify-between gap-3">
               <div>
-                <p className="text-sm font-medium text-white">{req.person_name} · {req.user_name}</p>
-                <p className="text-xs text-gray-500">
+                <p className="text-sm font-medium t-text">{req.person_name} · {req.user_name}</p>
+                <p className="text-xs t-text-muted">
                   {req.meal_type} on {req.date} · requested {new Date(req.requested_at).toLocaleString('en-IN', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
                 </p>
-                {req.admin_note && <p className="text-xs text-gray-600 mt-1">Note: {req.admin_note}</p>}
+                {req.admin_note && <p className="text-xs t-text-muted mt-1">Note: {req.admin_note}</p>}
               </div>
               <span className={`text-xs px-2 py-0.5 rounded-full shrink-0 ${
                 req.status === 'pending' ? 'bg-yellow-500/20 text-yellow-400' :
@@ -67,7 +67,7 @@ export default function AdminSkipPage() {
                   placeholder="Optional note..."
                   value={noteMap[req.id] || ''}
                   onChange={e => setNoteMap(m => ({ ...m, [req.id]: e.target.value }))}
-                  className="flex-1 bg-white/5 border border-white/10 rounded px-2 py-1.5 text-xs text-white outline-none focus:border-teal-500"
+                  className="flex-1 glass border-transparent rounded px-2 py-1.5 text-xs t-text outline-none focus:border-teal-500"
                 />
                 <button
                   onClick={() => approve.mutate({ id: req.id })}

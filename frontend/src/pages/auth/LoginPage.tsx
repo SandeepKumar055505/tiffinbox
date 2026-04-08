@@ -1,5 +1,5 @@
 import React, { useEffect, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { auth } from '../../services/api';
 
@@ -7,7 +7,8 @@ declare global {
   interface Window { google?: any; }
 }
 
-export default function LoginPage() {
+export default function
+  () {
   const { user, login } = useAuth();
   const navigate = useNavigate();
   const btnRef = useRef<HTMLDivElement>(null);
@@ -77,11 +78,11 @@ export default function LoginPage() {
             <h2 className="text-h2 !text-2xl">Welcome back</h2>
             <p className="text-label-caps !text-[11px] opacity-60">Securely sign in with your Google account</p>
           </div>
-          
+
           <div className="flex flex-col items-center gap-6">
-            <div 
-              ref={btnRef} 
-              className="flex justify-center transition-all duration-500 hover:scale-[1.03] active:scale-[0.98] shadow-elite rounded-2xl overflow-hidden outline outline-1 outline-white/10" 
+            <div
+              ref={btnRef}
+              className="flex justify-center transition-all duration-500 hover:scale-[1.03] active:scale-[0.98] shadow-elite rounded-2xl overflow-hidden outline outline-1 outline-white/10"
             />
           </div>
         </div>
@@ -102,6 +103,14 @@ export default function LoginPage() {
             </div>
           </div>
         </div>
+
+        <footer className="mt-8 flex items-center justify-center gap-6 text-[10px] font-black uppercase tracking-[0.15em] opacity-30">
+          <Link to="/terms" className="hover:text-accent hover:opacity-100 transition-all">Terms</Link>
+          <span className="w-1 h-1 rounded-full bg-border" />
+          <Link to="/privacy" className="hover:text-accent hover:opacity-100 transition-all">Privacy</Link>
+          <span className="w-1 h-1 rounded-full bg-border" />
+          <Link to="/refund" className="hover:text-accent hover:opacity-100 transition-all">Refunds</Link>
+        </footer>
       </div>
     </div>
   );

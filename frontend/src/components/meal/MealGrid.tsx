@@ -81,41 +81,37 @@ export default function MealGrid({ days, weekMenu, planDays, maxDayOffs, onChang
   const swapEntry = swapModal ? weekMenu[swapDow]?.[swapModal.mealType] : null;
 
   return (
-    <div className="space-y-8 animate-glass">
+    <div className="space-y-6 animate-glass">
       {/* Legend + day-off counter */}
-      <div className="flex items-center justify-between px-2">
-        <div className="flex gap-6">
-          <div className="flex items-center gap-2.5">
-            <span className="w-3 h-3 rounded-full bg-accent shadow-glow-subtle" />
-            <span className="text-label-caps !text-[10px] font-bold opacity-60">Included</span>
+      <div className="flex items-center justify-between px-1">
+        <div className="flex gap-4">
+          <div className="flex items-center gap-2">
+            <span className="w-2.5 h-2.5 rounded-full bg-accent shadow-glow-subtle" />
+            <span className="text-label-caps !text-[9px] font-bold opacity-60">Meal</span>
           </div>
-          <div className="flex items-center gap-2.5">
-            <span className="w-3 h-3 rounded-full bg-border" />
-            <span className="text-label-caps !text-[10px] font-bold opacity-40">Skipped</span>
-          </div>
-          <div className="flex items-center gap-2.5">
-            <span className="w-3 h-3 rounded-full border-2 border-yellow-500/30 border-dashed" />
-            <span className="text-label-caps !text-[10px] font-bold opacity-40">Day Off</span>
+          <div className="flex items-center gap-2">
+            <span className="w-2.5 h-2.5 rounded-full bg-border" />
+            <span className="text-label-caps !text-[9px] font-bold opacity-40">Skip</span>
           </div>
         </div>
-        <span className={`text-[10px] font-bold uppercase tracking-wider px-4 py-1.5 rounded-full border transition-all duration-500 ${dayOffCount >= maxDayOffs ? 'bg-yellow-500/10 text-yellow-600 border-yellow-500/20' : 'bg-bg-secondary text-text-muted border-border/50'}`}>
-          {maxDayOffs - dayOffCount} Skips Remaining
+        <span className={`text-[9px] font-black uppercase tracking-widest px-3 py-1 rounded-lg border transition-all duration-500 ${dayOffCount >= maxDayOffs ? 'bg-yellow-500/10 text-yellow-600 border-yellow-500/20' : 'bg-bg-secondary t-text-muted border-border/50'}`}>
+          {maxDayOffs - dayOffCount} Skips Left
         </span>
       </div>
 
       {/* Column headers */}
-      <div className="grid gap-3" style={{ gridTemplateColumns: '70px repeat(3, 1fr)' }}>
+      <div className="grid gap-2" style={{ gridTemplateColumns: '60px repeat(3, 1fr)' }}>
         <div />
         {MEAL_TYPES.map(m => (
-          <div key={m} className="text-center space-y-1">
-            <p className="text-label-caps !text-text-muted !text-[11px] font-bold">{MEAL_LABELS[m]}</p>
-            <p className="text-h3 !text-xs text-accent/60 font-medium">{formatRupees(MEAL_PRICES[m])}</p>
+          <div key={m} className="text-center space-y-0.5">
+            <p className="text-label-caps !t-text-muted !text-[9px] font-black">{MEAL_LABELS[m]}</p>
+            <p className="text-h3 !text-[10px] text-accent/60 font-medium">{formatRupees(MEAL_PRICES[m])}</p>
           </div>
         ))}
       </div>
 
       {/* Rows */}
-      <div className="space-y-4">
+      <div className="space-y-2">
         {days.map(day => {
           const dow = new Date(day.date).getDay();
           const isDayOff = day.meals.length === 0;
@@ -123,20 +119,19 @@ export default function MealGrid({ days, weekMenu, planDays, maxDayOffs, onChang
 
           if (isDayOff) {
             return (
-              <div key={day.date} className="day-off-row rounded-3xl p-6 transition-all duration-500 hover:opacity-100 border-2 border-dashed border-border/10 bg-bg-secondary/30">
-                <div className="grid gap-4" style={{ gridTemplateColumns: '70px 1fr' }}>
-                  <div className="flex flex-col justify-center border-r border-border/10 pr-4">
-                    <span className="text-label-caps !text-[10px] !text-text-muted font-bold">{DAY_NAMES[dow]}</span>
-                    <span className="text-h3 !text-base font-semibold">{dateLabel}</span>
+              <div key={day.date} className="rounded-2xl p-4 transition-all duration-500 border-2 border-dashed border-border/10 bg-bg-secondary/20">
+                <div className="grid gap-2" style={{ gridTemplateColumns: '60px 1fr' }}>
+                  <div className="flex flex-col justify-center border-r border-border/10 pr-2">
+                    <span className="text-label-caps !text-[8px] !t-text-muted font-bold">{DAY_NAMES[dow]}</span>
+                    <span className="text-h3 !text-sm font-semibold">{dateLabel}</span>
                   </div>
-                  <div className="flex items-center justify-between pl-6">
-                    <div className="space-y-1">
-                      <p className="text-label-caps !text-yellow-600 !text-[11px] font-bold uppercase">Day Off</p>
-                      <p className="text-[10px] font-medium text-text-faint uppercase tracking-widest">No deliveries scheduled</p>
+                  <div className="flex items-center justify-between pl-4">
+                    <div className="space-y-0.5">
+                      <p className="text-label-caps !text-yellow-600 !text-[9px] font-black uppercase">Day Off</p>
                     </div>
                     <button
                       onClick={() => onChange(days.map(d => d.date === day.date ? { ...d, meals: ['breakfast', 'lunch', 'dinner'] } : d))}
-                      className="btn-ghost !text-[10px] !px-6 !py-3 border border-accent/20 rounded-2xl hover:bg-accent/5 text-accent font-bold transition-all"
+                      className="btn-ghost !text-[9px] !px-4 !py-1.5 border border-accent/20 rounded-lg hover:bg-accent/5 text-accent font-black transition-all"
                     >
                       Add Meals
                     </button>
@@ -147,11 +142,11 @@ export default function MealGrid({ days, weekMenu, planDays, maxDayOffs, onChang
           }
 
           return (
-            <div key={day.date} className="grid gap-3" style={{ gridTemplateColumns: '70px repeat(3, 1fr)' }}>
+            <div key={day.date} className="grid gap-2" style={{ gridTemplateColumns: '60px repeat(3, 1fr)' }}>
               {/* Day label */}
-              <div className="flex flex-col justify-center pl-2 border-r border-border/5 pr-4">
-                <span className="text-label-caps !text-[10px] !text-text-muted font-bold">{DAY_NAMES[dow]}</span>
-                <span className="text-h3 !text-base font-semibold">{dateLabel}</span>
+              <div className="flex flex-col justify-center pl-1 border-r border-border/5 pr-2">
+                <span className="text-label-caps !text-[8px] !t-text-muted font-bold">{DAY_NAMES[dow]}</span>
+                <span className="text-h3 !text-sm font-semibold">{dateLabel}</span>
               </div>
 
               {/* Meal cells */}
@@ -163,29 +158,29 @@ export default function MealGrid({ days, weekMenu, planDays, maxDayOffs, onChang
                 return (
                   <div
                     key={mealType}
-                    className={`rounded-[1.75rem] p-4 cursor-pointer select-none transition-all duration-500 relative border-2 h-full flex flex-col justify-between group shadow-sm ${
-                      included ? 'meal-cell-checked ring-1 ring-white/10' : 'meal-cell-skipped border-border/30 bg-bg-secondary/50'
-                    } ${blocked ? 'opacity-20 cursor-not-allowed grayscale' : 'hover:scale-[1.03] hover:shadow-xl active:scale-[0.97]'}`}
+                    className={`rounded-2xl p-3 cursor-pointer select-none transition-all duration-500 relative border-2 h-full flex flex-col justify-between group ${
+                      included ? 'meal-cell-checked' : 'meal-cell-skipped'
+                    } ${blocked ? 'opacity-20 cursor-not-allowed grayscale' : 'hover:scale-[1.02] active:scale-[0.98]'}`}
                     onClick={() => !blocked && toggleMeal(day.date, mealType)}
                     title={blocked ? `Maximum ${maxDayOffs} day-offs per week reached` : undefined}
                   >
                     {/* Checkbox indicator */}
-                    <div className={`absolute top-3 right-3 w-6 h-6 rounded-xl flex items-center justify-center text-xs transition-all duration-500 ${
-                      included ? 'bg-white text-accent shadow-lg scale-110' : 'border-2 border-border group-hover:border-accent/40'
+                    <div className={`absolute top-2 right-2 w-5 h-5 rounded-lg flex items-center justify-center text-[10px] transition-all duration-500 ${
+                      included ? 'bg-white text-accent shadow-sm' : 'border-2 border-border group-hover:border-accent/30'
                     }`}>
                       {included && '✓'}
                     </div>
 
                     {/* Dish info */}
-                    <div className="pr-6 mt-1">
+                    <div className="pr-4">
                       {item ? (
                         <div className="text-left w-full">
-                          <p className={`text-[11px] font-bold leading-relaxed line-clamp-2 transition-colors duration-300 ${included ? 'text-white' : 'text-text-secondary group-hover:text-accent'}`}>
+                          <p className={`text-[10px] font-bold leading-tight line-clamp-2 transition-colors duration-300 ${included ? 'text-white' : 't-text-secondary group-hover:text-accent'}`}>
                             {item.name}
                           </p>
                         </div>
                       ) : (
-                        <p className="text-[10px] text-text-faint font-semibold uppercase tracking-widest">Empty</p>
+                        <p className="text-[9px] t-text-faint font-semibold uppercase tracking-widest text-center py-2">---</p>
                       )}
                     </div>
 
@@ -195,10 +190,10 @@ export default function MealGrid({ days, weekMenu, planDays, maxDayOffs, onChang
                           e.stopPropagation();
                           setSwapModal({ date: day.date, mealType });
                         }}
-                        className="mt-4 text-[10px] font-bold text-white/70 hover:text-white transition-all duration-300 flex items-center gap-2 group-hover:translate-x-1"
+                        className="mt-2 text-[8px] font-black text-white/70 hover:text-white transition-all uppercase tracking-widest flex items-center gap-1 group-hover:translate-x-1"
                       >
-                        <span className="text-lg leading-none">⇄</span>
-                        <span>Swap Dish</span>
+                        <span>Swap</span>
+                        <span className="text-sm">→</span>
                       </button>
                     )}
                   </div>

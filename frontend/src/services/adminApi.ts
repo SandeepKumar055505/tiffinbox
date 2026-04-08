@@ -17,6 +17,7 @@ export const adminSubscriptions = {
   list: (params?: any) => api.get('/admin/subscriptions', { params }),
   get: (id: number) => api.get(`/admin/subscriptions/${id}`),
   cancel: (id: number, reason?: string) => api.post(`/admin/subscriptions/${id}/cancel`, { reason }),
+  updateCutoff: (id: number, data: any) => api.patch(`/admin/subscriptions/${id}/cutoff`, data),
 };
 
 export const adminSkip = {

@@ -75,11 +75,11 @@ export default function AdminSettingsPage() {
 
   return (
     <div className="p-6 space-y-6 max-w-2xl">
-      <h1 className="text-xl font-bold text-white">Settings</h1>
+      <h1 className="text-xl font-bold t-text">Settings</h1>
 
       {/* Cutoff times */}
       <div className="glass p-5 space-y-4">
-        <p className="text-sm font-medium text-gray-300">Skip Cutoff Hours</p>
+        <p className="text-sm font-medium t-text-secondary">Skip Cutoff Hours</p>
         <div className="grid grid-cols-3 gap-3">
           {[
             { key: 'breakfast_cutoff_hour', label: 'Breakfast cutoff (prev day)' },
@@ -87,29 +87,29 @@ export default function AdminSettingsPage() {
             { key: 'dinner_cutoff_hour', label: 'Dinner cutoff (same day)' },
           ].map(f => (
             <div key={f.key} className="space-y-1">
-              <p className="text-xs text-gray-500">{f.label}</p>
+              <p className="text-xs t-text-muted">{f.label}</p>
               <input
                 type="number"
                 min={0} max={23}
                 value={form[f.key] ?? ''}
                 onChange={e => setForm((s: any) => ({ ...s, [f.key]: e.target.value }))}
-                className="w-full bg-white/5 border border-white/10 rounded px-2 py-1.5 text-white text-sm outline-none focus:border-teal-500"
+                className="w-full glass border-transparent rounded px-2 py-1.5 t-text text-sm outline-none focus:border-teal-500"
               />
             </div>
           ))}
         </div>
         <div className="grid grid-cols-2 gap-3">
           <div className="space-y-1">
-            <p className="text-xs text-gray-500">Max day-offs per week</p>
+            <p className="text-xs t-text-muted">Max day-offs per week</p>
             <input type="number" min={0} max={7} value={form.max_skip_days_per_week ?? ''}
               onChange={e => setForm((s: any) => ({ ...s, max_skip_days_per_week: e.target.value }))}
-              className="w-full bg-white/5 border border-white/10 rounded px-2 py-1.5 text-white text-sm outline-none" />
+              className="w-full glass border-transparent rounded px-2 py-1.5 t-text text-sm outline-none" />
           </div>
           <div className="space-y-1">
-            <p className="text-xs text-gray-500">Max persons per user</p>
+            <p className="text-xs t-text-muted">Max persons per user</p>
             <input type="number" min={1} max={50} value={form.max_persons_per_user ?? ''}
               onChange={e => setForm((s: any) => ({ ...s, max_persons_per_user: e.target.value }))}
-              className="w-full bg-white/5 border border-white/10 rounded px-2 py-1.5 text-white text-sm outline-none" />
+              className="w-full glass border-transparent rounded px-2 py-1.5 t-text text-sm outline-none" />
           </div>
         </div>
         <button
@@ -124,18 +124,18 @@ export default function AdminSettingsPage() {
       {/* Discount table */}
       {data?.discounts && (
         <div className="glass p-5 space-y-3">
-          <p className="text-sm font-medium text-gray-300">Plan Discounts (₹ per day)</p>
+          <p className="text-sm font-medium t-text-secondary">Plan Discounts (₹ per day)</p>
           <div className="space-y-2">
             {data.discounts.map((d: any) => (
               <div key={d.id} className="flex items-center gap-3">
-                <span className="text-xs text-gray-500 w-36">{d.plan_days}-day · {d.meals_per_day} meal{d.meals_per_day !== 1 ? 's' : ''}/day</span>
+                <span className="text-xs t-text-muted w-36">{d.plan_days}-day · {d.meals_per_day} meal{d.meals_per_day !== 1 ? 's' : ''}/day</span>
                 <input
                   type="number"
                   defaultValue={d.discount_amount}
                   onBlur={e => adminSettings.updateDiscount(d.id, parseInt(e.target.value))}
-                  className="w-20 bg-white/5 border border-white/10 rounded px-2 py-1 text-white text-sm outline-none focus:border-teal-500"
+                  className="w-20 glass border-transparent rounded px-2 py-1 t-text text-sm outline-none focus:border-teal-500"
                 />
-                <span className="text-xs text-gray-600">₹/day off</span>
+                <span className="text-xs t-text-faint">₹/day off</span>
               </div>
             ))}
           </div>
@@ -145,33 +145,33 @@ export default function AdminSettingsPage() {
       {/* Streak rewards */}
       <div className="glass p-5 space-y-4">
         <div className="flex items-center justify-between">
-          <p className="text-sm font-medium text-gray-300">Streak Rewards</p>
+          <p className="text-sm font-medium t-text-secondary">Streak Rewards</p>
           <button
             onClick={() => createStreakReward.mutate({ streak_days: 0, reward_type: 'wallet', wallet_amount: 50, expiry_days: 30, is_active: true })}
-            className="text-xs text-teal-400 hover:text-teal-300"
+            className="text-xs text-teal-500 hover:text-teal-400"
           >+ Add reward</button>
         </div>
         {(streakRewards as any[]).map((r: any) => (
           <div key={r.id} className="flex items-center gap-3 flex-wrap">
             <div className="flex items-center gap-1">
-              <span className="text-xs text-gray-500">Day</span>
+              <span className="text-xs t-text-muted">Day</span>
               <input
                 type="number" min={1}
                 defaultValue={r.streak_days}
                 onBlur={e => updateStreakReward.mutate({ id: r.id, data: { streak_days: parseInt(e.target.value) } })}
-                className="w-16 bg-white/5 border border-white/10 rounded px-2 py-1 text-white text-sm outline-none focus:border-teal-500"
+                className="w-16 glass border-transparent rounded px-2 py-1 t-text text-sm outline-none focus:border-teal-500"
               />
             </div>
             <div className="flex items-center gap-1">
-              <span className="text-xs text-gray-500">₹</span>
+              <span className="text-xs t-text-muted">₹</span>
               <input
                 type="number" min={0}
                 defaultValue={r.wallet_amount}
                 onBlur={e => updateStreakReward.mutate({ id: r.id, data: { wallet_amount: parseInt(e.target.value) } })}
-                className="w-20 bg-white/5 border border-white/10 rounded px-2 py-1 text-white text-sm outline-none focus:border-teal-500"
+                className="w-20 glass border-transparent rounded px-2 py-1 t-text text-sm outline-none focus:border-teal-500"
               />
             </div>
-            <label className="flex items-center gap-1.5 text-xs text-gray-400 cursor-pointer">
+            <label className="flex items-center gap-1.5 text-xs t-text-secondary cursor-pointer">
               <input
                 type="checkbox"
                 checked={r.is_active}
@@ -187,15 +187,15 @@ export default function AdminSettingsPage() {
           </div>
         ))}
         {(streakRewards as any[]).length === 0 && (
-          <p className="text-xs text-gray-600">No streak rewards configured</p>
+          <p className="text-xs t-text-faint">No streak rewards configured</p>
         )}
       </div>
 
       {/* Promo codes */}
       <div className="glass p-5 space-y-4">
         <div className="flex items-center justify-between">
-          <p className="text-sm font-medium text-gray-300">Promo Codes</p>
-          <button onClick={() => setShowOfferForm(v => !v)} className="text-xs text-teal-400 hover:text-teal-300">
+          <p className="text-sm font-medium t-text-secondary">Promo Codes</p>
+          <button onClick={() => setShowOfferForm(v => !v)} className="text-xs text-teal-500 hover:text-teal-400">
             {showOfferForm ? 'Cancel' : '+ New code'}
           </button>
         </div>
@@ -204,42 +204,42 @@ export default function AdminSettingsPage() {
           <div className="glass p-4 space-y-3">
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1">
-                <p className="text-xs text-gray-500">Code</p>
+                <p className="text-xs t-text-muted">Code</p>
                 <input value={offerForm.code} onChange={e => setOfferForm(f => ({ ...f, code: e.target.value.toUpperCase() }))}
-                  placeholder="SAVE100" className="w-full bg-white/5 border border-white/10 rounded px-2 py-1.5 text-white text-sm outline-none focus:border-teal-500 uppercase" />
+                  placeholder="SAVE100" className="w-full glass border-transparent rounded px-2 py-1.5 t-text text-sm outline-none focus:border-teal-500 uppercase" />
               </div>
               <div className="space-y-1">
-                <p className="text-xs text-gray-500">Description</p>
+                <p className="text-xs t-text-muted">Description</p>
                 <input value={offerForm.description} onChange={e => setOfferForm(f => ({ ...f, description: e.target.value }))}
-                  placeholder="Save ₹100" className="w-full bg-white/5 border border-white/10 rounded px-2 py-1.5 text-white text-sm outline-none focus:border-teal-500" />
+                  placeholder="Save ₹100" className="w-full glass border-transparent rounded px-2 py-1.5 t-text text-sm outline-none focus:border-teal-500" />
               </div>
               <div className="space-y-1">
-                <p className="text-xs text-gray-500">Type</p>
+                <p className="text-xs t-text-muted">Type</p>
                 <select value={offerForm.discount_type} onChange={e => setOfferForm(f => ({ ...f, discount_type: e.target.value as any }))}
-                  className="w-full bg-white/5 border border-white/10 rounded px-2 py-1.5 text-white text-sm outline-none">
+                  className="w-full glass border-transparent rounded px-2 py-1.5 t-text text-sm outline-none">
                   <option value="flat">Flat (₹)</option>
                   <option value="percent">Percent (%)</option>
                 </select>
               </div>
               <div className="space-y-1">
-                <p className="text-xs text-gray-500">Value</p>
+                <p className="text-xs t-text-muted">Value</p>
                 <input type="number" min={1} value={offerForm.value} onChange={e => setOfferForm(f => ({ ...f, value: Number(e.target.value) }))}
-                  className="w-full bg-white/5 border border-white/10 rounded px-2 py-1.5 text-white text-sm outline-none focus:border-teal-500" />
+                  className="w-full glass border-transparent rounded px-2 py-1.5 t-text text-sm outline-none focus:border-teal-500" />
               </div>
               <div className="space-y-1">
-                <p className="text-xs text-gray-500">Valid from</p>
+                <p className="text-xs t-text-muted">Valid from</p>
                 <input type="date" value={offerForm.valid_from} onChange={e => setOfferForm(f => ({ ...f, valid_from: e.target.value }))}
-                  className="w-full bg-white/5 border border-white/10 rounded px-2 py-1.5 text-white text-sm outline-none" />
+                  className="w-full glass border-transparent rounded px-2 py-1.5 t-text text-sm outline-none" />
               </div>
               <div className="space-y-1">
-                <p className="text-xs text-gray-500">Valid to</p>
+                <p className="text-xs t-text-muted">Valid to</p>
                 <input type="date" value={offerForm.valid_to} onChange={e => setOfferForm(f => ({ ...f, valid_to: e.target.value }))}
-                  className="w-full bg-white/5 border border-white/10 rounded px-2 py-1.5 text-white text-sm outline-none" />
+                  className="w-full glass border-transparent rounded px-2 py-1.5 t-text text-sm outline-none" />
               </div>
               <div className="space-y-1">
-                <p className="text-xs text-gray-500">Usage limit (optional)</p>
+                <p className="text-xs t-text-muted">Usage limit (optional)</p>
                 <input type="number" min={1} value={offerForm.usage_limit} onChange={e => setOfferForm(f => ({ ...f, usage_limit: e.target.value }))}
-                  placeholder="Unlimited" className="w-full bg-white/5 border border-white/10 rounded px-2 py-1.5 text-white text-sm outline-none focus:border-teal-500" />
+                  placeholder="Unlimited" className="w-full glass border-transparent rounded px-2 py-1.5 t-text text-sm outline-none focus:border-teal-500" />
               </div>
             </div>
             <button
@@ -255,8 +255,8 @@ export default function AdminSettingsPage() {
         <div className="space-y-2">
           {(offers as any[]).map((o: any) => (
             <div key={o.id} className="flex items-center gap-3 text-sm">
-              <span className={`font-mono font-bold ${o.is_active ? 'text-teal-400' : 'text-gray-600 line-through'}`}>{o.code}</span>
-              <span className="text-gray-500 text-xs flex-1">
+              <span className={`font-mono font-bold ${o.is_active ? 'text-teal-500' : 't-text-faint line-through'}`}>{o.code}</span>
+              <span className="t-text-muted text-xs flex-1">
                 {o.discount_type === 'flat' ? `₹${o.value} off` : `${o.value}% off`}
                 {o.usage_limit ? ` · ${o.used_count}/${o.usage_limit} used` : ` · ${o.used_count} used`}
                 {' · '}{o.valid_to}
@@ -269,24 +269,24 @@ export default function AdminSettingsPage() {
               </button>
             </div>
           ))}
-          {(offers as any[]).length === 0 && <p className="text-xs text-gray-600">No promo codes yet</p>}
+          {(offers as any[]).length === 0 && <p className="text-xs t-text-faint">No promo codes yet</p>}
         </div>
       </div>
 
       {/* Broadcast notification */}
       <div className="glass p-5 space-y-3">
-        <p className="text-sm font-medium text-gray-300">Send Notification</p>
+        <p className="text-sm font-medium t-text-secondary">Send Notification</p>
         <input placeholder="Title" value={broadcastForm.title}
           onChange={e => setBroadcastForm(f => ({ ...f, title: e.target.value }))}
-          className="w-full bg-white/5 border border-white/10 rounded px-3 py-2 text-white text-sm outline-none focus:border-teal-500" />
+          className="w-full glass border-transparent rounded px-3 py-2 t-text text-sm outline-none focus:border-teal-500" />
         <textarea placeholder="Message..." value={broadcastForm.message}
           onChange={e => setBroadcastForm(f => ({ ...f, message: e.target.value }))}
           rows={2}
-          className="w-full bg-white/5 border border-white/10 rounded px-3 py-2 text-white text-sm outline-none resize-none focus:border-teal-500" />
+          className="w-full glass border-transparent rounded px-3 py-2 t-text text-sm outline-none resize-none focus:border-teal-500" />
         <div className="flex gap-3 items-center">
           <select value={broadcastForm.type}
             onChange={e => setBroadcastForm(f => ({ ...f, type: e.target.value }))}
-            className="bg-white/5 border border-white/10 rounded px-2 py-1.5 text-white text-sm outline-none">
+            className="glass border-transparent rounded px-2 py-1.5 t-text text-sm outline-none">
             {['info', 'offer', 'system', 'greeting'].map(t => <option key={t} value={t}>{t}</option>)}
           </select>
           <button onClick={() => broadcast.mutate()} disabled={!broadcastForm.title || !broadcastForm.message || broadcast.isPending}

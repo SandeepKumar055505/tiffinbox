@@ -9,6 +9,9 @@ export default function SubscriptionDetailPage() {
   const { id } = useParams<{ id: string }>();
   const [showPauseModal, setShowPauseModal] = useState(false);
   const [skipError, setSkipError] = useState<string | null>(null);
+  const [skipSuccess, setSkipSuccess] = useState<string | null>(null);
+  // cell IDs that have a pending admin-approval skip
+  const [pendingSkipCells, setPendingSkipCells] = useState<Set<number>>(new Set());
   const qc = useQueryClient();
   const { data: sub, isLoading, refetch } = useQuery({
     queryKey: ['subscription', id],
@@ -17,7 +20,20 @@ export default function SubscriptionDetailPage() {
 
   const skipMeal = useMutation({
     mutationFn: (meal_cell_id: number) => skipApi.request(meal_cell_id),
-    onSuccess: () => { setSkipError(null); refetch(); qc.invalidateQueries({ queryKey: ['today-meals'] }); },
+    onSuccess: (res, meal_cell_id) => {
+      setSkipError(null);
+      const data = res.data;
+      if (data.status === 'pending') {
+        // Post-cutoff: admin must approve — show pending badge on that cell
+        setPendingSkipCells(prev => new Set([...prev, meal_cell_id]));
+        setSkipSuccess('Skip request sent — awaiting admin approval.');
+      } else {
+        setSkipSuccess('Skip applied! Wallet will be credited shortly.');
+        refetch();
+      }
+      qc.invalidateQueries({ queryKey: ['today-meals'] });
+      setTimeout(() => setSkipSuccess(null), 5000);
+    },
     onError: (err: any) => setSkipError(err.response?.data?.error || 'Could not skip meal'),
   });
 
@@ -51,7 +67,7 @@ export default function SubscriptionDetailPage() {
         <header className="pt-6 pb-3 border-b border-border/10 mb-6 flex justify-between items-end">
           <div>
             <div className="flex items-center gap-3 mb-2">
-              <Link to="/" className="text-[11px] font-bold text-text-muted uppercase tracking-widest hover:text-white transition-colors">
+              <Link to="/" className="text-[11px] font-bold text-text-muted uppercase tracking-widest hover:text-accent transition-colors">
                 ← Back
               </Link>
               <span className={`text-[8px] font-black uppercase tracking-[0.1em] px-2 py-0.5 rounded-sm border transition-all ${getStatusStyle(sub.state)}`}>
@@ -153,6 +169,12 @@ export default function SubscriptionDetailPage() {
             <p className="text-[10px] font-bold uppercase tracking-widest opacity-40">{(sub.meal_cells || []).length} Meals</p>
           </div>
 
+          {skipSuccess && (
+            <div className="surface-glass border-teal-500/20 bg-teal-500/5 px-4 py-3 rounded-xl text-[10px] font-bold uppercase text-teal-500 tracking-widest flex items-center gap-2 mb-4">
+              <span>✓</span> {skipSuccess}
+            </div>
+          )}
+
           {skipError && (
             <div className="surface-glass border-red-500/20 bg-red-500/5 px-4 py-3 rounded-xl text-[10px] font-bold uppercase text-red-500 tracking-widest flex items-center gap-2 mb-4">
               <span>⚠️</span> {skipError}
@@ -204,7 +226,7 @@ export default function SubscriptionDetailPage() {
                             </div>
                           </div>
                         </div>
-                        {isSkippable && (
+                        {isSkippable && !pendingSkipCells.has(cell.id) && (
                           <button
                             onClick={() => skipMeal.mutate(cell.id)}
                             disabled={skipMeal.isPending}
@@ -212,6 +234,11 @@ export default function SubscriptionDetailPage() {
                           >
                             Skip
                           </button>
+                        )}
+                        {isSkippable && pendingSkipCells.has(cell.id) && (
+                          <span className="shrink-0 text-[9px] font-bold text-yellow-500 uppercase tracking-widest px-2 py-1 rounded bg-yellow-500/10 border border-yellow-500/20 animate-pulse">
+                            Pending
+                          </span>
                         )}
                         {!cell.is_included && cell.delivery_status === 'skipped' && (
                           <span className="shrink-0 text-[10px] font-bold text-text-muted uppercase tracking-widest">Skipped</span>

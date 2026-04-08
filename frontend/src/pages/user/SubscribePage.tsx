@@ -189,12 +189,12 @@ export default function SubscribePage() {
         {/* Mesh Accents */}
         <div className="absolute top-[-10%] -left-20 w-[40rem] h-[40rem] bg-accent/10 blur-[150px] rounded-full animate-mesh" />
         
-        <div className="max-w-2xl mx-auto px-6 space-y-8 relative z-10 focus:outline-none">
+        <div className="max-w-xl mx-auto px-6 space-y-6 relative z-10 focus:outline-none">
           {/* Apple Music Header */}
-          <header className="pt-6 pb-3 border-b border-border/10 mb-6 flex justify-between items-end">
+          <header className="pt-4 pb-2 border-b border-border/10 mb-4 flex justify-between items-end">
             <div>
-              <p className="text-label-caps !text-[11px] !text-accent font-black tracking-widest uppercase mb-1">01 / 03 • Person Selection</p>
-              <h1 className="text-h1 !text-[34px] font-extrabold tracking-tight">Subscribe</h1>
+              <p className="text-label-caps !text-[10px] !text-accent font-black tracking-widest uppercase mb-1">01 / 03 • Person Selection</p>
+              <h1 className="text-h1 !text-[28px] font-extrabold tracking-tight">Subscribe</h1>
             </div>
           </header>
 
@@ -341,14 +341,14 @@ export default function SubscribePage() {
   if (step === 'grid') {
     return (
       <div className="min-h-screen bg-bg-primary relative overflow-hidden">
-        <div className="max-w-2xl mx-auto px-6 space-y-8 relative z-10">
+        <div className="max-w-xl mx-auto px-6 space-y-6 relative z-10">
           {/* Apple Music Header */}
-          <header className="pt-6 pb-3 border-b border-border/10 mb-6 flex justify-between items-end">
+          <header className="pt-4 pb-2 border-b border-border/10 mb-4 flex justify-between items-end">
             <div>
-              <p className="text-label-caps !text-[11px] !text-accent font-black tracking-widest uppercase mb-1">02 / 03 • Craft Your Week</p>
-              <h1 className="text-h1 !text-[34px] font-extrabold tracking-tight">Customize</h1>
+              <p className="text-label-caps !text-[10px] !text-accent font-black tracking-widest uppercase mb-1">02 / 03 • Craft Your Week</p>
+              <h1 className="text-h1 !text-[28px] font-extrabold tracking-tight">Customize</h1>
             </div>
-            <button onClick={() => setStep('setup')} className="text-[11px] font-bold text-text-muted uppercase tracking-widest hover:text-white transition-colors mb-2">
+            <button onClick={() => setStep('setup')} className="text-[10px] font-bold text-text-muted uppercase tracking-widest hover:text-accent transition-colors mb-2">
               ← Back
             </button>
           </header>
@@ -385,23 +385,23 @@ export default function SubscribePage() {
   if (step === 'checkout') {
     return (
       <div className="min-h-screen bg-bg-primary relative overflow-hidden">
-        <div className="max-w-2xl mx-auto px-6 space-y-8 relative z-10">
+        <div className="max-w-xl mx-auto px-6 space-y-6 relative z-10">
           {/* Apple Music Header */}
-          <header className="pt-6 pb-3 border-b border-border/10 mb-6 flex justify-between items-end">
+          <header className="pt-4 pb-2 border-b border-border/10 mb-4 flex justify-between items-end">
             <div>
-              <p className="text-label-caps !text-[11px] !text-accent font-black tracking-widest uppercase mb-1">03 / 03 • Final Confirmation</p>
-              <h1 className="text-h1 !text-[34px] font-extrabold tracking-tight">Checkout</h1>
+              <p className="text-label-caps !text-[10px] !text-accent font-black tracking-widest uppercase mb-1">03 / 03 • Final Confirmation</p>
+              <h1 className="text-h1 !text-[28px] font-extrabold tracking-tight">Checkout</h1>
             </div>
-            <button onClick={() => setStep('grid')} className="text-[11px] font-bold text-text-muted uppercase tracking-widest hover:text-white transition-colors mb-2">
+            <button onClick={() => setStep('grid')} className="text-[10px] font-bold text-text-muted uppercase tracking-widest hover:text-accent transition-colors mb-2">
               ← Back
             </button>
           </header>
 
           {/* Order Snapshot (Nav-Elite) */}
-          <section className="surface-liquid p-5 sm:p-6 space-y-5 animate-glass rounded-2xl shadow-elite border-white/10 ring-1 ring-white/10">
+          <section className="glass p-4 sm:p-5 space-y-4 animate-glass rounded-2xl shadow-elite border-white/10 ring-1 ring-white/10">
             <div className="flex items-center gap-3">
-              <div className="w-8 h-8 rounded-lg bg-accent/10 flex items-center justify-center text-lg shadow-glow-subtle border border-accent/20">📋</div>
-              <h3 className="text-h3 !font-black">Summary</h3>
+              <div className="w-7 h-7 rounded-lg bg-accent/10 flex items-center justify-center text-base shadow-glow-subtle border border-accent/20">📋</div>
+              <h3 className="text-h3 !text-lg !font-black">Summary</h3>
             </div>
             
             <div className="space-y-6 max-h-96 overflow-y-auto pr-4 scrollbar-none mask-fade-bottom">

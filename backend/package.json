@@ -10,6 +10,7 @@
     "seed": "tsx src/db/seed.ts"
   },
   "dependencies": {
+    "@sentry/node": "^10.47.0",
     "@types/dotenv": "^6.1.1",
     "@types/morgan": "^1.9.10",
     "bcryptjs": "^2.4.3",

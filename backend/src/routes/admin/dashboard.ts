@@ -62,38 +62,47 @@ router.patch('/delivery/cells/:id', requireAdmin, async (req, res) => {
     return res.status(422).json({ error: 'Invalid status' });
   }
 
-  const [cell] = await db('meal_cells').where({ id: req.params.id }).update({
-    delivery_status: status,
-  }).returning('*');
-
+  const cell = await db('meal_cells').where({ id: req.params.id }).first();
   if (!cell) return res.status(404).json({ error: 'Meal cell not found' });
 
-  // If failed and not yet credited → emit event for wallet credit
+  const sub = await db('subscriptions').where({ id: cell.subscription_id }).first();
+
   if (status === 'failed' && !cell.wallet_credited) {
-    const sub = await db('subscriptions').where({ id: cell.subscription_id }).first();
-    if (sub) {
-      const { boss } = await import('../../jobs/index');
-      const { DomainEvent } = await import('../../jobs/events');
-      await boss.send(DomainEvent.DELIVERY_FAILED, {
-        meal_cell_id: cell.id,
-        user_id: sub.user_id,
-        subscription_id: sub.id,
-        meal_type: cell.meal_type,
-        date: cell.date,
-      });
-    }
+    const { boss } = await import('../../jobs/index');
+    const { DomainEvent } = await import('../../jobs/events');
+    await boss.send(DomainEvent.DELIVERY_FAILED, {
+      meal_cell_id: cell.id,
+      user_id: sub.user_id,
+      subscription_id: sub.id,
+      meal_type: cell.meal_type,
+      date: cell.date,
+    });
+  } else if (status === 'delivered') {
+    const { boss } = await import('../../jobs/index');
+    const { DomainEvent } = await import('../../jobs/events');
+    await boss.send(DomainEvent.DELIVERY_COMPLETED, {
+      meal_cell_id: cell.id,
+      user_id: sub.user_id,
+      meal_type: cell.meal_type,
+      date: cell.date,
+    });
+  } else {
+    await db('meal_cells').where({ id: req.params.id }).update({
+      delivery_status: status,
+      updated_at: db.fn.now()
+    });
   }
 
   // Audit log
   await db('audit_logs').insert({
     admin_id: req.adminId,
-    action: `delivery.${status}`,
+    action: `delivery.${status}${status === 'failed' || status === 'delivered' ? '_event_emitted' : ''}`,
     target_type: 'meal_cell',
     target_id: cell.id,
     after_value: JSON.stringify({ status, note }),
   });
 
-  res.json(cell);
+  res.status(202).json({ message: 'Request accepted', cell_id: cell.id, status });
 });
 
 // POST /api/admin/delivery/bulk-deliver — mark all today's scheduled as delivered

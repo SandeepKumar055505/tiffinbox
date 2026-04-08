@@ -15,6 +15,11 @@ const WalletPage = React.lazy(() => import('./pages/user/WalletPage'));
 const SupportPage = React.lazy(() => import('./pages/user/SupportPage'));
 const ProfilePage = React.lazy(() => import('./pages/user/ProfilePage'));
 
+// Legal pages
+const PrivacyPolicy = React.lazy(() => import('./pages/legal/PrivacyPolicy'));
+const TermsOfService = React.lazy(() => import('./pages/legal/TermsOfService'));
+const RefundPolicy = React.lazy(() => import('./pages/legal/RefundPolicy'));
+
 // Admin pages
 const AdminLoginPage = React.lazy(() => import('./pages/admin/AdminLoginPage'));
 const AdminLayout = React.lazy(() => import('./pages/admin/AdminLayout'));
@@ -61,6 +66,9 @@ export default function App() {
           <Routes>
             {/* Public/Auth routes */}
             <Route path="/login" element={<LoginPage />} />
+            <Route path="/privacy" element={<PrivacyPolicy />} />
+            <Route path="/terms" element={<TermsOfService />} />
+            <Route path="/refund" element={<RefundPolicy />} />
             
             {/* User routes — Wrapped in UserLayout */}
             <Route element={<RequireUser><UserLayout /></RequireUser>}>

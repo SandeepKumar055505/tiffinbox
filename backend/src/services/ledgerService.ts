@@ -35,7 +35,15 @@ export async function postLedgerEntry(entry: {
 }
 
 export async function getWalletBalance(user_id: number): Promise<number> {
-  const row = await db('wallet_balances').where({ user_id }).first();
+  const row = await db('ledger_entries')
+    .where({ user_id })
+    .select(
+      db.raw(`
+        COALESCE(SUM(CASE WHEN direction = 'credit' THEN amount ELSE 0 END), 0) -
+        COALESCE(SUM(CASE WHEN direction = 'debit'  THEN amount ELSE 0 END), 0) AS balance
+      `)
+    )
+    .first();
   return row ? parseInt(row.balance, 10) : 0;
 }
 

@@ -22,8 +22,10 @@ export default function AdminMenuPage() {
       try {
         const res = await adminMenu.uploadImage(data);
         setNewItem(f => ({ ...f, image_url: res.data.url }));
-      } catch {
-        // Cloudinary not configured — store nothing, image_url stays empty
+      } catch (err: any) {
+        console.error('[upload error]', err);
+        // If 503, Cloudinary is missing — we handle this by allowing manual input below
+        alert('Cloudinary upload not configured. Please enter Image URL manually.');
       } finally {
         setUploading(false);
       }
@@ -68,7 +70,7 @@ export default function AdminMenuPage() {
   return (
     <div className="p-6 space-y-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-xl font-bold text-white">Menu Management</h1>
+        <h1 className="text-xl font-bold t-text">Menu Management</h1>
         <button
           onClick={() => setShowNewItem(!showNewItem)}
           className="bg-teal-500/20 text-teal-400 border border-teal-500/30 px-3 py-1.5 rounded-lg text-sm hover:bg-teal-500/30"
@@ -80,40 +82,54 @@ export default function AdminMenuPage() {
       {/* New item form */}
       {showNewItem && (
         <div className="glass p-5 space-y-3">
-          <p className="text-sm font-medium text-gray-300">New meal item</p>
+          <p className="text-sm font-medium t-text-secondary">New meal item</p>
           <div className="grid grid-cols-2 gap-3">
             <input placeholder="Name" value={newItem.name} onChange={e => setNewItem(f => ({ ...f, name: e.target.value }))}
-              className="bg-white/5 border border-white/10 rounded px-3 py-2 text-white text-sm outline-none focus:border-teal-500" />
+              className="glass border-transparent rounded px-3 py-2 t-text text-sm outline-none focus:border-teal-500" />
             <select value={newItem.type} onChange={e => {
                 const t = e.target.value;
                 setNewItem(f => ({ ...f, type: t, is_extra: t === 'extra', price: t === 'extra' ? f.price : 0 }));
               }}
-              className="bg-white/5 border border-white/10 rounded px-3 py-2 text-white text-sm outline-none">
+              className="glass border-transparent rounded px-3 py-2 t-text text-sm outline-none">
               {['breakfast', 'lunch', 'dinner', 'extra'].map(t => <option key={t} value={t}>{t}</option>)}
             </select>
             <input placeholder="Description" value={newItem.description} onChange={e => setNewItem(f => ({ ...f, description: e.target.value }))}
-              className="col-span-2 bg-white/5 border border-white/10 rounded px-3 py-2 text-white text-sm outline-none focus:border-teal-500" />
+              className="col-span-2 glass border-transparent rounded px-3 py-2 t-text text-sm outline-none focus:border-teal-500" />
             {newItem.type === 'extra' && (
               <input type="number" placeholder="Price (₹)" value={newItem.price}
                 onChange={e => setNewItem(f => ({ ...f, price: parseInt(e.target.value) }))}
-                className="bg-white/5 border border-white/10 rounded px-3 py-2 text-white text-sm outline-none" />
+                className="glass border-transparent rounded px-3 py-2 t-text text-sm outline-none" />
             )}
           </div>
 
           {/* Image upload */}
-          <div className="flex items-center gap-3">
-            <input ref={fileInputRef} type="file" accept="image/*" className="hidden"
-              onChange={e => e.target.files?.[0] && handleImageFile(e.target.files[0])} />
-            <button type="button" onClick={() => fileInputRef.current?.click()}
-              className="glass glass-hover text-gray-400 text-xs px-3 py-2 rounded-lg">
-              {uploading ? 'Uploading…' : imagePreview ? 'Change image' : 'Add image (optional)'}
-            </button>
-            {imagePreview && (
-              <img src={imagePreview} alt="" className="w-12 h-12 rounded-lg object-cover" />
-            )}
-            {newItem.image_url && !uploading && (
-              <span className="text-xs text-teal-400">✓ Uploaded</span>
-            )}
+          <div className="space-y-2 pt-2">
+            <p className="text-[10px] font-black uppercase tracking-widest opacity-30">Meal Image</p>
+            <div className="flex items-center gap-3">
+              <input ref={fileInputRef} type="file" accept="image/*" className="hidden"
+                onChange={e => e.target.files?.[0] && handleImageFile(e.target.files[0])} />
+              <button type="button" onClick={() => fileInputRef.current?.click()}
+                className="glass glass-hover text-gray-400 text-xs px-3 py-2 rounded-lg">
+                {uploading ? 'Uploading…' : imagePreview ? 'Change' : 'Upload'}
+              </button>
+              
+              <div className="flex-1">
+                <input placeholder="Or past direct Image URL" value={newItem.image_url} 
+                  onChange={e => {
+                    setNewItem(f => ({ ...f, image_url: e.target.value }));
+                    if (!e.target.value) setImagePreview('');
+                    else if (e.target.value.startsWith('http')) setImagePreview(e.target.value);
+                  }}
+                  className="w-full glass border-transparent rounded px-3 py-2 t-text text-sm outline-none focus:border-teal-500" />
+              </div>
+
+              {imagePreview && (
+                <div className="w-12 h-12 rounded-lg overflow-hidden border border-white/5 shadow-inner">
+                  <img src={imagePreview} alt="" className="w-full h-full object-cover" />
+                </div>
+              )}
+            </div>
+            {uploading && <p className="text-[10px] text-teal-400 animate-pulse">Processing via Cloudinary…</p>}
           </div>
 
           <button onClick={() => createItem.mutate()} disabled={!newItem.name || createItem.isPending || uploading}
@@ -128,23 +144,23 @@ export default function AdminMenuPage() {
         <table className="w-full text-sm">
           <thead>
             <tr>
-              <th className="text-left text-xs text-gray-500 pb-2 pr-4">Day</th>
-              {MEAL_TYPES.map(m => <th key={m} className="text-left text-xs text-gray-500 pb-2 pr-4 capitalize">{m}</th>)}
+              <th className="text-left text-xs t-text-muted pb-2 pr-4">Day</th>
+              {MEAL_TYPES.map(m => <th key={m} className="text-left text-xs t-text-muted pb-2 pr-4 capitalize">{m}</th>)}
             </tr>
           </thead>
           <tbody className="space-y-2">
             {[0,1,2,3,4,5,6].map(dow => (
               <tr key={dow} className="border-t border-white/5">
-                <td className="py-2 pr-4 text-xs text-gray-400 font-medium">{WEEKDAYS[dow]}</td>
+                <td className="py-2 pr-4 text-xs t-text-secondary font-medium">{WEEKDAYS[dow]}</td>
                 {MEAL_TYPES.map(mealType => {
                   const slot = grid[dow]?.[mealType];
-                  if (!slot) return <td key={mealType} className="py-2 pr-4 text-xs text-gray-700">—</td>;
+                  if (!slot) return <td key={mealType} className="py-2 pr-4 text-xs t-text-faint">—</td>;
                   return (
                     <td key={mealType} className="py-2 pr-4">
                       <select
                         value={slot.item_id}
                         onChange={e => updateSlot.mutate({ id: slot.id, item_id: parseInt(e.target.value) })}
-                        className="bg-white/5 border border-white/10 rounded px-2 py-1 text-white text-xs outline-none focus:border-teal-500 w-full max-w-[180px]"
+                        className="glass border-transparent rounded px-2 py-1 t-text text-xs outline-none focus:border-teal-500 w-full max-w-[180px]"
                       >
                         {itemsByType(mealType).map((item: any) => (
                           <option key={item.id} value={item.id}>{item.name}</option>
@@ -161,12 +177,12 @@ export default function AdminMenuPage() {
 
       {/* All items list */}
       <div className="space-y-2">
-        <p className="text-sm font-medium text-gray-300">All items ({allItems.length})</p>
+        <p className="text-sm font-medium t-text-secondary">All items ({allItems.length})</p>
         <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
           {allItems.map((item: any) => (
             <div key={item.id} className="glass p-3 space-y-0.5">
-              <p className="text-xs font-medium text-white">{item.name}</p>
-              <p className="text-xs text-gray-500">{item.type}{item.is_extra ? ` · ₹${item.price / 100}` : ''}</p>
+              <p className="text-xs font-medium t-text">{item.name}</p>
+              <p className="text-xs t-text-muted">{item.type}{item.is_extra ? ` · ₹${item.price / 100}` : ''}</p>
             </div>
           ))}
         </div>
