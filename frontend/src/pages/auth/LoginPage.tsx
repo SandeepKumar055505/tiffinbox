@@ -104,12 +104,21 @@ export default function
           </div>
         </div>
 
-        <footer className="mt-8 flex items-center justify-center gap-6 text-[10px] font-black uppercase tracking-[0.15em] opacity-30">
-          <Link to="/terms" className="hover:text-accent hover:opacity-100 transition-all">Terms</Link>
-          <span className="w-1 h-1 rounded-full bg-border" />
-          <Link to="/privacy" className="hover:text-accent hover:opacity-100 transition-all">Privacy</Link>
-          <span className="w-1 h-1 rounded-full bg-border" />
-          <Link to="/refund" className="hover:text-accent hover:opacity-100 transition-all">Refunds</Link>
+        <footer className="mt-12 pt-8 border-t border-white/5 space-y-6">
+          <div className="flex flex-wrap justify-center gap-x-6 gap-y-2 text-[10px] font-black uppercase tracking-widest opacity-30">
+            <Link to="/terms" className="hover:text-accent hover:opacity-100 transition-all">Terms</Link>
+            <Link to="/privacy" className="hover:text-accent hover:opacity-100 transition-all">Privacy</Link>
+            <Link to="/refund" className="hover:text-accent hover:opacity-100 transition-all">Refunds</Link>
+            <Link to="/shipping" className="hover:text-accent hover:opacity-100 transition-all">Shipping</Link>
+            <Link to="/contact" className="hover:text-accent hover:opacity-100 transition-all">Contact</Link>
+          </div>
+          
+          <div className="text-center space-y-1">
+            <p className="text-[10px] font-black uppercase tracking-widest opacity-20">M/S TiffinPoint Services</p>
+            <p className="text-[9px] opacity-10 leading-relaxed italic">
+              Registered Address: [Your Business Address Here], India
+            </p>
+          </div>
         </footer>
       </div>
     </div>

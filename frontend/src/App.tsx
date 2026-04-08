@@ -19,6 +19,8 @@ const ProfilePage = React.lazy(() => import('./pages/user/ProfilePage'));
 const PrivacyPolicy = React.lazy(() => import('./pages/legal/PrivacyPolicy'));
 const TermsOfService = React.lazy(() => import('./pages/legal/TermsOfService'));
 const RefundPolicy = React.lazy(() => import('./pages/legal/RefundPolicy'));
+const ShippingPolicy = React.lazy(() => import('./pages/legal/ShippingPolicy'));
+const ContactUs = React.lazy(() => import('./pages/legal/ContactUs'));
 
 // Admin pages
 const AdminLoginPage = React.lazy(() => import('./pages/admin/AdminLoginPage'));
@@ -69,6 +71,8 @@ export default function App() {
             <Route path="/privacy" element={<PrivacyPolicy />} />
             <Route path="/terms" element={<TermsOfService />} />
             <Route path="/refund" element={<RefundPolicy />} />
+            <Route path="/shipping" element={<ShippingPolicy />} />
+            <Route path="/contact" element={<ContactUs />} />
             
             {/* User routes — Wrapped in UserLayout */}
             <Route element={<RequireUser><UserLayout /></RequireUser>}>

@@ -26,6 +26,7 @@ export const env = {
   ADMIN_SEED_PASSWORD: process.env.ADMIN_SEED_PASSWORD || 'admin123',
   RAZORPAY_KEY_ID: process.env.RAZORPAY_KEY_ID!,
   RAZORPAY_KEY_SECRET: process.env.RAZORPAY_KEY_SECRET!,
+  RAZORPAY_WEBHOOK_SECRET: process.env.RAZORPAY_WEBHOOK_SECRET || process.env.RAZORPAY_KEY_SECRET!,
   GMAIL_USER: process.env.GMAIL_USER,
   GMAIL_APP_PASSWORD: process.env.GMAIL_APP_PASSWORD,
   FRONTEND_URL: process.env.FRONTEND_URL || 'https://mytiffinpoint.com',

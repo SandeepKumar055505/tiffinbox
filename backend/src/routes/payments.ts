@@ -169,15 +169,63 @@ router.post(
 // POST /api/payments/webhook — Razorpay server webhook (no auth, signature verified)
 router.post('/webhook', async (req, res) => {
   const signature = req.headers['x-razorpay-signature'] as string;
-  const body = JSON.stringify(req.body);
+  
+  // Since we use express.raw for this route in index.ts, req.body is a Buffer
+  const rawBody = req.body;
   const expected = crypto
-    .createHmac('sha256', env.RAZORPAY_KEY_SECRET)
-    .update(body)
+    .createHmac('sha256', env.RAZORPAY_WEBHOOK_SECRET)
+    .update(rawBody)
     .digest('hex');
 
-  if (signature !== expected) return res.status(400).send('Invalid signature');
+  if (signature !== expected) {
+    console.error('[webhook] Invalid signature');
+    return res.status(400).send('Invalid signature');
+  }
 
-  const { event, payload } = req.body;
+  // Parse for logic
+  const { event, payload } = JSON.parse(rawBody.toString());
+  console.log(`[webhook] Received event: ${event}`);
+
+  // FAIL-SAFE: Handle order.paid (backstop for browser failures)
+  if (event === 'order.paid' || event === 'payment.captured') {
+    const orderId = payload.order?.entity?.id || payload.payment?.entity?.order_id;
+    const paymentId = payload.payment?.entity?.id || payload.order?.entity?.payment_id;
+
+    if (orderId) {
+      const sub = await db('subscriptions').where({ razorpay_order_id: orderId }).first();
+      
+      if (sub && sub.state !== 'active') {
+        console.log(`[webhook] Idempotent activation for sub ${sub.id}`);
+        
+        await db('subscriptions').where({ id: sub.id }).update({
+          state: 'active',
+          razorpay_payment_id: paymentId,
+          updated_at: db.fn.now()
+        });
+
+        // Record the payment if not exists
+        const existingPayment = await db('payments').where({ razorpay_payment_id: paymentId }).first();
+        if (!existingPayment) {
+          await db('payments').insert({
+            subscription_id: sub.id,
+            user_id: sub.user_id,
+            razorpay_order_id: orderId,
+            razorpay_payment_id: paymentId,
+            amount: sub.price_paid * 100,
+            status: 'paid'
+          });
+        }
+
+        await emitEvent(DomainEvent.PAYMENT_SUCCESS, {
+          subscription_id: sub.id,
+          payment_id: paymentId,
+          user_id: sub.user_id,
+          wallet_applied: sub.wallet_applied
+        });
+      }
+    }
+  }
+
   if (event === 'payment.failed') {
     const orderId = payload?.payment?.entity?.order_id;
     if (orderId) {
