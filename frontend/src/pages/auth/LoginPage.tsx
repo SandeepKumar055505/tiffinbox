@@ -112,11 +112,11 @@ export default function
             <Link to="/shipping" className="hover:text-accent hover:opacity-100 transition-all">Shipping</Link>
             <Link to="/contact" className="hover:text-accent hover:opacity-100 transition-all">Contact</Link>
           </div>
-          
+
           <div className="text-center space-y-1">
-            <p className="text-[10px] font-black uppercase tracking-widest opacity-20">M/S TiffinPoint Services</p>
+            <p className="text-[10px] font-black uppercase tracking-widest opacity-20">TiffinPoint Services</p>
             <p className="text-[9px] opacity-10 leading-relaxed italic">
-              Registered Address: [Your Business Address Here], India
+              Registered Address: F-102, Sector 48, Gurugram, Haryana 122018, India
             </p>
           </div>
         </footer>

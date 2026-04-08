@@ -6,11 +6,11 @@ import { Link } from 'react-router-dom';
 // agreement / bank statement) that you upload to Razorpay.
 const BUSINESS_NAME = 'TiffinPoint Services';
 const BUSINESS_PHONE = '+91-8901221068';
-const BUSINESS_STREET = 'TODO_USER: House / Building no., Street name';
-const BUSINESS_LOCALITY = 'TODO_USER: Sector / Area / Landmark';
+const BUSINESS_STREET = 'F-102, Sector 48';
+const BUSINESS_LOCALITY = 'Sector 48, Gurugram';
 const BUSINESS_CITY = 'Gurugram';
 const BUSINESS_STATE = 'Haryana';
-const BUSINESS_PINCODE = 'TODO_USER: 122xxx';
+const BUSINESS_PINCODE = '122018';
 const BUSINESS_COUNTRY = 'India';
 const BUSINESS_HOURS = 'Mon – Sat, 9:00 AM – 9:00 PM IST';
 
