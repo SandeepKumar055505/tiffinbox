@@ -57,10 +57,10 @@ app.use(express.json());
 // Rate limiting
 const limiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 200, standardHeaders: true });
 const authLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 20, standardHeaders: true });
-app.use('/api', limiter);
-app.use('/api/auth', authLimiter);
-
 // ── Routes ────────────────────────────────────────────────────────────────────
+app.get('/api/health', (_req, res) => res.json({ status: 'ok', ts: new Date().toISOString() }));
+app.get('/', (_req, res) => res.json({ status: 'TiffinBox API Live', website: env.FRONTEND_URL }));
+
 app.use('/api/auth', authRoutes);
 app.use('/api/persons', personRoutes);
 app.use('/api/menu', menuRoutes);
@@ -81,13 +81,6 @@ app.use('/api/admin/menu', adminMenuRoutes);
 app.use('/api/admin/support', adminSupportRoutes);
 app.use('/api/admin/settings', adminSettingsRoutes);
 
-app.get('/api/health', (_req, res) => res.json({ status: 'ok', ts: new Date().toISOString() }));
-
-// Root redirect — fail-safe for when the custom domain hits the API instead of the UI
-app.get('/', (_req, res) => {
-  res.redirect(env.FRONTEND_URL);
-});
-
 // ── Error handler ─────────────────────────────────────────────────────────────
 if (env.SENTRY_DSN) {
   Sentry.setupExpressErrorHandler(app);
@@ -104,8 +97,8 @@ export { app };
 // ── Start (only when NOT on Vercel) ───────────────────────────────────────────
 if (!process.env.VERCEL) {
   async function main() {
-    app.listen(env.PORT, () => {
-      console.log(`TiffinBox backend running on port ${env.PORT}`);
+    app.listen(env.PORT, '0.0.0.0', () => {
+      console.log(`TiffinBox backend running on port ${env.PORT} (bound to 0.0.0.0)`);
     });
     // Start pg-boss in background — don't block HTTP server
     startJobWorkers().catch(err => {
