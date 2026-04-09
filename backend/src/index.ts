@@ -45,9 +45,20 @@ require('express-async-errors');
 
 // ── Middleware ────────────────────────────────────────────────────────────────
 app.use(morgan(env.isDev ? 'dev' : 'combined'));
-app.use(cors({ 
-  origin: env.isDev ? true : env.FRONTEND_URL, 
-  credentials: true 
+// Allowed production origins — custom domain + www + Render fallback
+const allowedOrigins = [
+  env.FRONTEND_URL,
+  'https://mytiffinpoint.com',
+  'https://www.mytiffinpoint.com',
+  'https://tiffinbox-web.onrender.com',
+];
+app.use(cors({
+  origin: (origin, cb) => {
+    if (!origin || env.isDev) return cb(null, true);
+    if (allowedOrigins.includes(origin)) return cb(null, true);
+    return cb(new Error(`CORS blocked: ${origin}`));
+  },
+  credentials: true,
 }));
 
 // Raw body for Razorpay webhook signature verification
