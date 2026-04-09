@@ -168,12 +168,6 @@ router.post('/', requireUser, validate(createSchema), async (req, res) => {
   }
   if (cellRows.length > 0) await db('meal_cells').insert(cellRows);
 
-  // Emit event as per spec
-  await boss.send(DomainEvent.SUBSCRIPTION_CREATED, {
-    subscription_id: sub.id,
-    user_id: sub.user_id,
-  });
-
   // Add extras
   if (body.extras.length > 0) {
     await db('day_extras').insert(
@@ -181,7 +175,16 @@ router.post('/', requireUser, validate(createSchema), async (req, res) => {
     );
   }
 
+  // Respond immediately — do NOT block on pg-boss.
+  // On cold starts, boss.start() may not be complete yet and awaiting
+  // boss.send() would stall the HTTP response for 30–60 s.
   res.status(201).json(sub);
+
+  // Fire-and-forget: emit the domain event in the background
+  boss.send(DomainEvent.SUBSCRIPTION_CREATED, {
+    subscription_id: sub.id,
+    user_id: sub.user_id,
+  }).catch(err => console.error('[bg] SUBSCRIPTION_CREATED emit failed:', err?.message));
 });
 
 // POST /api/subscriptions/:id/cancel
