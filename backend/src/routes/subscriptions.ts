@@ -7,6 +7,7 @@ import { calculateQuote, buildDateRange, MEAL_PRICES } from '../services/pricing
 import { canAccessMonthlyPlan, canTransitionTo } from '../services/policyEngine';
 import { getWalletBalance, debitWalletAtCheckout } from '../services/ledgerService';
 import { emitEvent, DomainEvent } from '../jobs/events';
+import { boss } from '../jobs/index';
 
 const router = Router();
 
@@ -168,8 +169,6 @@ router.post('/', requireUser, validate(createSchema), async (req, res) => {
   if (cellRows.length > 0) await db('meal_cells').insert(cellRows);
 
   // Emit event as per spec
-  const { boss } = await import('../jobs/index');
-  const { DomainEvent } = await import('../jobs/events');
   await boss.send(DomainEvent.SUBSCRIPTION_CREATED, {
     subscription_id: sub.id,
     user_id: sub.user_id,

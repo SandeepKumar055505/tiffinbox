@@ -46,16 +46,14 @@ require('express-async-errors');
 // ── Middleware ────────────────────────────────────────────────────────────────
 app.use(morgan(env.isDev ? 'dev' : 'combined'));
 // Allowed production origins — custom domain (any subdomain) + Render fallback
-const ORIGIN_REGEX = /^https?:\/\/(localhost(:\d+)?|([a-z0-9-]+\.)*mytiffinpoint\.com|tiffinbox-web\.onrender\.com)$/i;
+const ORIGIN_REGEX = /^https?:\/\/((localhost(:\d+)?)|((.+\.)?mytiffinpoint\.com)|(tiffinbox-web\.onrender\.com))$/i;
 const corsOptions: cors.CorsOptions = {
   origin: (origin, cb) => {
-    // No-origin (curl, server-to-server, same-origin) is always allowed
-    if (!origin) return cb(null, true);
-    if (env.isDev) return cb(null, true);
-    if (ORIGIN_REGEX.test(origin)) return cb(null, true);
-    // Return false (not Error) so cors-middleware still sets headers and the
-    // browser sees a clean "not allowed" instead of a thrown 500.
-    return cb(null, false);
+    if (!origin || env.isDev || ORIGIN_REGEX.test(origin)) {
+      return cb(null, true);
+    }
+    console.warn(`CORS blocked for origin: ${origin}`);
+    return cb(new Error(`CORS blocked for origin: ${origin}`));
   },
   credentials: true,
   methods: ['GET', 'HEAD', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
