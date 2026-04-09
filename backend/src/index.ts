@@ -45,21 +45,26 @@ require('express-async-errors');
 
 // ── Middleware ────────────────────────────────────────────────────────────────
 app.use(morgan(env.isDev ? 'dev' : 'combined'));
-// Allowed production origins — custom domain + www + Render fallback
-const allowedOrigins = [
-  env.FRONTEND_URL,
-  'https://mytiffinpoint.com',
-  'https://www.mytiffinpoint.com',
-  'https://tiffinbox-web.onrender.com',
-];
-app.use(cors({
+// Allowed production origins — custom domain (any subdomain) + Render fallback
+const ORIGIN_REGEX = /^https?:\/\/(localhost(:\d+)?|([a-z0-9-]+\.)*mytiffinpoint\.com|tiffinbox-web\.onrender\.com)$/i;
+const corsOptions: cors.CorsOptions = {
   origin: (origin, cb) => {
-    if (!origin || env.isDev) return cb(null, true);
-    if (allowedOrigins.includes(origin)) return cb(null, true);
-    return cb(new Error(`CORS blocked: ${origin}`));
+    // No-origin (curl, server-to-server, same-origin) is always allowed
+    if (!origin) return cb(null, true);
+    if (env.isDev) return cb(null, true);
+    if (ORIGIN_REGEX.test(origin)) return cb(null, true);
+    // Return false (not Error) so cors-middleware still sets headers and the
+    // browser sees a clean "not allowed" instead of a thrown 500.
+    return cb(null, false);
   },
   credentials: true,
-}));
+  methods: ['GET', 'HEAD', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
+  maxAge: 600,
+};
+app.use(cors(corsOptions));
+// Explicit preflight handler — guarantees OPTIONS gets a CORS-headered response
+app.options('*', cors(corsOptions));
 
 // Raw body for Razorpay webhook signature verification
 app.use('/api/payments/webhook', express.raw({ type: 'application/json' }));
