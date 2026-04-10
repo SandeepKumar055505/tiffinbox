@@ -87,7 +87,7 @@ export default function ProfilePage() {
           <div className="flex items-center justify-between px-4 pb-2">
             <h3 className="text-label-caps !text-[12px] !opacity-50 font-bold uppercase tracking-widest flex-1">Family Members</h3>
             {!showForm && editing === null && (
-              <button 
+              <button
                 onClick={() => { setForm(BLANK); setShowForm(true); }}
                 className="text-[11px] font-bold text-accent uppercase tracking-widest hover:opacity-80"
               >
@@ -98,12 +98,12 @@ export default function ProfilePage() {
 
           {(showForm || editing !== null) && (
             <div className="animate-glass">
-              <MemberForm 
+              <MemberForm
                 form={form}
                 setForm={setForm}
                 editing={editing}
                 onCancel={() => { setShowForm(false); setEditing(null); }}
-                onSubmit={() => editing ? update.mutate({ id: editing }) : create.mutate()} 
+                onSubmit={() => editing ? update.mutate({ id: editing }) : create.mutate()}
                 loading={editing ? update.isPending : create.isPending}
                 title={editing ? 'Edit Member' : 'New Member'}
               />
@@ -140,8 +140,8 @@ export default function ProfilePage() {
             <div className="surface-glass p-8 text-center rounded-2xl opacity-60">
               <p className="text-h3 !text-lg">No Members</p>
               <p className="text-body-sm !text-sm opacity-70 mt-1">Add family members to start subscribing for them.</p>
-              <button 
-                onClick={() => setShowForm(true)} 
+              <button
+                onClick={() => setShowForm(true)}
                 className="mt-6 text-[11px] font-bold text-white bg-accent px-5 py-2.5 rounded-full uppercase tracking-widest hover:opacity-90 transition-opacity"
               >
                 Add Member
@@ -181,10 +181,10 @@ export default function ProfilePage() {
                   >
                     {updateProfile.isPending ? 'Saving...' : 'Save'}
                   </button>
-                  <button 
-                    onClick={() => setAddressEdit(false)} 
+                  <button
+                    onClick={() => setAddressEdit(false)}
                     disabled={updateProfile.isPending}
-                    className="px-6 text-[12px] font-bold text-text-muted hover:text-accent transition-colors py-2.5 rounded-xl disabled:opacity-50"
+                    className="px-6 text-[12px] font-bold text-text-muted hover:text-white transition-colors py-2.5 rounded-xl disabled:opacity-50"
                   >
                     Cancel
                   </button>
@@ -230,21 +230,21 @@ export default function ProfilePage() {
   );
 }
 
-const MemberForm = ({ 
-  form, 
-  setForm, 
-  editing, 
-  onSubmit, 
+const MemberForm = ({
+  form,
+  setForm,
+  editing,
+  onSubmit,
   onCancel,
-  loading, 
-  title 
-}: { 
-  form: IPersonForm; 
+  loading,
+  title
+}: {
+  form: IPersonForm;
   setForm: React.Dispatch<React.SetStateAction<IPersonForm>>;
   editing: number | null;
-  onSubmit: () => void; 
+  onSubmit: () => void;
   onCancel: () => void;
-  loading: boolean; 
+  loading: boolean;
   title: string;
 }) => (
   <div className="surface-glass p-5 sm:p-6 space-y-5 animate-glass rounded-2xl sm:rounded-[2rem] border-white/5 ring-1 ring-white/5 shadow-xl">
@@ -253,27 +253,27 @@ const MemberForm = ({
     </div>
     <div className="space-y-1.5">
       <p className="text-label-caps !text-[11px] !opacity-50 pl-1 font-semibold">Member Name</p>
-      <input 
-        placeholder="e.g. Rahul Sharma" 
-        value={form.name} 
+      <input
+        placeholder="e.g. Rahul Sharma"
+        value={form.name}
         onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
-        className="w-full input-field !text-lg !font-medium" 
+        className="w-full input-field !text-lg !font-medium"
       />
     </div>
-    
+
     <div className="flex gap-4 sm:gap-6 pl-1">
       {(['is_vegetarian', 'is_vegan'] as const).map(key => (
         <label key={key} className="flex items-center gap-2 cursor-pointer group">
-          <div className={`w-5 h-5 rounded-lg border flex items-center justify-center transition-all duration-300 ${ form[key] ? 'bg-accent border-accent shadow-glow-subtle' : 'border-border bg-bg-secondary' }`}>
+          <div className={`w-5 h-5 rounded-lg border flex items-center justify-center transition-all duration-300 ${form[key] ? 'bg-accent border-accent shadow-glow-subtle' : 'border-border bg-bg-secondary'}`}>
             {form[key] && <span className="text-white text-[10px]">✓</span>}
           </div>
-          <input 
-            type="checkbox" 
-            checked={form[key]} 
-            onChange={e => setForm(f => ({ ...f, [key]: e.target.checked }))} 
-            className="hidden" 
+          <input
+            type="checkbox"
+            checked={form[key]}
+            onChange={e => setForm(f => ({ ...f, [key]: e.target.checked }))}
+            className="hidden"
           />
-          <span className={`text-label-caps !text-[10px] font-bold transition-colors duration-300 ${ form[key] ? '!text-accent' : 'group-hover:!text-text-secondary opacity-60' }`}>
+          <span className={`text-label-caps !text-[10px] font-bold transition-colors duration-300 ${form[key] ? '!text-accent' : 'group-hover:!text-text-secondary opacity-60'}`}>
             {key === 'is_vegetarian' ? 'Vegetarian' : 'Vegan'}
           </span>
         </label>
@@ -284,8 +284,8 @@ const MemberForm = ({
       <p className="text-label-caps !text-[11px] !opacity-50 pl-1 font-semibold">Preferred Spice Level</p>
       <div className="flex gap-2">
         {(['mild', 'medium', 'hot'] as const).map(s => (
-          <button 
-            key={s} 
+          <button
+            key={s}
             onClick={() => setForm(f => ({ ...f, spice_level: s }))}
             className={`flex-1 px-3 py-2.5 rounded-xl text-label-caps !text-[10px] font-bold transition-all duration-300 ring-1 ${form.spice_level === s ? 'bg-accent !text-white shadow-glow-subtle ring-accent scale-[1.02]' : 'bg-bg-secondary !text-text-muted ring-white/5 hover:ring-accent/30'}`}
           >
@@ -297,24 +297,24 @@ const MemberForm = ({
 
     <div className="space-y-2">
       <p className="text-label-caps !text-[11px] !opacity-50 pl-1 font-semibold">Notes & Allergies</p>
-      <textarea 
-        placeholder="Any specific instructions or dietary preferences..." 
+      <textarea
+        placeholder="Any specific instructions or dietary preferences..."
         value={form.notes}
-        onChange={e => setForm(f => ({ ...f, notes: e.target.value }))} 
+        onChange={e => setForm(f => ({ ...f, notes: e.target.value }))}
         rows={3}
-        className="w-full input-field resize-none !text-sm leading-relaxed" 
+        className="w-full input-field resize-none !text-sm leading-relaxed"
       />
     </div>
 
     <div className="flex gap-3 pt-2">
-      <button 
-        onClick={onSubmit} 
+      <button
+        onClick={onSubmit}
         disabled={!form.name.trim() || loading}
         className="btn-primary flex-1 !py-2.5 !rounded-xl shadow-glow-subtle disabled:opacity-50"
       >
         {loading ? 'Saving…' : editing ? 'Update Member' : 'Save Member'}
       </button>
-      <button 
+      <button
         onClick={onCancel}
         className="btn-ghost !py-2.5 !px-6 font-bold text-xs"
       >

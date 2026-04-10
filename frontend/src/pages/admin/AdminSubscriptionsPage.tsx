@@ -66,7 +66,7 @@ export default function AdminSubscriptionsPage() {
               <div className="flex gap-2">
                 <button
                   onClick={() => setCutoffModal(sub)}
-                  className="text-xs bg-accent/5 text-text-muted hover:text-accent shrink-0 px-2.5 py-1 rounded-lg border border-accent/10 hover:border-accent/30 transition-colors font-bold uppercase tracking-wider"
+                  className="text-xs bg-gray-700/50 text-gray-300 hover:text-white shrink-0 px-2 py-1 rounded"
                 >
                   Set Cutoff
                 </button>
@@ -121,7 +121,7 @@ function CutoffModal({ sub, onClose, onSave }: any) {
           <h2 className="text-lg font-bold t-text">Override Skip Cutoffs</h2>
           <p className="text-xs t-text-muted">For {sub.person_name} ({sub.user_name})</p>
         </div>
-        
+
         <div className="space-y-4">
           {[
             { label: 'Breakfast (hour 0-23)', val: b, set: setB },
@@ -130,7 +130,7 @@ function CutoffModal({ sub, onClose, onSave }: any) {
           ].map(f => (
             <div key={f.label} className="space-y-1">
               <label className="text-xs t-text-secondary">{f.label}</label>
-              <input 
+              <input
                 type="number" min="0" max="23" placeholder="Default"
                 value={f.val} onChange={e => f.set(e.target.value ? parseInt(e.target.value) : '')}
                 className="w-full glass border-transparent rounded-lg px-3 py-2 text-sm t-text focus:outline-none focus:border-teal-500"
@@ -141,14 +141,14 @@ function CutoffModal({ sub, onClose, onSave }: any) {
 
         <div className="flex gap-3 justify-end pt-4 border-t border-border/10">
           <button onClick={onClose} className="px-4 py-2 text-xs t-text-muted hover:t-text">Cancel</button>
-          <button 
+          <button
             onClick={() => {
               const payload: any = {};
               if (b !== '') payload.breakfast_cutoff_hour = b;
               if (l !== '') payload.lunch_cutoff_hour = l;
               if (d !== '') payload.dinner_cutoff_hour = d;
               onSave(payload);
-            }} 
+            }}
             className="px-4 py-2 bg-teal-600 text-white text-xs font-bold rounded-lg hover:bg-teal-500"
           >
             Save Overrides

@@ -13,7 +13,7 @@ export default function WalletPage() {
     <div className="min-h-screen bg-bg-primary relative overflow-hidden">
       {/* Mesh Accents */}
       <div className="absolute top-[-10%] -left-20 w-[40rem] h-[40rem] bg-accent/10 blur-[150px] rounded-full animate-mesh" />
-      
+
       <div className="max-w-2xl mx-auto px-6 space-y-8 relative z-10">
         {/* Apple Music Header */}
         <header className="pt-6 pb-3 border-b border-border/10 mb-6">
@@ -52,7 +52,7 @@ export default function WalletPage() {
                       {entry.description}
                     </p>
                     <p className="text-label-caps !text-[10px] opacity-40 uppercase tracking-widest">
-                       {new Date(entry.created_at).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' })} • #{entry.id}
+                      {new Date(entry.created_at).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' })} • #{entry.id}
                     </p>
                   </div>
                   <span className={`text-h3 !text-lg sm:!text-xl font-black shrink-0 ${entry.direction === 'credit' ? 'text-accent' : 'opacity-80'}`}>

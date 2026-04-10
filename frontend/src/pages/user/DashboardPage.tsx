@@ -35,8 +35,8 @@ export default function DashboardPage() {
     queryKey: ['today-meals', active?.id],
     queryFn: () => active
       ? api.get(`/subscriptions/${active.id}`).then(r =>
-          (r.data.meal_cells as MealCell[]).filter(c => c.date === today)
-        )
+        (r.data.meal_cells as MealCell[]).filter(c => c.date === today)
+      )
       : Promise.resolve([]),
     enabled: !!active,
     refetchInterval: 60_000,
@@ -149,7 +149,7 @@ export default function DashboardPage() {
                             {status.label}
                           </span>
                           <div className="w-full h-0.5 bg-bg-primary/30 rounded-full overflow-hidden">
-                            <div 
+                            <div
                               className={`h-full bg-current transition-all duration-1000 rounded-full ${status.color} shadow-glow-subtle`}
                               style={{ width: cell.delivery_status === 'delivered' ? '100%' : cell.delivery_status === 'out_for_delivery' ? '75%' : '20%' }}
                             />
@@ -270,7 +270,7 @@ export default function DashboardPage() {
             })}
             {personsList.length === 0 && (
               <Link to="/profile" className="surface-liquid hover:bg-bg-subtle px-6 py-5 text-label-caps text-text-faint flex items-center justify-center gap-3 border-dashed border-2 rounded-2xl transition-all duration-700 group min-w-[140px]">
-                <span className="text-xl opacity-20 group-hover:scale-125 transition-transform">+</span> 
+                <span className="text-xl opacity-20 group-hover:scale-125 transition-transform">+</span>
                 <span className="text-[10px]">Add Member</span>
               </Link>
             )}
