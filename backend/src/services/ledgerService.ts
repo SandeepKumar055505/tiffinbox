@@ -1,4 +1,5 @@
 import { db } from '../config/db';
+import { parseDateIST } from '../lib/time';
 import { LedgerEntry, WalletBalance } from '../types';
 
 /**
@@ -183,6 +184,6 @@ export async function creditReferralReward(
 }
 
 function formatDate(date: string): string {
-  const d = new Date(date);
-  return d.toLocaleDateString('en-IN', { weekday: 'short', day: 'numeric', month: 'short' });
+  const d = parseDateIST(date);
+  return d.toLocaleDateString('en-IN', { weekday: 'short', day: 'numeric', month: 'short', timeZone: 'UTC' });
 }

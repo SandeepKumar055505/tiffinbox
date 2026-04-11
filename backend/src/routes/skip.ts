@@ -5,7 +5,7 @@ import { requireUser } from '../middleware/auth';
 import { validate } from '../middleware/validate';
 import { canSkipMeal, hasReachedDayOffLimit } from '../services/policyEngine';
 import { emitEvent, DomainEvent } from '../jobs/events';
-import { weekStartIST, weekEndIST } from '../lib/time';
+import { weekStartIST, weekEndIST, weekRangeUTC } from '../lib/time';
 
 const router = Router();
 
@@ -50,12 +50,11 @@ router.post(
       // Determine if this is a grace skip (eligible for wallet credit)
       const settings = await db('app_settings').where({ id: 1 }).first();
       const graceLimit = settings?.max_grace_skips_per_week ?? 2;
-      const wkStart = weekStartIST(cell.date);
-      const wkEnd = weekEndIST(cell.date);
-
+      const { start, end } = weekRangeUTC(cell.date);
       const graceSkipsUsed = await db('ledger_entries')
         .where({ user_id: cell.user_id, entry_type: 'skip_credit' })
-        .whereBetween('created_at', [wkStart, wkEnd])
+        .where('created_at', '>=', start)
+        .where('created_at', '<', end)
         .count('id as cnt')
         .first();
       const usedCount = Number(graceSkipsUsed?.cnt ?? 0);

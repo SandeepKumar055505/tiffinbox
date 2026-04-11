@@ -89,7 +89,8 @@ export async function startJobWorkers(): Promise<void> {
         return (
           c.delivery_status === 'delivered' ||
           c.delivery_status === 'skipped' ||         // user-initiated
-          c.delivery_status === 'skipped_holiday'    // public holiday — not user's fault
+          c.delivery_status === 'skipped_holiday' || // public holiday
+          c.delivery_status === 'skipped_by_admin'   // admin intervention (shouldn't break streak)
         );
       });
       // Must have at least one delivered meal to INCREMENT (all-skipped day = preserve, not grow)
@@ -153,9 +154,9 @@ export async function startJobWorkers(): Promise<void> {
 
   // ── Skip approved → wallet credit ──────────────────────────────────────────
   await boss.work(DomainEvent.MEAL_SKIPPED, async (job: any) => {
-    const { meal_cell_id, user_id, subscription_id, meal_type, date, is_grace_skip } = job.data;
-    // Only credit wallet for grace skips (Gap 46 fix)
-    if (is_grace_skip) {
+    const { meal_cell_id, user_id, subscription_id, meal_type, date, is_grace_skip, is_holiday_skip } = job.data;
+    // Credit wallet for grace skips OR holiday skips
+    if (is_grace_skip || is_holiday_skip) {
       const price = await getMealPrice(meal_type);
       await creditSkip(user_id, meal_cell_id, subscription_id, meal_type, date, price);
     }

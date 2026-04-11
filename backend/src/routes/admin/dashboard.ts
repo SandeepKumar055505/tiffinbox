@@ -192,6 +192,21 @@ router.post('/delivery/holiday-skip', requireAdmin, async (req, res) => {
     updated_at: db.fn.now(),
   });
 
+  // Emit MEAL_SKIPPED with is_holiday_skip=true for each cell
+  const { boss } = await import('../../jobs/index');
+  const { DomainEvent } = await import('../../jobs/events');
+  for (const cell of cells) {
+    await boss.send(DomainEvent.MEAL_SKIPPED, {
+      meal_cell_id: cell.id,
+      user_id: cell.user_id,
+      subscription_id: cell.subscription_id,
+      meal_type: cell.meal_type,
+      date: cell.date,
+      is_grace_skip: false,
+      is_holiday_skip: true,
+    });
+  }
+
   await db('audit_logs').insert({
     admin_id: req.adminId,
     action: 'delivery.holiday_skip',

@@ -90,9 +90,9 @@ export function isTomorrowIST(dateStr: string): boolean {
  */
 export function parseDateIST(dateStr: string): Date {
   const [year, month, day] = dateStr.split('-').map(Number);
-  // Create date at midnight IST = previous day 18:30 UTC
-  const utc = Date.UTC(year, month - 1, day, 0, 0, 0) - IST_OFFSET_MS;
-  return new Date(utc);
+  // Create date where UTC methods return IST values.
+  // This matches the "Artificial IST" pattern of nowIST().
+  return new Date(Date.UTC(year, month - 1, day, 0, 0, 0));
 }
 
 /**
@@ -131,6 +131,22 @@ export function weekEndIST(date?: string): string {
 }
 
 /**
+ * Get the Real UTC range (start/end) for the IST week containing the given date.
+ * Returns Date objects in Real UTC for database queries.
+ */
+export function weekRangeUTC(date?: string): { start: Date; end: Date } {
+  const startStr = weekStartIST(date);
+  const endStr = weekEndIST(date);
+
+  // Monday 00:00 IST
+  const start = new Date(parseDateIST(startStr).getTime() - IST_OFFSET_MS);
+  // Following Monday 00:00 IST
+  const end = new Date(parseDateIST(endStr).getTime() + 24 * 60 * 60 * 1000 - IST_OFFSET_MS);
+
+  return { start, end };
+}
+
+/**
  * Convert IST hour to UTC cron hour.
  * IST is UTC+5:30, so:
  *   IST 22:00 = UTC 16:30
@@ -161,18 +177,18 @@ export function cronIST(istHour: number, istMinute: number = 0): string {
  * Get days between two date strings (YYYY-MM-DD).
  */
 export function daysBetween(dateA: string, dateB: string): number {
-  const a = new Date(dateA).getTime();
-  const b = new Date(dateB).getTime();
-  return Math.floor(Math.abs(b - a) / (24 * 60 * 60 * 1000));
+  const a = parseDateIST(dateA).getTime();
+  const b = parseDateIST(dateB).getTime();
+  return Math.round(Math.abs(b - a) / (24 * 60 * 60 * 1000));
 }
 
 /**
  * Add days to a date string.
  */
 export function addDays(dateStr: string, days: number): string {
-  const d = new Date(dateStr);
-  d.setDate(d.getDate() + days);
-  return d.toISOString().split('T')[0];
+  const d = parseDateIST(dateStr);
+  d.setUTCDate(d.getUTCDate() + days);
+  return formatDateIST(d);
 }
 
 /**
