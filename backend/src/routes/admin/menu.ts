@@ -102,8 +102,8 @@ router.patch('/items/:itemId', requireAdmin, async (req, res) => {
     const isDefault = await db('default_menu').where({ item_id: req.params.itemId }).first();
     const isAlt = await db('default_menu_alternatives').where({ item_id: req.params.itemId }).first();
     if (isDefault || isAlt) {
-      return res.status(409).json({ 
-        error: 'Cannot disable item. It is currently a Default or Alternative meal in the weekly menu. Remove it from the menu first.' 
+      return res.status(409).json({
+        error: 'Cannot disable item. It is currently a Default or Alternative meal in the weekly menu. Remove it from the menu first.'
       });
     }
   }
@@ -116,6 +116,35 @@ router.patch('/items/:itemId', requireAdmin, async (req, res) => {
   res.json(updated);
 });
 
+// GET /api/admin/menu/mass-swap/preview — Dry-run: count affected cells + user IDs
+router.get('/mass-swap/preview', requireAdmin, async (req, res) => {
+  const { date, meal_type, source_item_id } = req.query as Record<string, string>;
+  if (!date || !meal_type) return res.status(422).json({ error: 'date and meal_type required' });
+
+  const baseFilter = (q: any) => {
+    q.where({ date, meal_type }).whereIn('delivery_status', ['scheduled', 'preparing']);
+    if (source_item_id) q.where({ item_id: parseInt(source_item_id) });
+  };
+
+  const [countRow, userRows] = await Promise.all([
+    db('meal_cells').modify(baseFilter).count('id as cnt').first(),
+    db('meal_cells as mc')
+      .join('subscriptions as s', 's.id', 'mc.subscription_id')
+      .modify((q: any) => {
+        q.where({ 'mc.date': date, 'mc.meal_type': meal_type })
+          .whereIn('mc.delivery_status', ['scheduled', 'preparing']);
+        if (source_item_id) q.where({ 'mc.item_id': parseInt(source_item_id) });
+      })
+      .distinct('s.user_id')
+      .pluck('s.user_id'),
+  ]);
+
+  res.json({
+    affected_cells: parseInt((countRow as any)?.cnt ?? '0', 10),
+    affected_users: userRows.length,
+  });
+});
+
 // POST /api/admin/menu/mass-swap — Sovereign Override for all active manifests
 router.post(
   '/mass-swap',
@@ -124,32 +153,61 @@ router.post(
     date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
     meal_type: z.enum(['breakfast', 'lunch', 'dinner']),
     source_item_id: z.number().int().optional(),
-    target_item_id: z.number().int().positive()
+    target_item_id: z.number().int().positive(),
+    notify_users: z.boolean().optional().default(false),
+    narrative_override: z.string().max(500).optional(),
   })),
   async (req, res) => {
-    const { date, meal_type, source_item_id, target_item_id } = req.body;
+    const { date, meal_type, source_item_id, target_item_id, notify_users, narrative_override } = req.body;
 
-    const query = db('meal_cells')
+    // Collect affected user IDs before update (for notifications)
+    const affectedQuery = db('meal_cells as mc')
+      .join('subscriptions as s', 's.id', 'mc.subscription_id')
+      .where({ 'mc.date': date, 'mc.meal_type': meal_type })
+      .whereIn('mc.delivery_status', ['scheduled', 'preparing']);
+    if (source_item_id) affectedQuery.where({ 'mc.item_id': source_item_id });
+    const affectedUserIds: number[] = await affectedQuery.distinct('s.user_id').pluck('s.user_id');
+
+    // Execute the swap
+    const swapQuery = db('meal_cells')
       .where({ date, meal_type })
       .whereIn('delivery_status', ['scheduled', 'preparing']);
+    if (source_item_id) swapQuery.andWhere({ item_id: source_item_id });
+    const updatedCount = await swapQuery.update({ item_id: target_item_id, updated_at: db.fn.now() });
 
-    if (source_item_id) {
-      query.andWhere({ item_id: source_item_id });
+    // Bulk notification — single INSERT, not a loop.
+    // Wrapped in try/catch: swap is already committed above; a notification
+    // schema issue must never cause the response to return 500.
+    if (notify_users && affectedUserIds.length > 0) {
+      try {
+        const targetItem = await db('meal_items').where({ id: target_item_id }).select('name').first();
+        const message = narrative_override
+          || `Your ${meal_type} on ${date} has been updated to ${targetItem?.name || 'a new dish'}.`;
+        await db('notifications').insert(
+          affectedUserIds.map((uid: number) => ({
+            user_id: uid,
+            type: 'meal_update',
+            title: 'Culinary Update',
+            message,
+            is_read: false,
+          }))
+        );
+      } catch (notifyErr) {
+        console.error('[mass-swap] notification insert failed (swap already committed):', (notifyErr as Error).message);
+      }
     }
-
-    const updatedCount = await query.update({
-      item_id: target_item_id,
-      updated_at: db.fn.now()
-    });
 
     await db('audit_logs').insert({
       admin_id: req.adminId,
       action: 'menu.mass_swap',
       target_type: 'meal_cells',
-      after_value: JSON.stringify({ date, meal_type, source_item_id, target_item_id, count: updatedCount }),
+      after_value: JSON.stringify({
+        date, meal_type, source_item_id, target_item_id,
+        count: updatedCount, notified: notify_users ? affectedUserIds.length : 0,
+      }),
     });
 
-    res.json({ success: true, count: updatedCount });
+    res.json({ success: true, count: updatedCount, notified: notify_users ? affectedUserIds.length : 0 });
   }
 );
 

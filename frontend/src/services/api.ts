@@ -7,7 +7,11 @@ const api = axios.create({
 });
 
 api.interceptors.request.use(config => {
-  const token = localStorage.getItem('tb_token');
+  const isAdminRequest = config.url?.startsWith('/admin') || window.location.pathname.startsWith('/admin');
+  const token = isAdminRequest 
+    ? (localStorage.getItem('tb_admin_token') || localStorage.getItem('tb_token'))
+    : localStorage.getItem('tb_token');
+    
   if (token) config.headers.Authorization = `Bearer ${token}`;
   return config;
 });

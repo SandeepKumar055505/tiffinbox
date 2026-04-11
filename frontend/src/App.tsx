@@ -72,8 +72,9 @@ function RequireUser({ children }: { children: React.ReactNode }) {
 
 function RequireAdmin({ children }: { children: React.ReactNode }) {
   const { admin, loading } = useAdminAuth();
+  const location = useLocation();
   if (loading) return <Loader />;
-  if (!admin) return <Navigate to="/admin/login" replace />;
+  if (!admin) return <Navigate to="/admin/login" replace state={{ from: location.pathname }} />;
   return <>{children}</>;
 }
 
@@ -125,6 +126,7 @@ export default function App() {
                   <Route path="support" element={<AdminSupportPage />} />
                   <Route path="settings" element={<AdminSettingsPage />} />
                   <Route path="holidays" element={<AdminHolidaysPage />} />
+                  <Route path="areas" element={<AdminAreaPage />} />
                   <Route path="ledger" element={<AdminLedgerPage />} />
                   <Route path="referrals" element={<AdminReferralPage />} />
                   <Route path="notifications" element={<AdminNotificationPage />} />

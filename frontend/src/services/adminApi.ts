@@ -8,13 +8,13 @@ export const adminDashboard = {
   stats: () => api.get('/admin'),
   // Ω.3: Logistics Command Enpoints
   manifest: (date?: string) => api.get('/admin/logistics/manifest', { params: { date } }),
-  updateLogisticsStatus: (id: number, data: { 
-    status: string; 
-    proof_image_url?: string; 
+  updateLogisticsStatus: (id: number, data: {
+    status: string;
+    proof_image_url?: string;
     fail_reason?: string;
     driver_name?: string;
   }) => api.patch(`/admin/logistics/${id}/status`, data),
-  
+
   // Legacy (Keeping for audit purposes during migration)
   deliveryToday: (date?: string) => api.get('/admin/delivery/today', { params: { date } }),
   updateCellStatus: (id: number, status: string, note?: string) =>
@@ -45,7 +45,9 @@ export const adminMenu = {
   updateItem: (id: number, data: any) => api.patch(`/admin/menu/items/${id}`, data),
   addAlternative: (menuId: number, item_id: number) => api.post(`/admin/menu/${menuId}/alternatives`, { item_id }),
   removeAlternative: (id: number) => api.delete(`/admin/menu/alternatives/${id}`),
-  massSwap: (data: { date: string; meal_type: string; source_item_id?: number; target_item_id: number }) => 
+  massSwapPreview: (params: { date: string; meal_type: string; source_item_id?: number }) =>
+    api.get('/admin/menu/mass-swap/preview', { params }),
+  massSwap: (data: { date: string; meal_type: string; source_item_id?: number; target_item_id: number; notify_users?: boolean; narrative_override?: string }) =>
     api.post('/admin/menu/mass-swap', data),
   createItem: (data: any) => api.post('/admin/menu/items', data),
   uploadImage: (data: string) => api.post('/upload/meal-image', { data }),

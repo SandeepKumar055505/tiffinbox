@@ -20,10 +20,9 @@ export function AdminAuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     const token = localStorage.getItem('tb_admin_token');
     if (token) {
-      localStorage.setItem('tb_token', token); // temp set so api.ts interceptor works
       auth.me()
         .then(res => { if (res.data.role === 'admin') setAdmin(res.data); })
-        .catch(() => { localStorage.removeItem('tb_admin_token'); localStorage.removeItem('tb_token'); })
+        .catch(() => { localStorage.removeItem('tb_admin_token'); })
         .finally(() => setLoading(false));
     } else {
       setLoading(false);
@@ -33,13 +32,11 @@ export function AdminAuthProvider({ children }: { children: ReactNode }) {
   async function login(email: string, password: string) {
     const res = await adminAuth.login(email, password);
     localStorage.setItem('tb_admin_token', res.data.token);
-    localStorage.setItem('tb_token', res.data.token);
     setAdmin(res.data.user);
   }
 
   function logout() {
     localStorage.removeItem('tb_admin_token');
-    localStorage.removeItem('tb_token');
     setAdmin(null);
   }
 

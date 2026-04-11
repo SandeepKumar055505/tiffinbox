@@ -12,11 +12,8 @@ const router = Router();
  */
 
 // GET /api/admin/areas — List all sovereign zones with settings
-router.get('/', requireAdmin, async (req, res) => {
-  const areas = await db('areas as a')
-    .leftJoin('area_settings as s', 's.area_id', 'a.id')
-    .select('a.*', 's.cutoff_time_override', 's.is_active as setting_active', 's.delivery_slots_json')
-    .orderBy('a.priority', 'desc');
+router.get('/', requireAdmin, async (_req, res) => {
+  const areas = await db('areas').orderBy('priority', 'desc');
   res.json(areas);
 });
 

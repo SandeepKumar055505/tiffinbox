@@ -1,10 +1,12 @@
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useAdminAuth } from '../../context/AdminAuthContext';
 
 export default function AdminLoginPage() {
   const { login } = useAdminAuth();
   const navigate = useNavigate();
+  const location = useLocation();
+  const from = (location.state as any)?.from || '/admin';
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
@@ -16,7 +18,7 @@ export default function AdminLoginPage() {
     setLoading(true);
     try {
       await login(email, password);
-      navigate('/admin', { replace: true });
+      navigate(from, { replace: true });
     } catch {
       setError('Invalid credentials');
     } finally {

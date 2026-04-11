@@ -1,9 +1,9 @@
 import { Router } from 'express';
 import { z } from 'zod';
 import { db } from '../../config/db';
-import { requireUser } from '../../middleware/auth';
+import { requireAdmin } from '../../middleware/auth';
 import { validate } from '../../middleware/validate';
-import { todayIST, tomorrowIST } from '../../lib/time';
+import { todayIST } from '../../lib/time';
 
 const router = Router();
 
@@ -14,7 +14,7 @@ const router = Router();
  */
 
 // GET /api/admin/delivery/manifest — Tactical view for drivers/kitchen
-router.get('/manifest', requireUser, async (req, res) => {
+router.get('/manifest', requireAdmin, async (req, res) => {
   const date = (req.query.date as string) || todayIST();
 
   const manifest = await db('meal_cells as mc')
@@ -61,7 +61,7 @@ router.get('/manifest', requireUser, async (req, res) => {
 // PATCH /api/admin/delivery/:cellId/status — High-Fidelity Status Anchor
 router.patch(
   '/:cellId/status',
-  requireUser,
+  requireAdmin,
   validate(z.object({
     status: z.enum(['preparing', 'out_for_delivery', 'delivered', 'failed']),
     proof_image_url: z.string().optional(),
@@ -78,7 +78,7 @@ router.patch(
     const updateData: any = {
       delivery_status: status,
       updated_at: db.fn.now(),
-      status_updated_by: req.userId // Assuming the admin is the one making the change
+      status_updated_by: req.adminId
     };
 
     if (status === 'out_for_delivery' && !cell.picked_at) {
