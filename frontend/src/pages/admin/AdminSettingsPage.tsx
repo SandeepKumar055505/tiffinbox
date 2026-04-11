@@ -24,7 +24,15 @@ export default function AdminSettingsPage() {
       lunch_cutoff_hour: parseInt(form.lunch_cutoff_hour),
       dinner_cutoff_hour: parseInt(form.dinner_cutoff_hour),
       max_skip_days_per_week: parseInt(form.max_skip_days_per_week),
+      max_grace_skips_per_week: parseInt(form.max_grace_skips_per_week),
       max_persons_per_user: parseInt(form.max_persons_per_user),
+      signup_wallet_credit: parseInt(form.signup_wallet_credit),
+      referral_reward_amount: parseInt(form.referral_reward_amount),
+      breakfast_enabled: !!form.breakfast_enabled,
+      lunch_enabled: !!form.lunch_enabled,
+      dinner_enabled: !!form.dinner_enabled,
+      delivery_otp_enabled: !!form.delivery_otp_enabled,
+      ratings_enabled: !!form.ratings_enabled,
     }),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['admin-settings'] }),
   });
@@ -106,12 +114,55 @@ export default function AdminSettingsPage() {
               className="w-full glass border-transparent rounded px-2 py-1.5 t-text text-sm outline-none" />
           </div>
           <div className="space-y-1">
+            <p className="text-xs t-text-muted">Grace skips/week (wallet credited)</p>
+            <input type="number" min={0} max={21} value={form.max_grace_skips_per_week ?? ''}
+              onChange={e => setForm((s: any) => ({ ...s, max_grace_skips_per_week: e.target.value }))}
+              className="w-full glass border-transparent rounded px-2 py-1.5 t-text text-sm outline-none" />
+          </div>
+          <div className="space-y-1">
             <p className="text-xs t-text-muted">Max persons per user</p>
             <input type="number" min={1} max={50} value={form.max_persons_per_user ?? ''}
               onChange={e => setForm((s: any) => ({ ...s, max_persons_per_user: e.target.value }))}
               className="w-full glass border-transparent rounded px-2 py-1.5 t-text text-sm outline-none" />
           </div>
         </div>
+
+        <p className="text-xs font-semibold t-text-secondary pt-2">Wallet & Rewards</p>
+        <div className="grid grid-cols-2 gap-3">
+          <div className="space-y-1">
+            <p className="text-xs t-text-muted">Signup wallet bonus (paise)</p>
+            <input type="number" min={0} value={form.signup_wallet_credit ?? ''}
+              onChange={e => setForm((s: any) => ({ ...s, signup_wallet_credit: e.target.value }))}
+              className="w-full glass border-transparent rounded px-2 py-1.5 t-text text-sm outline-none focus:border-teal-500" />
+            <p className="text-[10px] t-text-faint">{form.signup_wallet_credit ? `₹${Math.round(form.signup_wallet_credit / 100)}` : ''}</p>
+          </div>
+          <div className="space-y-1">
+            <p className="text-xs t-text-muted">Referral reward (paise)</p>
+            <input type="number" min={0} value={form.referral_reward_amount ?? ''}
+              onChange={e => setForm((s: any) => ({ ...s, referral_reward_amount: e.target.value }))}
+              className="w-full glass border-transparent rounded px-2 py-1.5 t-text text-sm outline-none focus:border-teal-500" />
+            <p className="text-[10px] t-text-faint">{form.referral_reward_amount ? `₹${Math.round(form.referral_reward_amount / 100)}` : ''}</p>
+          </div>
+        </div>
+
+        <p className="text-xs font-semibold t-text-secondary pt-2">Feature Toggles</p>
+        <div className="grid grid-cols-2 gap-3">
+          {[
+            { key: 'breakfast_enabled', label: 'Breakfast enabled' },
+            { key: 'lunch_enabled', label: 'Lunch enabled' },
+            { key: 'dinner_enabled', label: 'Dinner enabled' },
+            { key: 'delivery_otp_enabled', label: 'Delivery OTP' },
+            { key: 'ratings_enabled', label: 'Meal ratings' },
+          ].map(f => (
+            <label key={f.key} className="flex items-center gap-2 cursor-pointer">
+              <input type="checkbox" checked={!!form[f.key]}
+                onChange={e => setForm((s: any) => ({ ...s, [f.key]: e.target.checked }))}
+                className="accent-teal-500 w-4 h-4" />
+              <span className="text-xs t-text-secondary">{f.label}</span>
+            </label>
+          ))}
+        </div>
+
         <button
           onClick={() => updateSettings.mutate()}
           disabled={updateSettings.isPending}

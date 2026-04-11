@@ -10,6 +10,8 @@ const NAV = [
   { to: '/admin/skip', label: 'Skip Requests', icon: '⏭️' },
   { to: '/admin/menu', label: 'Menu', icon: '🍱' },
   { to: '/admin/support', label: 'Support', icon: '💬' },
+  { to: '/admin/holidays', label: 'Holidays', icon: '🎉' },
+  { to: '/admin/ledger', label: 'Ledger', icon: '📒' },
   { to: '/admin/settings', label: 'Settings', icon: '⚙️' },
 ];
 

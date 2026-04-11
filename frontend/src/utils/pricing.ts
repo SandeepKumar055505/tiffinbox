@@ -1,25 +1,33 @@
 import { MealType, DaySelection, PerDayPrice, PriceSnapshot } from '../types';
 
-export const MEAL_PRICES: Record<MealType, number> = {
-  breakfast: 100,
-  lunch: 120,
-  dinner: 100,
-};
+/**
+ * IMPORTANT: No hardcoded prices or discounts.
+ * All values come from the public config API via usePublicConfig() hook.
+ * Components pass prices/discounts into these functions.
+ */
 
-// Client-side discount tables — mirrors DB seed
-const DISCOUNT_TABLE: Record<number, Record<number, number>> = {
-  7:  { 3: 20, 2: 15, 1: 10 },
-  14: { 3: 40, 2: 30, 1: 20 },
-  30: { 3: 60, 2: 45, 1: 30 },
-};
+export interface MealPrices {
+  breakfast: number;
+  lunch: number;
+  dinner: number;
+}
+
+export interface DiscountTable {
+  [planDays: number]: { [mealsPerDay: number]: number };
+}
 
 /**
  * Calculate price snapshot client-side for instant UI updates (<100ms).
  * Must mirror backend pricingEngine.calculateQuote exactly.
+ *
+ * @param mealPrices - from public config API (admin-controlled)
+ * @param discountTable - from public config API (admin-controlled)
  */
 export function calculatePriceSnapshot(
   plan_days: 1 | 7 | 14 | 30,
   days: DaySelection[],
+  mealPrices: MealPrices,
+  discountTable: DiscountTable,
   options: {
     extras_total?: number;
     promo_discount?: number;
@@ -27,11 +35,11 @@ export function calculatePriceSnapshot(
     apply_wallet?: boolean;
   } = {}
 ): PriceSnapshot {
-  const discounts = DISCOUNT_TABLE[plan_days] ?? {};
+  const discounts = discountTable[plan_days] ?? {};
 
   const per_day: PerDayPrice[] = days.map(day => {
     const meal_count = day.meals.length;
-    const base = day.meals.reduce((s, m) => s + MEAL_PRICES[m], 0);
+    const base = day.meals.reduce((s, m) => s + mealPrices[m], 0);
     const discount = meal_count > 0 ? (discounts[meal_count] ?? 0) : 0;
     return { date: day.date, meals: day.meals, meal_count, base, discount, subtotal: base - discount };
   });

@@ -30,12 +30,19 @@ api.interceptors.response.use(
 
 export default api;
 
+// ── Public Config (no auth needed) ───────────────────────────────────────────
+export const config = {
+  getPublic: () => api.get('/config/public'),
+};
+
 // ── Auth ──────────────────────────────────────────────────────────────────────
 export const auth = {
-  googleLogin: (id_token: string) => api.post('/auth/google', { id_token }),
+  googleLogin: (id_token: string, referral_code?: string) =>
+    api.post('/auth/google', { id_token, ...(referral_code ? { referral_code } : {}) }),
   me: () => api.get('/auth/me'),
   updateProfile: (data: { wallet_auto_apply?: boolean; delivery_address?: string }) =>
     api.patch('/auth/me', data),
+  verifyPhone: (phone: string) => api.post('/auth/phone/verify', { phone }),
 };
 
 // ── Persons ───────────────────────────────────────────────────────────────────
@@ -95,4 +102,23 @@ export const support = {
   createTicket: (data: any) => api.post('/support/tickets', data),
   getMessages: (id: number) => api.get(`/support/tickets/${id}/messages`),
   sendMessage: (id: number, message: string) => api.post(`/support/tickets/${id}/messages`, { message }),
+};
+
+// ── Delivery OTP ──────────────────────────────────────────────────────────────
+export const delivery = {
+  getOtp: (meal_cell_id: number) => api.get(`/delivery/otp/${meal_cell_id}`),
+  verifyOtp: (meal_cell_id: number, otp: string) =>
+    api.post('/delivery/otp/verify', { meal_cell_id, otp }),
+};
+
+// ── Ratings ───────────────────────────────────────────────────────────────────
+export const ratings = {
+  submit: (meal_cell_id: number, rating: number, note?: string) =>
+    api.post('/ratings', { meal_cell_id, rating, note }),
+  list: () => api.get('/ratings'),
+};
+
+// ── Referrals ─────────────────────────────────────────────────────────────────
+export const referrals = {
+  myReferrals: () => api.get('/referrals'),
 };

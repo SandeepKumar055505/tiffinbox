@@ -47,7 +47,7 @@ export const adminSettings = {
   get: () => api.get('/admin/settings'),
   update: (data: any) => api.patch('/admin/settings', data),
   updateDiscount: (id: number, discount_amount: number) => api.patch(`/admin/settings/discounts/${id}`, { discount_amount }),
-  auditLog: () => api.get('/admin/settings/audit'),
+  auditLog: (limit?: number) => api.get('/admin/settings/audit', { params: { limit } }),
   broadcast: (data: any) => api.post('/admin/settings/notifications/broadcast', data),
   // Streak rewards
   getStreakRewards: () => api.get('/admin/settings/streak-rewards'),
@@ -58,4 +58,24 @@ export const adminSettings = {
   getOffers: () => api.get('/admin/settings/offers'),
   createOffer: (data: any) => api.post('/admin/settings/offers', data),
   updateOffer: (id: number, data: any) => api.patch(`/admin/settings/offers/${id}`, data),
+};
+
+export const adminHolidays = {
+  list: (year?: number) => api.get('/admin/holidays', { params: { year } }),
+  create: (data: { date: string; name: string; is_active?: boolean }) =>
+    api.post('/admin/holidays', data),
+  update: (id: number, data: { name?: string; is_active?: boolean }) =>
+    api.patch(`/admin/holidays/${id}`, data),
+  remove: (id: number) => api.delete(`/admin/holidays/${id}`),
+  holidaySkip: (date: string) =>
+    api.post('/admin/delivery/holiday-skip', { date }),
+};
+
+export const adminLedger = {
+  list: (params?: { user_id?: number; entry_type?: string; limit?: number; offset?: number }) =>
+    api.get('/admin/ledger', { params }),
+  credit: (data: { user_id: number; amount: number; description: string; note?: string }) =>
+    api.post('/admin/ledger/credit', data),
+  debit: (data: { user_id: number; amount: number; description: string; note?: string }) =>
+    api.post('/admin/ledger/debit', data),
 };

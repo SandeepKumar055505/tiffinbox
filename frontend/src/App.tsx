@@ -8,6 +8,7 @@ const NotFoundPage = React.lazy(() => import('./pages/NotFoundPage'));
 
 // User pages
 const LoginPage = React.lazy(() => import('./pages/auth/LoginPage'));
+const InvitePage = React.lazy(() => import('./pages/auth/InvitePage'));
 const DashboardPage = React.lazy(() => import('./pages/user/DashboardPage'));
 const SubscribePage = React.lazy(() => import('./pages/user/SubscribePage'));
 const SubscriptionDetailPage = React.lazy(() => import('./pages/user/SubscriptionDetailPage'));
@@ -32,6 +33,8 @@ const AdminSkipPage = React.lazy(() => import('./pages/admin/AdminSkipPage'));
 const AdminMenuPage = React.lazy(() => import('./pages/admin/AdminMenuPage'));
 const AdminSupportPage = React.lazy(() => import('./pages/admin/AdminSupportPage'));
 const AdminSettingsPage = React.lazy(() => import('./pages/admin/AdminSettingsPage'));
+const AdminHolidaysPage = React.lazy(() => import('./pages/admin/AdminHolidaysPage'));
+const AdminLedgerPage = React.lazy(() => import('./pages/admin/AdminLedgerPage'));
 
 import GlassLayout from './components/shared/GlassLayout';
 import UserLayout from './components/user/UserLayout';
@@ -68,6 +71,7 @@ export default function App() {
           <Routes>
             {/* Public/Auth routes */}
             <Route path="/login" element={<LoginPage />} />
+            <Route path="/invite/:code" element={<InvitePage />} />
             <Route path="/privacy" element={<PrivacyPolicy />} />
             <Route path="/terms" element={<TermsOfService />} />
             <Route path="/refund" element={<RefundPolicy />} />
@@ -94,6 +98,8 @@ export default function App() {
               <Route path="menu" element={<AdminMenuPage />} />
               <Route path="support" element={<AdminSupportPage />} />
               <Route path="settings" element={<AdminSettingsPage />} />
+              <Route path="holidays" element={<AdminHolidaysPage />} />
+              <Route path="ledger" element={<AdminLedgerPage />} />
             </Route>
 
             <Route path="*" element={<NotFoundPage />} />

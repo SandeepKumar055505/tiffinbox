@@ -5,6 +5,7 @@ import { useAuth } from '../../context/AuthContext';
 import { persons as personsApi, menu as menuApi, subscriptions as subsApi, payments as paymentsApi, wallet as walletApi } from '../../services/api';
 import { Person, DaySelection, MealType, PriceSnapshot } from '../../types';
 import { calculatePriceSnapshot, buildDateRange, generateIdempotencyKey, formatRupees } from '../../utils/pricing';
+import { usePublicConfig } from '../../hooks/usePublicConfig';
 import MealGrid from '../../components/meal/MealGrid';
 import PriceBar from '../../components/meal/PriceBar';
 
@@ -27,6 +28,7 @@ const PATTERN_OPTIONS = [
 export default function SubscribePage() {
   const { user } = useAuth();
   const navigate = useNavigate();
+  const { mealPrices, discountTable } = usePublicConfig();
 
   const [step, setStep] = useState<Step>('setup');
   const [personId, setPersonId] = useState<number | null>(null);
@@ -78,8 +80,8 @@ export default function SubscribePage() {
   }
 
   const baseSnapshot: PriceSnapshot = useMemo(() =>
-    calculatePriceSnapshot(planDays, days, {}),
-    [planDays, days]
+    calculatePriceSnapshot(planDays, days, mealPrices, discountTable, {}),
+    [planDays, days, mealPrices, discountTable]
   );
 
   const promoDiscount = useMemo(() => {
@@ -91,12 +93,12 @@ export default function SubscribePage() {
   }, [promoResult, baseSnapshot]);
 
   const snapshot: PriceSnapshot = useMemo(() =>
-    calculatePriceSnapshot(planDays, days, {
+    calculatePriceSnapshot(planDays, days, mealPrices, discountTable, {
       wallet_balance: walletData?.balance,
       apply_wallet: applyWallet,
       promo_discount: promoDiscount,
     }),
-    [planDays, days, walletData?.balance, applyWallet, promoDiscount]
+    [planDays, days, mealPrices, discountTable, walletData?.balance, applyWallet, promoDiscount]
   );
 
   const createSub = useMutation({
@@ -366,6 +368,7 @@ export default function SubscribePage() {
                 weekMenu={weekMenu}
                 planDays={planDays}
                 maxDayOffs={planDays <= 7 ? 1 : 2}
+                mealPrices={mealPrices}
                 onChange={setDays}
               />
             </div>

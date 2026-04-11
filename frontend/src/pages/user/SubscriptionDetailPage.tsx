@@ -212,16 +212,23 @@ export default function SubscriptionDetailPage() {
                             <div className="flex items-center gap-2">
                               <span className={`w-1.5 h-1.5 rounded-full ${
                                 cell.delivery_status === 'delivered' ? 'bg-teal-500' :
-                                cell.delivery_status === 'skipped' ? 'bg-text-faint' :
                                 cell.delivery_status === 'out_for_delivery' ? 'bg-yellow-500 animate-pulse' :
-                                cell.delivery_status === 'failed' ? 'bg-red-500' : 'bg-text-muted opacity-40'
+                                cell.delivery_status === 'failed' ? 'bg-red-500' :
+                                cell.delivery_status === 'skipped_holiday' ? 'bg-purple-500' :
+                                cell.delivery_status === 'skipped' || cell.delivery_status === 'skipped_by_admin' ? 'bg-text-faint' :
+                                'bg-text-muted opacity-40'
                               }`} />
                               <p className={`text-[9px] font-bold uppercase tracking-widest ${
                                 cell.delivery_status === 'delivered' ? 'text-teal-600' :
                                 cell.delivery_status === 'out_for_delivery' ? 'text-yellow-600' :
+                                cell.delivery_status === 'failed' ? 'text-red-500' :
+                                cell.delivery_status === 'skipped_holiday' ? 'text-purple-500' :
                                 'text-text-faint'
                               }`}>
-                                {cell.delivery_status === 'out_for_delivery' ? 'Out for Delivery' : cell.delivery_status}
+                                {cell.delivery_status === 'out_for_delivery' ? 'Out for Delivery' :
+                                 cell.delivery_status === 'skipped_by_admin' ? 'Skipped by Admin' :
+                                 cell.delivery_status === 'skipped_holiday' ? 'Holiday' :
+                                 cell.delivery_status}
                               </p>
                             </div>
                           </div>

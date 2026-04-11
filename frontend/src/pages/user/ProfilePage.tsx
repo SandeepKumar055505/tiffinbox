@@ -3,7 +3,8 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { persons as personsApi, auth as authApi } from '../../services/api';
-import { Person } from '../../types';
+import { Person, Referral } from '../../types';
+import api from '../../services/api';
 
 type SpiceLevel = 'mild' | 'medium' | 'hot';
 interface IPersonForm { name: string; is_vegetarian: boolean; is_vegan: boolean; allergies: string[]; spice_level: SpiceLevel; notes: string; }
@@ -20,6 +21,9 @@ export default function ProfilePage() {
   const [showForm, setShowForm] = useState(false);
   const [addressEdit, setAddressEdit] = useState(false);
   const [addressVal, setAddressVal] = useState(user?.delivery_address ?? '');
+  const [phoneEdit, setPhoneEdit] = useState(false);
+  const [phoneVal, setPhoneVal] = useState('');
+  const [phoneSaved, setPhoneSaved] = useState(false);
 
   const updateProfile = useMutation({
     mutationFn: (data: { wallet_auto_apply?: boolean; delivery_address?: string }) =>
@@ -28,6 +32,20 @@ export default function ProfilePage() {
       refresh();
       setAddressEdit(false);
     },
+  });
+
+  const verifyPhone = useMutation({
+    mutationFn: (phone: string) => authApi.verifyPhone(phone),
+    onSuccess: () => {
+      refresh();
+      setPhoneEdit(false);
+      setPhoneSaved(true);
+    },
+  });
+
+  const { data: myReferrals = [] } = useQuery<Referral[]>({
+    queryKey: ['my-referrals'],
+    queryFn: () => api.get('/referrals').then(r => r.data).catch(() => []),
   });
 
   const { data: persons = [] } = useQuery<Person[]>({
@@ -204,6 +222,123 @@ export default function ProfilePage() {
                 </div>
               </div>
             )}
+          </div>
+        </section>
+
+        {/* Phone verification */}
+        <section className="space-y-2 animate-glass" style={{ animationDelay: '0.25s' }}>
+          <div className="flex items-center justify-between px-4 pb-2">
+            <h3 className="text-label-caps !text-[12px] !opacity-50 font-bold uppercase tracking-widest">Phone Number</h3>
+            {!phoneEdit && (
+              <button
+                onClick={() => { setPhoneVal(user?.phone ?? ''); setPhoneEdit(true); setPhoneSaved(false); }}
+                className="text-[11px] font-bold text-accent uppercase tracking-widest hover:opacity-80"
+              >
+                {user?.phone ? 'Edit' : 'Add'}
+              </button>
+            )}
+          </div>
+          <div className="surface-glass rounded-2xl border border-white/5 overflow-hidden">
+            {phoneEdit ? (
+              <div className="flex flex-col">
+                <div className="p-5 space-y-2">
+                  <p className="text-[10px] opacity-40 font-bold">Enter your Indian mobile number (+91)</p>
+                  <input
+                    type="tel"
+                    value={phoneVal}
+                    onChange={e => setPhoneVal(e.target.value)}
+                    placeholder="+91 9876543210"
+                    className="w-full bg-transparent border-0 border-b border-border/10 focus:ring-0 focus:outline-none !text-base !font-medium py-2"
+                  />
+                  <p className="text-[9px] opacity-30 font-bold uppercase tracking-widest">
+                    Firebase OTP verification happens in-app. Submit to confirm.
+                  </p>
+                </div>
+                <div className="flex gap-2 p-3 bg-white/[0.01]">
+                  <button
+                    onClick={() => verifyPhone.mutate(phoneVal.replace(/\s/g, ''))}
+                    disabled={verifyPhone.isPending || phoneVal.length < 10}
+                    className="flex-1 text-[12px] font-bold text-white bg-accent py-2.5 rounded-xl transition-all disabled:opacity-50"
+                  >
+                    {verifyPhone.isPending ? 'Saving...' : 'Verify & Save'}
+                  </button>
+                  <button onClick={() => setPhoneEdit(false)} className="px-6 text-[12px] font-bold opacity-40 hover:opacity-70 py-2.5 rounded-xl">
+                    Cancel
+                  </button>
+                </div>
+                {verifyPhone.isError && (
+                  <p className="text-[10px] text-red-400 font-bold px-5 pb-3">
+                    {(verifyPhone.error as any)?.response?.data?.error ?? 'Failed to save phone'}
+                  </p>
+                )}
+              </div>
+            ) : (
+              <div className="p-5 flex items-center gap-4">
+                <div className="text-3xl grayscale opacity-60">📱</div>
+                <div className="flex-1">
+                  {user?.phone ? (
+                    <div className="flex items-center gap-3">
+                      <p className="text-base font-bold">{user.phone}</p>
+                      {user.phone_verified && (
+                        <span className="text-[9px] font-black uppercase tracking-widest text-teal-500 bg-teal-500/10 px-2 py-0.5 rounded-full">Verified</span>
+                      )}
+                    </div>
+                  ) : (
+                    <p className="text-base opacity-40 italic">No phone number added.</p>
+                  )}
+                  {phoneSaved && <p className="text-[10px] text-teal-500 font-bold mt-1">Phone saved successfully!</p>}
+                </div>
+              </div>
+            )}
+          </div>
+        </section>
+
+        {/* Referral code */}
+        <section className="space-y-2 animate-glass" style={{ animationDelay: '0.28s' }}>
+          <h3 className="text-label-caps !text-[12px] !opacity-50 font-bold uppercase tracking-widest pl-4 pb-2">Invite Friends</h3>
+          <div className="surface-glass rounded-2xl border border-white/5 overflow-hidden">
+            <div className="p-5 space-y-4">
+              {user?.referral_code ? (
+                <>
+                  <div className="flex items-center gap-4">
+                    <div className="flex-1 bg-bg-primary/50 rounded-xl px-4 py-3 border border-white/5">
+                      <p className="text-[10px] opacity-40 font-black uppercase tracking-widest">Your referral code</p>
+                      <p className="text-2xl font-black tracking-[0.15em] text-accent mt-1">{user.referral_code}</p>
+                    </div>
+                    <button
+                      onClick={() => {
+                        const url = `${window.location.origin}/invite/${user.referral_code}`;
+                        navigator.clipboard?.writeText(url);
+                      }}
+                      className="w-12 h-12 rounded-xl bg-accent/10 flex items-center justify-center text-xl hover:bg-accent/20 transition-colors shrink-0"
+                      title="Copy invite link"
+                    >
+                      📋
+                    </button>
+                  </div>
+                  <p className="text-[10px] opacity-40 font-bold leading-relaxed">
+                    Share your link. Both you and your friend get wallet credits when they place their first order.
+                  </p>
+                  {myReferrals.length > 0 && (
+                    <div className="space-y-1 pt-1 border-t border-white/5">
+                      <p className="text-[10px] font-black uppercase tracking-widest opacity-40">Your referrals</p>
+                      <div className="flex gap-3">
+                        <div className="text-center">
+                          <p className="text-xl font-black text-accent">{myReferrals.length}</p>
+                          <p className="text-[9px] opacity-40 font-bold uppercase">Invited</p>
+                        </div>
+                        <div className="text-center">
+                          <p className="text-xl font-black text-teal-500">{myReferrals.filter(r => r.status === 'completed').length}</p>
+                          <p className="text-[9px] opacity-40 font-bold uppercase">Converted</p>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </>
+              ) : (
+                <p className="text-base opacity-40 italic">Referral code loading...</p>
+              )}
+            </div>
           </div>
         </section>
 

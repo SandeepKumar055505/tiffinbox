@@ -2,14 +2,25 @@ import PgBoss from 'pg-boss';
 import { env } from '../config/env';
 import { DomainEvent } from './events';
 import { db } from '../config/db';
-import { creditDeliveryFailure, creditSkip, debitWalletAtCheckout } from '../services/ledgerService';
-import { MEAL_PRICES } from '../services/pricingEngine';
+import { creditDeliveryFailure, creditSkip, debitWalletAtCheckout, creditReferralReward } from '../services/ledgerService';
+import { yesterdayIST } from '../lib/time';
 import {
   sendPaymentReceipt,
   sendDeliveryFailureNotice,
   sendPlanExpiryReminder,
   sendStreakMilestone,
 } from '../services/emailService';
+
+/**
+ * Get meal price from app_settings. Falls back to sensible defaults.
+ */
+async function getMealPrice(meal_type: string): Promise<number> {
+  const settings = await db('app_settings').where({ id: 1 }).first();
+  if (!settings) return 100;
+  const key = `${meal_type}_price`;
+  // app_settings stores in paise, we need rupees for wallet credits
+  return settings[key] ? Math.round(settings[key] / 100) : 100;
+}
 
 export const boss = new PgBoss(env.DATABASE_URL);
 
@@ -54,9 +65,8 @@ export async function startJobWorkers(): Promise<void> {
   // ── Nightly: update streaks ─────────────────────────────────────────────────
   await boss.schedule('streak.daily-update', '0 22 * * *', {}, { tz: 'Asia/Kolkata' });
   await boss.work('streak.daily-update', async () => {
-    const yesterday = new Date();
-    yesterday.setDate(yesterday.getDate() - 1);
-    const dateStr = yesterday.toISOString().split('T')[0];
+    // Use IST yesterday — on UTC server, raw Date() would give wrong date
+    const dateStr = yesterdayIST();
 
     const persons = await db('subscriptions as s')
       .join('persons as p', 'p.id', 's.person_id')
@@ -66,14 +76,29 @@ export async function startJobWorkers(): Promise<void> {
       .distinct('p.id as person_id', 's.user_id', 's.id as subscription_id');
 
     for (const row of persons) {
+      // Get ALL meal cells for this date (included or not)
       const cells = await db('meal_cells')
-        .where({ subscription_id: row.subscription_id, date: dateStr, is_included: true });
-      const allDelivered = cells.length > 0 && cells.every((c: any) => c.delivery_status === 'delivered');
+        .where({ subscription_id: row.subscription_id, date: dateStr });
+
+      if (cells.length === 0) continue;
+
+      // Streak continues if every meal is delivered, user-skipped, or holiday-skipped.
+      // Streak breaks only on: failed delivery or skipped_by_admin.
+      const streakPreserved = cells.every((c: any) => {
+        if (!c.is_included) return true; // user unchecked this meal at subscription time
+        return (
+          c.delivery_status === 'delivered' ||
+          c.delivery_status === 'skipped' ||         // user-initiated
+          c.delivery_status === 'skipped_holiday'    // public holiday — not user's fault
+        );
+      });
+      // Must have at least one delivered meal to INCREMENT (all-skipped day = preserve, not grow)
+      const hasDelivery = cells.some((c: any) => c.is_included && c.delivery_status === 'delivered');
 
       const streak = await db('person_streaks').where({ person_id: row.person_id }).first();
       if (!streak) continue;
 
-      if (allDelivered) {
+      if (streakPreserved && hasDelivery) {
         const new_streak = streak.current_streak + 1;
         const longest = Math.max(new_streak, streak.longest_streak);
         await db('person_streaks').where({ person_id: row.person_id }).update({
@@ -95,7 +120,15 @@ export async function startJobWorkers(): Promise<void> {
             reward,
           });
         }
+      } else if (streakPreserved && !hasDelivery) {
+        // All-skipped day — don't grow streak but don't reset either
+        // Just update the date so we know we processed this day
+        await db('person_streaks').where({ person_id: row.person_id }).update({
+          last_streak_date: dateStr,
+          updated_at: db.fn.now(),
+        });
       } else {
+        // Streak broken — failed delivery or admin-skipped meal
         await db('person_streaks').where({ person_id: row.person_id }).update({
           current_streak: 0,
           updated_at: db.fn.now(),
@@ -107,7 +140,7 @@ export async function startJobWorkers(): Promise<void> {
   // ── Delivery failed → wallet credit ────────────────────────────────────────
   await boss.work(DomainEvent.DELIVERY_FAILED, async (job: any) => {
     const { meal_cell_id, user_id, subscription_id, meal_type, date } = job.data;
-    const price = MEAL_PRICES[meal_type as keyof typeof MEAL_PRICES] ?? 100;
+    const price = await getMealPrice(meal_type);
     await creditDeliveryFailure(user_id, meal_cell_id, subscription_id, meal_type, date, price);
     await sendNotification(user_id,
       'Delivery missed — wallet credited',
@@ -120,9 +153,12 @@ export async function startJobWorkers(): Promise<void> {
 
   // ── Skip approved → wallet credit ──────────────────────────────────────────
   await boss.work(DomainEvent.MEAL_SKIPPED, async (job: any) => {
-    const { meal_cell_id, user_id, subscription_id, meal_type, date } = job.data;
-    const price = MEAL_PRICES[meal_type as keyof typeof MEAL_PRICES] ?? 100;
-    await creditSkip(user_id, meal_cell_id, subscription_id, meal_type, date, price);
+    const { meal_cell_id, user_id, subscription_id, meal_type, date, is_grace_skip } = job.data;
+    // Only credit wallet for grace skips (Gap 46 fix)
+    if (is_grace_skip) {
+      const price = await getMealPrice(meal_type);
+      await creditSkip(user_id, meal_cell_id, subscription_id, meal_type, date, price);
+    }
   });
 
   // ── Payment success → activate + debit wallet ──────────────────────────────
@@ -138,6 +174,39 @@ export async function startJobWorkers(): Promise<void> {
     );
     // Unlock 30-day plan if this is user's first completed subscription
     await boss.send('plan.unlock-check', { user_id });
+
+    // Referral reward: fire only on user's FIRST successful payment
+    const paymentCount = await db('payments')
+      .where({ user_id, status: 'paid' })
+      .count('id as cnt')
+      .first();
+    if (parseInt((paymentCount as any)?.cnt ?? '0', 10) === 1) {
+      const referral = await db('referrals')
+        .where({ referred_id: user_id, status: 'pending' })
+        .first();
+      if (referral) {
+        const settings = await db('app_settings').where({ id: 1 }).first();
+        const rewardPaise = settings?.referral_reward_amount ?? 5000;
+        const rewardRupees = Math.round(rewardPaise / 100);
+        if (rewardRupees > 0) {
+          await Promise.all([
+            creditReferralReward(referral.referrer_id, referral.id, rewardRupees, 'referrer'),
+            creditReferralReward(user_id, referral.id, rewardRupees, 'referee'),
+          ]);
+          await db('referrals').where({ id: referral.id }).update({
+            status: 'completed',
+            rewarded_at: db.fn.now(),
+          });
+          // Notify referrer
+          await sendNotification(
+            referral.referrer_id,
+            'Referral reward earned!',
+            `Your friend joined TiffinBox and placed their first order. ₹${rewardRupees} added to your wallet!`,
+            'offer'
+          );
+        }
+      }
+    }
     // Increment promo used_count if a promo was applied
     const subForPromo = await db('subscriptions').where({ id: subscription_id }).select('promo_code').first();
     if (subForPromo?.promo_code) {
@@ -179,11 +248,10 @@ export async function startJobWorkers(): Promise<void> {
   });
 
   // ── Delivery completed → notify user ────────────────────────────────────────
+  // DELIVERY_COMPLETED: side effects only (notification).
+  // Status is already updated by the admin route or delivery route that emits this event.
   await boss.work(DomainEvent.DELIVERY_COMPLETED, async (job: any) => {
-    const { meal_cell_id, user_id, meal_type, date } = job.data;
-    await db('meal_cells')
-      .where({ id: meal_cell_id })
-      .update({ delivery_status: 'delivered', updated_at: db.fn.now() });
+    const { user_id, meal_type, date } = job.data;
     await sendNotification(user_id,
       'Delivery confirmed ✓',
       `Your ${meal_type} for ${date} has been delivered. Enjoy your meal!`,
@@ -220,6 +288,7 @@ export async function startJobWorkers(): Promise<void> {
       await postLedgerEntry({
         user_id,
         direction: 'credit',
+        entry_type: 'streak_reward',
         amount: walletAmount,
         description: `🎉 ${streak_days}-day streak reward! ₹${walletAmount} added to wallet.`,
         idempotency_key: `streak_reward_${streak_days}_${user_id}_${person_id}`,
