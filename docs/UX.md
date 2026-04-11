@@ -22,7 +22,39 @@ Dashboard (empty state)
 **UX Notes:**
 - No registration form — Google OAuth is the only way in
 - No email verification step
+- On first login: signup wallet bonus credited automatically (amount from app_settings)
 - On first login, auto-prompt to add a person (bottom sheet or inline)
+
+---
+
+### 2. Referral / Invite Flow
+
+```
+Existing user
+  → Profile page → "Invite Friends" section
+  → Shows referral code (8-char) + "Copy invite link" button
+  → Copies: https://yourdomain.com/invite/<code>
+
+New user via invite link
+  → Opens /invite/:code
+  → Sees referral splash ("You're invited! Your friend wants you to join")
+  → After 2.5s → redirected to /login
+
+Login page
+  → Google sign-in triggered
+  → On new user creation: referral_code stored, referral record created (status='pending')
+
+First payment
+  → PAYMENT_SUCCESS job detects COUNT(payments)=1 for this user
+  → Credits both referrer AND referee with referral_reward_amount from app_settings
+  → Referral status → 'completed'
+  → Referrer receives notification: "Your friend joined! ₹X added to wallet"
+```
+
+**UX Notes:**
+- If user is already logged in when visiting /invite/:code → goes straight to /
+- Referral code stored in localStorage (`tb_referral_code`), cleared after use
+- Profile page shows live referral stats: invited count + converted count
 
 ---
 
@@ -158,7 +190,45 @@ On SubscriptionDetail / Extras tab:
 
 ---
 
-### 8. Admin: Daily Deliveries
+### 8. Delivery OTP Flow (user side)
+
+```
+User's meal_cell → out_for_delivery
+  → Dashboard shows OTP box (yellow bg): "Show this to your delivery person"
+  → OTP is 4 digits, visible to user, refreshes every 30s via React Query
+  → Delivery person sees the number and enters it on their device
+
+On successful OTP verify:
+  → Cell status → 'delivered'
+  → OTP box disappears, cell shows delivered state
+  → "Rate this meal →" button appears
+```
+
+**UX Notes:**
+- OTP only fetched when at least one cell is `out_for_delivery`
+- Only the first `out_for_delivery` cell's OTP shown (meals delivered sequentially)
+- OTP expires after 2 hours; admin can re-move to `out_for_delivery` to regenerate
+
+---
+
+### 9. Meal Rating Flow
+
+```
+After delivery_status = 'delivered' (and ratings_enabled = true)
+  → Dashboard shows "Rate this meal →" button on the cell
+  → Click → inline 5-star picker appears
+  → Select stars → optional note (skip or submit)
+  → POST /api/ratings → button disappears, rating saved
+```
+
+**UX Notes:**
+- One rating per meal_cell — once submitted, no edit
+- Note is optional (max 500 chars implied)
+- Rating UI is inline (not a modal) to reduce friction
+
+---
+
+### 10. Admin: Daily Deliveries
 
 ```
 /admin/deliveries
@@ -171,7 +241,7 @@ On SubscriptionDetail / Extras tab:
 
 ---
 
-### 9. Admin: Skip Approvals
+### 11. Admin: Skip Approvals
 
 ```
 /admin/skips

@@ -1,25 +1,17 @@
 # TiffinBox — Deploy Guide
 
-## Pre-deploy checklist
+> Deployed on **Render** (backend as web service + frontend as static site). Database on **Neon** (PostgreSQL).
 
-Run through this before deploying to production:
+## Pre-deploy Checklist
 
-- [ ] `npm run migrate` — run all 22 migrations on the production DB
-- [ ] `npm run seed` — creates admin account + default menu + streak reward seeds
-- [ ] Set `RAZORPAY_KEY_ID` / `RAZORPAY_KEY_SECRET` to **live** keys (not test)
-- [ ] Set `FRONTEND_URL` to your actual Vercel domain (no trailing slash)
-- [ ] Set `GOOGLE_REDIRECT_URI` to `https://api-yourdomain.vercel.app/api/auth/google/callback`
-- [ ] Add Razorpay webhook (see Step 5)
-- [ ] Test Google login end-to-end
-- [ ] Test a payment with Razorpay test keys before switching to live
-- [ ] Change `ADMIN_SEED_PASSWORD` to something strong before seeding
-
-## Prerequisites
-- Neon account (free): neon.tech
-- Vercel account (free): vercel.com
-- Google Cloud project (for OAuth)
-- Razorpay account (test keys free)
-- Gmail account with App Password enabled
+- [ ] All 31 migrations applied (auto-runs on startup via `startCommand`)
+- [ ] `RAZORPAY_KEY_ID` / `RAZORPAY_KEY_SECRET` set to **live** keys
+- [ ] `RAZORPAY_WEBHOOK_SECRET` set (copy from Razorpay webhook creation screen)
+- [ ] `FRONTEND_URL` set to actual frontend URL (no trailing slash)
+- [ ] `GOOGLE_REDIRECT_URI` points to Render backend URL
+- [ ] Razorpay webhook configured (see Step 5)
+- [ ] Google OAuth origins + redirect URIs updated for Render URLs
+- [ ] `ADMIN_SEED_PASSWORD` is a strong password before first deploy
 
 ---
 
@@ -28,7 +20,7 @@ Run through this before deploying to production:
 1. Sign up at neon.tech → Create project "tiffinbox"
 2. Create database "tiffinbox_prod"
 3. Copy the **pooled connection string** from Connection Details
-4. Keep it for the backend env vars
+4. Include `?sslmode=require` at the end
 
 ---
 
@@ -37,108 +29,65 @@ Run through this before deploying to production:
 1. console.cloud.google.com → Create project "TiffinBox"
 2. APIs & Services → OAuth consent screen → External → fill basics
 3. Credentials → Create OAuth 2.0 Client ID → Web application
-4. Authorized JS origins: `https://yourdomain.vercel.app`
-5. Authorized redirect URIs: `https://api-yourdomain.vercel.app/api/auth/google/callback`
+4. Authorized JS origins:
+   - `http://localhost:5173` (dev)
+   - `https://tiffinbox-web.onrender.com` (prod)
+5. Authorized redirect URIs:
+   - `http://localhost:3001/api/auth/google/callback` (dev)
+   - `https://tiffinbox-api.onrender.com/api/auth/google/callback` (prod)
 6. Copy Client ID and Client Secret
 
 ---
 
-## Step 3 — Deploy Backend to Vercel
+## Step 3 — Deploy to Render
 
-```bash
-cd backend
-npm install -g vercel   # if not installed
-vercel --prod
+Render picks up both services automatically from `render.yaml` in the repo root.
+
+1. Render Dashboard → New → Blueprint
+2. Connect GitHub repo → select the `tiffinbox` repo
+3. Render creates two services: `tiffinbox-api` (web) and `tiffinbox-web` (static)
+4. Fill in all `sync: false` env vars in each service's Environment tab (see VARIABLES.md)
+
+### What happens on first deploy
+```
+Build:  npm install && tsc && cp -r src/db/migrations dist/db/migrations
+Start:  node dist/db/migrate.js   ← applies migrations 001–031
+        node dist/db/seed.js      ← creates admin + seeds default menu
+        node dist/index.js        ← starts Express + pg-boss workers
 ```
 
-Set these env vars in Vercel dashboard → Project Settings → Environment Variables:
-
-```
-NODE_ENV=production
-DATABASE_URL=<neon pooled connection string>
-JWT_SECRET=<run: node -e "console.log(require('crypto').randomBytes(32).toString('hex'))">
-JWT_EXPIRES_IN=7d
-GOOGLE_CLIENT_ID=<from Google Console>
-GOOGLE_CLIENT_SECRET=<from Google Console>
-GOOGLE_REDIRECT_URI=https://api-yourdomain.vercel.app/api/auth/google/callback
-RAZORPAY_KEY_ID=rzp_live_xxx
-RAZORPAY_KEY_SECRET=<live secret>
-GMAIL_USER=tiffinbox@gmail.com
-GMAIL_APP_PASSWORD=<16-char app password>
-FRONTEND_URL=https://yourdomain.vercel.app
-ADMIN_SEED_EMAIL=admin@tiffinbox.in
-ADMIN_SEED_PASSWORD=<strong password>
-```
-
-After deploying, run migrations + seed:
-```bash
-DATABASE_URL=<neon url> npm run migrate
-DATABASE_URL=<neon url> npm run seed
-```
+Migrations are idempotent — safe to redeploy. Only unapplied migrations run.
 
 ---
 
-## Step 4 — Deploy Frontend to Vercel
+## Step 4 — Razorpay Webhook
 
-```bash
-cd frontend
-vercel --prod
-```
-
-Set these env vars:
-```
-VITE_API_URL=https://api-yourdomain.vercel.app/api
-VITE_GOOGLE_CLIENT_ID=<same as backend>
-VITE_RAZORPAY_KEY_ID=rzp_live_xxx
-VITE_APP_NAME=TiffinBox
-```
+1. Razorpay Dashboard → Settings → Webhooks → Add New Webhook
+2. URL: `https://tiffinbox-api.onrender.com/api/payments/webhook`
+3. Events: `payment.captured`, `payment.failed`
+4. Copy the secret → set `RAZORPAY_WEBHOOK_SECRET` in Render env vars
 
 ---
 
-## Step 5 — Razorpay Webhook
+## Step 5 — Verify
 
-In Razorpay Dashboard → Webhooks → Add webhook:
-- URL: `https://api-yourdomain.vercel.app/api/payments/webhook`
-- Events: `payment.captured`, `payment.failed`
-- Secret: same as `RAZORPAY_KEY_SECRET`
-
----
-
-## Step 6 — Verify
-
-1. Open `https://yourdomain.vercel.app`
-2. Sign in with Google → should work
-3. Open `https://yourdomain.vercel.app/admin/login`
-4. Login with your ADMIN_SEED_EMAIL + ADMIN_SEED_PASSWORD
-5. Admin dashboard should show
+1. Open `https://tiffinbox-web.onrender.com`
+2. Sign in with Google → dashboard loads
+3. Open `https://tiffinbox-web.onrender.com/admin/login`
+4. Login with `ADMIN_SEED_EMAIL` + `ADMIN_SEED_PASSWORD`
+5. Admin dashboard loads, check Settings → prices are correct
 
 ---
 
-## pg-boss on Vercel (important)
+## Custom Domain (optional)
 
-Vercel is serverless — pg-boss background workers won't run continuously.
+1. Render → tiffinbox-web → Custom Domains → Add domain
+2. Point your DNS CNAME to the Render-provided hostname
+3. Update `FRONTEND_URL` in backend env vars to `https://yourdomain.com`
+4. Update `VITE_API_URL` in frontend env vars if API also gets a custom domain
+5. Add custom domain to Google OAuth Authorized JS Origins
 
-**Options:**
-
-**A (recommended for MVP):** Run a separate small Node.js process just for jobs.
-- Deploy backend to Railway or Render (free tier) as a long-running process
-- Use the same DATABASE_URL
-- Start with `npm run dev` or `npm start`
-- This handles all cron jobs + event workers
-
-**B (zero-infra):** Use Vercel Cron Jobs for the nightly tasks.
-- In `backend/vercel.json`, add:
-```json
-{
-  "crons": [
-    { "path": "/api/cron/expiry-check", "schedule": "30 17 * * *" },
-    { "path": "/api/cron/streak-update", "schedule": "30 16 * * *" }
-  ]
-}
-```
-- Add cron route handlers that trigger the job logic directly
-
-For MVP, **Option A** is simpler and more reliable.
+The CORS allowlist in `backend/src/index.ts` already allows `*.mytiffinpoint.com` and `mytiffinpoint.com`.
 
 ---
 
@@ -147,15 +96,24 @@ For MVP, **Option A** is simpler and more reliable.
 ```bash
 # Terminal 1 — Backend
 cd backend
-cp .env.example .env   # fill values
+cp .env.example .env   # fill in values
 npm install
-npm run migrate
-npm run seed
-npm run dev            # starts on :3001
+npm run migrate        # applies all migrations locally
+npm run seed           # creates admin + default menu
+npm run dev            # tsx watch → hot reload on :3001
 
 # Terminal 2 — Frontend
 cd frontend
-cp .env.example .env   # fill VITE_API_URL=http://localhost:3001/api
+cp .env.example .env   # VITE_API_URL=http://localhost:3001/api
 npm install
-npm run dev            # starts on :5173
+npm run dev            # Vite → hot reload on :5173
 ```
+
+---
+
+## Render Free Tier Notes
+
+- Backend spins down after 15 min of inactivity — first request after sleep takes ~30s
+- pg-boss cron jobs (streak update, expiry check) only run while the process is alive
+- Static frontend has no spin-down — always instant
+- To avoid spin-down: upgrade to Render Starter ($7/mo) or use UptimeRobot to ping `/api/health` every 10 min

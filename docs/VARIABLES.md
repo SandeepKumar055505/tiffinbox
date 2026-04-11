@@ -30,6 +30,7 @@ ADMIN_SEED_PASSWORD=strongpassword123
 # Razorpay
 RAZORPAY_KEY_ID=rzp_test_xxx          # rzp_live_xxx in production
 RAZORPAY_KEY_SECRET=your_secret_here
+RAZORPAY_WEBHOOK_SECRET=your_webhook_secret_here  # set when creating webhook in Razorpay dashboard
 
 # Gmail SMTP (for receipts, OTPs)
 GMAIL_USER=tiffinbox@gmail.com
@@ -65,33 +66,37 @@ VITE_APP_VERSION=1.0.0
 
 ---
 
-## Production Values (Vercel)
+## Production Values (Render)
 
-Set in Vercel Dashboard → Project Settings → Environment Variables.
+Set in Render Dashboard → Service → Environment. All `sync: false` vars in `render.yaml` must be filled manually.
 
-### Backend (Vercel serverless)
+### Backend (tiffinbox-api service)
 ```
 NODE_ENV=production
-DATABASE_URL=<neon production connection string>
-JWT_SECRET=<strong random secret>
+PORT=10000
+DATABASE_URL=<neon pooled connection string>
+JWT_SECRET=<run: openssl rand -hex 32>
 JWT_EXPIRES_IN=7d
 GOOGLE_CLIENT_ID=<production OAuth client>
 GOOGLE_CLIENT_SECRET=<production secret>
-GOOGLE_REDIRECT_URI=https://api.tiffinbox.in/api/auth/google/callback
+GOOGLE_REDIRECT_URI=https://tiffinbox-api.onrender.com/api/auth/google/callback
 RAZORPAY_KEY_ID=rzp_live_xxx
 RAZORPAY_KEY_SECRET=<live secret>
+RAZORPAY_WEBHOOK_SECRET=<webhook secret from Razorpay dashboard>
 GMAIL_USER=tiffinbox@gmail.com
-GMAIL_APP_PASSWORD=<app password>
-FRONTEND_URL=https://tiffinbox.in
+GMAIL_APP_PASSWORD=<16-char app password>
+FRONTEND_URL=https://tiffinbox-web.onrender.com   # or custom domain
+ADMIN_SEED_EMAIL=admin@tiffinbox.in
+ADMIN_SEED_PASSWORD=<strong password>
 CLOUDINARY_CLOUD_NAME=<name>
 CLOUDINARY_API_KEY=<key>
 CLOUDINARY_API_SECRET=<secret>
 ```
 
-### Frontend (Vercel)
+### Frontend (tiffinbox-web static site)
 ```
-VITE_API_URL=https://api.tiffinbox.in/api
-VITE_GOOGLE_CLIENT_ID=<production client ID>
+VITE_API_URL=https://tiffinbox-api.onrender.com/api
+VITE_GOOGLE_CLIENT_ID=<same as backend>
 VITE_RAZORPAY_KEY_ID=rzp_live_xxx
 VITE_APP_NAME=TiffinBox
 ```
@@ -114,8 +119,9 @@ VITE_APP_NAME=TiffinBox
 1. Sign up at razorpay.com → Get test keys immediately (no KYC for test)
 2. Live keys require business KYC (PAN + bank account)
 3. Test UPI: use any UPI ID in test mode
-4. Webhook URL: `https://api.tiffinbox.in/api/payments/webhook`
+4. Webhook URL: `https://tiffinbox-api.onrender.com/api/payments/webhook`
 5. Webhook events to enable: `payment.captured`, `payment.failed`
+6. Copy the webhook secret shown after creation → set as `RAZORPAY_WEBHOOK_SECRET`
 
 ### Neon Database
 1. Sign up at neon.tech → Create project "tiffinbox"

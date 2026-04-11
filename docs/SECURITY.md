@@ -8,12 +8,12 @@
 
 ### User Auth (Google OAuth)
 ```
-User clicks "Sign in with Google"
-→ Frontend redirects to /api/auth/google (with state param)
-→ Backend redirects to Google consent screen
-→ Google returns auth code to /api/auth/google/callback
-→ Backend exchanges code for tokens, fetches profile
+User clicks "Sign in with Google" (Google Identity Services button)
+→ Google returns ID token (credential) to frontend callback
+→ Frontend POST /api/auth/google { credential, referral_code? }
+→ Backend verifies credential with google-auth-library
 → Upsert user in DB (create if new, update name/avatar if existing)
+→ If new user: creditSignupBonus() + create referral record if referral_code provided
 → Issue JWT (7d expiry), return { token, user }
 → Frontend stores token in localStorage as 'tb_token'
 ```
@@ -166,14 +166,51 @@ await db.raw(`SELECT * FROM users WHERE id = ${userId}`);
 
 ---
 
+## Delivery OTP Security
+
+`POST /api/delivery/otp/verify` is intentionally unauthenticated (delivery persons don't have accounts).
+Protected by:
+- Max 5 attempts per OTP — after 5 failures the OTP is locked
+- 2-hour expiry on every OTP
+- OTP is a 4-digit numeric code (10,000 combinations × 5 attempts = brute force impractical in 2h window)
+- meal_cell_id must match an `out_for_delivery` cell — random guessing won't find valid IDs
+
+---
+
+## Phone Verification
+
+`POST /api/auth/phone/verify` requires user JWT (prevents anonymous phone harvesting).
+- Phone must match `/^\+91[6-9]\d{9}$/` format
+- Uniqueness enforced at DB level (partial unique index where phone IS NOT NULL)
+- `phone_verified` flag stored alongside — only set by this endpoint, never by user directly
+
+---
+
+## Referral Code Security
+
+- 8-character alphanumeric (charset excludes 0/O/1/I to prevent confusion)
+- Generated once at signup, stored in users table
+- Referral reward only fires on verified first payment (not signup) — prevents abuse via fake accounts
+- One referral record per referred user (UNIQUE constraint on referred_id)
+
+---
+
 ## CORS Configuration
 
 ```typescript
+// Regex-based allowlist — allows localhost, Render fallback, and custom domain
+const ORIGIN_REGEX = /^https?:\/\/((localhost(:\d+)?)|((.+\.)?mytiffinpoint\.com)|(tiffinbox-web\.onrender\.com))$/i;
+
 app.use(cors({
-  origin: process.env.FRONTEND_URL,
+  origin: (origin, cb) => {
+    if (!origin || env.isDev || ORIGIN_REGEX.test(origin)) return cb(null, true);
+    return cb(new Error(`CORS blocked for origin: ${origin}`));
+  },
   credentials: true,
-  methods: ['GET', 'POST', 'PATCH', 'PUT', 'DELETE'],
+  methods: ['GET', 'HEAD', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
 }));
+// Explicit preflight handler required for CORS-headered OPTIONS responses
+app.options('*', cors(corsOptions));
 ```
 
 ---

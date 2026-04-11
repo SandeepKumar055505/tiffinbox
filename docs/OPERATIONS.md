@@ -43,10 +43,25 @@
 
 ### Delivery Status Flow
 ```
-scheduled → preparing → out_for_delivery → delivered
-                                         → skipped
-                                         → cancelled
+scheduled → preparing → out_for_delivery → delivered         (normal)
+                                         ↓
+                                    [OTP generated]
+                                    user shows OTP to delivery person
+                                    POST /api/delivery/otp/verify → delivered
+
+scheduled → skipped          (pre-cutoff auto-skip or admin-approved skip)
+scheduled → skipped_by_admin (admin manually skips an individual cell)
+scheduled → skipped_holiday  (holiday bulk-skip via /admin/delivery/holiday-skip)
+any       → failed           (delivery attempted but failed)
 ```
+
+### Delivery OTP Flow (when `delivery_otp_enabled = true`)
+1. Admin moves cell to `out_for_delivery` → OTP (4-digit) auto-generated, expires in 2 hours
+2. User opens their dashboard → sees OTP for their out-for-delivery meal
+3. User shows OTP to delivery person
+4. Delivery person enters OTP at `POST /api/delivery/otp/verify` (no auth required)
+5. On success: cell status → `delivered`, `DELIVERY_COMPLETED` event emitted
+6. Max 5 verification attempts before OTP is locked
 
 ---
 
@@ -191,6 +206,56 @@ Admin can manually set status to "resolved"
 
 ---
 
+## Holiday Management
+
+`/admin/holidays`
+
+### Add a Holiday
+```
+Date picker + holiday name → Save
+Creates a record in holidays table
+```
+
+### Skip All Meals on a Holiday
+```
+Holiday row → "Skip Meals" button
+→ POST /admin/delivery/holiday-skip { date }
+→ All scheduled cells on that date → delivery_status='skipped_holiday', is_included=false
+→ Users see "Holiday" label on their meal cells
+→ These skips do NOT break streaks
+```
+
+### Toggle Holiday Active/Inactive
+Inactive holidays are excluded from skip queries but kept for records.
+
+---
+
+## Ledger Management
+
+`/admin/ledger`
+
+### View Transactions
+Paginated list of all ledger entries. Filter by:
+- `user_id` — see one user's wallet history
+- `entry_type` — e.g. only `admin_credit` entries
+
+### Manual Credit
+```
+User ID + Amount (₹) + Description → Credit
+entry_type = 'admin_credit', created_by = 'admin'
+Audit log written automatically
+```
+Use for: compensation, goodwill credit, referral fixes.
+
+### Manual Debit
+```
+User ID + Amount (₹) + Description → Debit
+entry_type = 'admin_debit', created_by = 'admin'
+```
+Use for: correcting accidental over-credits.
+
+---
+
 ## Settings Management
 
 `/admin/settings`
@@ -203,9 +268,18 @@ Edit discount table (change ₹20/15/10 or ₹40/30/20 per day values).
 Change default skip cutoff hours.
 This is the global default — per-subscription overrides take precedence.
 
-### Limits
+### Limits & Rewards
 - Max skip days per week (default: 1)
+- Max grace skips per week — skips that earn wallet credit (default: 2)
 - Max persons per user (default: 10)
+- Signup wallet credit — amount credited to new users on registration (default ₹120)
+- Referral reward amount — credited to both referrer and referee on first payment (default ₹50)
+
+### Feature Flags
+Toggle features on/off without code changes:
+- Breakfast / Lunch / Dinner enabled — hide a meal type entirely
+- Delivery OTP enabled — turn off OTP verification flow
+- Ratings enabled — turn off meal star ratings
 
 ---
 
