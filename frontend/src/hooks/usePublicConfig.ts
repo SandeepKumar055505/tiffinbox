@@ -57,7 +57,7 @@ export function usePublicConfig() {
         lunch: data.meals.lunch.price,
         dinner: data.meals.dinner.price,
       }
-    : { breakfast: 100, lunch: 120, dinner: 100 }; // fallback while loading
+    : { breakfast: 10000, lunch: 12000, dinner: 10000 }; // fallback while loading (in paise)
 
   const discountTable: DiscountTable = data?.plans.discounts ?? {};
 

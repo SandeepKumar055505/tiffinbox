@@ -99,7 +99,11 @@ export default function SubscriptionDetailPage() {
           </div>
           <div className="text-right">
             <p className="text-[11px] uppercase tracking-widest font-black opacity-30">Active Window</p>
-            <p className="text-[12px] font-bold">{sub.start_date} <span className="opacity-40">→</span> {sub.end_date}</p>
+            <p className="text-[12px] font-bold">
+              {new Date(sub.start_date).toLocaleDateString('en-IN', { month: 'short', day: 'numeric', year: 'numeric' })} 
+              <span className="opacity-40 px-1">→</span> 
+              {new Date(sub.end_date).toLocaleDateString('en-IN', { month: 'short', day: 'numeric', year: 'numeric' })}
+            </p>
           </div>
         </section>
 

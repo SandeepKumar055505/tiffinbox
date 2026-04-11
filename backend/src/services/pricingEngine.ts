@@ -7,7 +7,7 @@ let pricesCache: { data: Record<MealType, number>; expires: number } | null = nu
 
 /**
  * Get meal prices from app_settings (admin-controlled).
- * Prices are stored in paise, returned in whole rupees.
+ * Returned in raw paise.
  */
 export async function getMealPrices(): Promise<Record<MealType, number>> {
   const now = Date.now();
@@ -17,13 +17,13 @@ export async function getMealPrices(): Promise<Record<MealType, number>> {
 
   const settings = await db('app_settings').where({ id: 1 }).first();
   if (!settings) {
-    // Fallback defaults if settings somehow missing
-    return { breakfast: 100, lunch: 120, dinner: 100 };
+    // Fallback defaults if settings somehow missing (in paise)
+    return { breakfast: 10000, lunch: 12000, dinner: 10000 };
   }
   const data = {
-    breakfast: Math.round(settings.breakfast_price / 100),
-    lunch: Math.round(settings.lunch_price / 100),
-    dinner: Math.round(settings.dinner_price / 100),
+    breakfast: settings.breakfast_price,
+    lunch: settings.lunch_price,
+    dinner: settings.dinner_price,
   };
   pricesCache = { data, expires: now + 60000 };
   return data;
@@ -91,10 +91,11 @@ export async function calculateQuote(input: QuoteInput): Promise<PriceSnapshot> 
   };
 }
 
-/** Returns discount map: meals_count → ₹ off per day */
+/** Returns discount map: meals_count → paise off per day */
 async function getDiscountTable(plan_days: number): Promise<Record<number, number>> {
   const rows = await db('plan_discounts').where({ plan_days });
-  return Object.fromEntries(rows.map((r: any) => [r.meals_per_day, r.discount_amount]));
+  // Seeds are in rupees (e.g. 10, 15), convert to paise for logic
+  return Object.fromEntries(rows.map((r: any) => [r.meals_per_day, r.discount_amount * 100]));
 }
 
 /**

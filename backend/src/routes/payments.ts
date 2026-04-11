@@ -31,7 +31,7 @@ router.post(
       return res.status(409).json({ error: `Cannot initiate payment for state: ${sub.state}` });
     }
 
-    const amountPaise = sub.price_paid * 100;
+    const amountPaise = sub.price_paid;
     const order = await razorpay.orders.create({
       amount: amountPaise,
       currency: 'INR',
