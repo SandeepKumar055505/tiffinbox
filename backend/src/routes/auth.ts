@@ -107,24 +107,32 @@ router.post(
     if (!valid) return res.status(401).json({ error: 'Invalid credentials' });
 
     const token = signAdminToken(admin.id);
-    
-    // Security Audit: Check for new IP/Device
-    const lastSession = await db('admin_sessions').where({ admin_id: admin.id }).orderBy('created_at', 'desc').first();
-    const isNewDevice = lastSession && (lastSession.ip_address !== req.ip || lastSession.user_agent !== req.headers['user-agent']);
-    
-    await db('admin_sessions').insert({
-      admin_id: admin.id,
-      ip_address: req.ip || '0.0.0.0',
-      user_agent: req.headers['user-agent'] || 'unknown',
-    });
 
-    await db('audit_logs').insert({
-      admin_id: admin.id,
-      action: 'admin.login',
-      target_type: 'admin',
-      target_id: admin.id,
-      metadata: JSON.stringify({ ip: req.ip, is_new_device: !!isNewDevice })
-    });
+    // Security Audit: session tracking is non-critical — never block login if it fails
+    let isNewDevice = false;
+    try {
+      const lastSession = await db('admin_sessions').where({ admin_id: admin.id }).orderBy('created_at', 'desc').first();
+      isNewDevice = !!(lastSession && (lastSession.ip_address !== req.ip || lastSession.user_agent !== req.headers['user-agent']));
+      await db('admin_sessions').insert({
+        admin_id: admin.id,
+        ip_address: req.ip || '0.0.0.0',
+        user_agent: req.headers['user-agent'] || 'unknown',
+      });
+    } catch (sessionErr) {
+      console.error('[admin login] session tracking failed (table may need migration):', (sessionErr as Error).message);
+    }
+
+    try {
+      await db('audit_logs').insert({
+        admin_id: admin.id,
+        action: 'admin.login',
+        target_type: 'admin',
+        target_id: admin.id,
+        metadata: JSON.stringify({ ip: req.ip, is_new_device: isNewDevice })
+      });
+    } catch (auditErr) {
+      console.error('[admin login] audit log failed:', (auditErr as Error).message);
+    }
 
     res.json({ token, user: { id: admin.id, name: admin.name, email: admin.email, role: 'admin' } });
   }
