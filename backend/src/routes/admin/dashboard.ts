@@ -127,7 +127,7 @@ router.get('/', requireAdmin, async (_req, res) => {
     .having(db.raw('COUNT(mc.id) > 2'))
     .limit(5);
 
-  // Achievement quanta — person_streaks may not exist yet on older DBs
+  //Achievement quanta — person_streaks may not exist yet on older DBs
   let achievementQuanta = { elite_30: 0, pillar_14: 0, spark_7: 0 };
   try {
     const [elite, pillar, spark] = await Promise.all([
@@ -140,26 +140,26 @@ router.get('/', requireAdmin, async (_req, res) => {
       pillar_14: parseInt((pillar as any)?.cnt ?? '0', 10),
       spark_7: parseInt((spark as any)?.cnt ?? '0', 10),
     };
-  } catch {
-    // person_streaks table may not exist yet — non-critical
+  } catch (err) {
+    console.error('[Dashboard] Achievement quanta fetch failed:', err);
   }
 
   res.json({
     ...stats,
     prep_list: prepList,
-    system_health: health.map(h => ({ action: h.action, last_run: h.created_at })),
+    system_health: (health || []).map(h => ({ action: h.action, last_run: h.created_at })),
     failed_jobs: failedJobsCount,
     bulk_subscribers: bulkSubscribersCount,
-    low_ratings: lowRatings,
+    low_ratings: lowRatings || [],
     stale_meals_count: staleMealsCount,
-    hotspots,
-    pulse: pulse.map(p => ({
+    hotspots: hotspots || [],
+    pulse: (pulse || []).map(p => ({
       ...p,
       actor: p.admin_name || 'System / User'
     })),
     opportunities: [
-      ...expiringVIPs.map(v => ({ type: 'renewal', message: `${v.name}'s plan expires on ${v.end_date}`, target: `/admin/subscriptions/${v.id}` })),
-      ...bleedingUsers.map(b => ({ type: 'friction', message: `${b.name} encountered ${b.failures} delivery failures`, target: `/admin/users/${b.id}` }))
+      ...(expiringVIPs || []).map(v => ({ type: 'renewal', message: `${v.name}'s plan expires on ${v.end_date}`, target: `/admin/subscriptions/${v.id}` })),
+      ...(bleedingUsers || []).map(b => ({ type: 'friction', message: `${b.name} encountered ${b.failures} delivery failures`, target: `/admin/users/${b.id}` }))
     ],
     achievement_quanta: achievementQuanta,
   });

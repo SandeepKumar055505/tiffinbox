@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import { z } from 'zod';
 import { db } from '../../config/db';
-import { requireUser } from '../../middleware/auth';
+import { requireAdmin } from '../../middleware/auth';
 import { validate } from '../../middleware/validate';
 import { liquidShiftForHoliday } from '../subscriptions';
 
@@ -14,7 +14,7 @@ const router = Router();
  */
 
 // GET /api/admin/holidays — List all ecosystem pauses
-router.get('/', requireUser, async (req, res) => {
+router.get('/', requireAdmin, async (req, res) => {
   const holidays = await db('holidays').orderBy('date', 'desc');
   res.json(holidays);
 });
@@ -22,7 +22,7 @@ router.get('/', requireUser, async (req, res) => {
 // POST /api/admin/holidays — Declare a Great Pause (Ecosystem-wide skip & shift)
 router.post(
   '/',
-  requireUser,
+  requireAdmin,
   validate(z.object({
     date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Must be YYYY-MM-DD'),
     name: z.string().min(1, 'Holiday name required')
@@ -35,7 +35,7 @@ router.post(
       .insert({
         date,
         name,
-        created_by: req.userId,
+        created_by: req.adminId,
         is_active: true
       })
       .returning('*');

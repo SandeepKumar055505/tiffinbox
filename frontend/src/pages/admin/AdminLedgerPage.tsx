@@ -6,7 +6,7 @@ import { formatRupees } from '../../utils/pricing';
 export default function AdminLedgerPage() {
   const { data: entries = [] } = useQuery({
     queryKey: ['admin-ledger'],
-    queryFn: () => api.get('/admin/ledger').then(r => r.data),
+    queryFn: () => api.get('/admin/ledger').then(r => r.data.entries || []),
   });
 
   return (
