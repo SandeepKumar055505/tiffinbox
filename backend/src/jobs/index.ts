@@ -1,5 +1,3 @@
-import PgBoss from 'pg-boss';
-import { env } from '../config/env';
 import { DomainEvent } from './events';
 import { db } from '../config/db';
 import { creditDeliveryFailure, creditSkip, debitWalletAtCheckout, creditReferralReward } from '../services/ledgerService';
@@ -10,25 +8,40 @@ import {
   sendPlanExpiryReminder,
   sendStreakMilestone,
 } from '../services/emailService';
+import { sendNotification, NotificationType } from '../services/notificationService';
+import { boss } from './client';
 
 /**
- * Get meal price from app_settings. Falls back to sensible defaults.
+ * Get meal price from subscription snapshot (for precise refunds) 
+ * or app_settings (fallback). Result in PAISE.
  */
-async function getMealPrice(meal_type: string): Promise<number> {
+async function getMealPrice(meal_type: string, subId?: number, date?: string): Promise<number> {
   const settings = await db('app_settings').where({ id: 1 }).first();
-  if (!settings) return 100;
-  const key = `${meal_type}_price`;
-  // app_settings stores in paise, we need rupees for wallet credits
-  return settings[key] ? Math.round(settings[key] / 100) : 100;
-}
+  const fallback = settings ? (settings[`${meal_type}_price`] ?? 10000) : 10000;
 
-export const boss = new PgBoss(env.DATABASE_URL);
+  if (subId && date) {
+    const sub = await db('subscriptions').where({ id: subId }).first();
+    if (sub?.price_snapshot?.per_day) {
+      const day = sub.price_snapshot.per_day.find((d: any) => d.date === date);
+      if (day && day.meal_count > 0) {
+        // Return exactly what they paid per meal on this day (base - daily_discount)
+        return Math.floor(day.subtotal / day.meal_count);
+      }
+    }
+  }
+
+  return fallback;
+}
 
 export async function startJobWorkers(): Promise<void> {
   await boss.start();
   console.log('pg-boss started');
 
-  // Ensure all queues exist to avoid "Queue not found" foreign key error in pg-boss v10
+  // pg-boss v10: start() sets up internal queues (system.cleanup etc.) asynchronously.
+  // Wait briefly so they exist before we call schedule() or work().
+  await new Promise(r => setTimeout(r, 1500));
+
+  // Use boss.createQueue() — raw SQL misses required columns (policy, retry_limit, etc.)
   const queues = [
     'plan.expiry-check',
     'streak.daily-update',
@@ -36,7 +49,7 @@ export async function startJobWorkers(): Promise<void> {
     ...Object.values(DomainEvent),
   ];
   for (const q of queues) {
-    await db.raw('INSERT INTO pgboss.queue (name) VALUES (?) ON CONFLICT DO NOTHING', [q]);
+    await boss.createQueue(q);
   }
 
   // ── Nightly: mark completed subscriptions + send renewal reminders ──────────
@@ -76,89 +89,95 @@ export async function startJobWorkers(): Promise<void> {
       .distinct('p.id as person_id', 's.user_id', 's.id as subscription_id');
 
     for (const row of persons) {
-      // Get ALL meal cells for this date (included or not)
-      const cells = await db('meal_cells')
-        .where({ subscription_id: row.subscription_id, date: dateStr });
+      try {
+        // Get ALL meal cells for this date (included or not)
+        const cells = await db('meal_cells')
+          .where({ subscription_id: row.subscription_id, date: dateStr });
 
-      if (cells.length === 0) continue;
+        if (cells.length === 0) continue;
 
-      // Streak continues if every meal is delivered, user-skipped, or holiday-skipped.
-      // Streak breaks only on: failed delivery or skipped_by_admin.
-      const streakPreserved = cells.every((c: any) => {
-        if (!c.is_included) return true; // user unchecked this meal at subscription time
-        return (
-          c.delivery_status === 'delivered' ||
-          c.delivery_status === 'skipped' ||         // user-initiated
-          c.delivery_status === 'skipped_holiday' || // public holiday
-          c.delivery_status === 'skipped_by_admin'   // admin intervention (shouldn't break streak)
-        );
-      });
-      // Must have at least one delivered meal to INCREMENT (all-skipped day = preserve, not grow)
-      const hasDelivery = cells.some((c: any) => c.is_included && c.delivery_status === 'delivered');
-
-      const streak = await db('person_streaks').where({ person_id: row.person_id }).first();
-      if (!streak) continue;
-
-      if (streakPreserved && hasDelivery) {
-        const new_streak = streak.current_streak + 1;
-        const longest = Math.max(new_streak, streak.longest_streak);
-        await db('person_streaks').where({ person_id: row.person_id }).update({
-          current_streak: new_streak,
-          longest_streak: longest,
-          last_streak_date: dateStr,
-          updated_at: db.fn.now(),
+        // Streak continues if every meal is delivered, user-skipped, or holiday-skipped.
+        // Streak breaks only on: failed delivery or skipped_by_admin.
+        const streakPreserved = cells.every((c: any) => {
+          if (!c.is_included) return true; // user unchecked this meal at subscription time
+          return (
+            c.delivery_status === 'delivered' ||
+            c.delivery_status === 'skipped' ||         // user-initiated
+            c.delivery_status === 'skipped_holiday' || // public holiday
+            c.delivery_status === 'skipped_by_admin' || // admin intervention
+            c.delivery_status === 'failed'             // kitchen failure (preserve streak)
+          );
         });
+        // Must have at least one delivered meal to INCREMENT (all-skipped day = preserve, not grow)
+        const hasDelivery = cells.some((c: any) => c.is_included && c.delivery_status === 'delivered');
 
-        // Check for milestone
-        const reward = await db('streak_rewards')
-          .where({ streak_days: new_streak, is_active: true })
-          .first();
-        if (reward) {
-          await boss.send(DomainEvent.STREAK_MILESTONE, {
-            person_id: row.person_id,
-            user_id: row.user_id,
-            streak_days: new_streak,
-            reward,
+        const streak = await db('person_streaks').where({ person_id: row.person_id }).first();
+        if (!streak) continue;
+
+        if (streakPreserved && hasDelivery) {
+          const new_streak = streak.current_streak + 1;
+          const longest = Math.max(new_streak, streak.longest_streak);
+          await db('person_streaks').where({ person_id: row.person_id }).update({
+            current_streak: new_streak,
+            longest_streak: longest,
+            last_streak_date: dateStr,
+            updated_at: db.fn.now(),
+          });
+
+          // Check for milestone
+          const reward = await db('streak_rewards')
+            .where({ streak_days: new_streak, is_active: true })
+            .first();
+          if (reward) {
+            await boss.send(DomainEvent.STREAK_MILESTONE, {
+              person_id: row.person_id,
+              user_id: row.user_id,
+              streak_days: new_streak,
+              reward,
+            });
+          }
+        } else if (streakPreserved && !hasDelivery) {
+          // All-skipped day — don't grow streak but don't reset either
+          // Just update the date so we know we processed this day
+          await db('person_streaks').where({ person_id: row.person_id }).update({
+            last_streak_date: dateStr,
+            updated_at: db.fn.now(),
+          });
+        } else {
+          // Streak broken — failed delivery or admin-skipped meal
+          await db('person_streaks').where({ person_id: row.person_id }).update({
+            current_streak: 0,
+            updated_at: db.fn.now(),
           });
         }
-      } else if (streakPreserved && !hasDelivery) {
-        // All-skipped day — don't grow streak but don't reset either
-        // Just update the date so we know we processed this day
-        await db('person_streaks').where({ person_id: row.person_id }).update({
-          last_streak_date: dateStr,
-          updated_at: db.fn.now(),
-        });
-      } else {
-        // Streak broken — failed delivery or admin-skipped meal
-        await db('person_streaks').where({ person_id: row.person_id }).update({
-          current_streak: 0,
-          updated_at: db.fn.now(),
-        });
+      } catch (err: any) {
+        console.error(`[bg] Streak update failed for person ${row.person_id}:`, err.message);
+        // Continue to next person
       }
     }
   });
 
   // ── Delivery failed → wallet credit ────────────────────────────────────────
   await boss.work(DomainEvent.DELIVERY_FAILED, async (job: any) => {
-    const { meal_cell_id, user_id, subscription_id, meal_type, date } = job.data;
-    const price = await getMealPrice(meal_type);
-    await creditDeliveryFailure(user_id, meal_cell_id, subscription_id, meal_type, date, price);
-    await sendNotification(user_id,
+    const data = job.data;
+    const mealPrice = await getMealPrice(data.meal_type, data.subscription_id, data.date);
+    await creditDeliveryFailure(data.user_id, data.meal_cell_id, data.subscription_id, data.meal_type, data.date, mealPrice);
+    await sendNotification(data.user_id,
+      NotificationType.SYSTEM,
       'Delivery missed — wallet credited',
-      `We couldn't deliver your ${meal_type} on ${date}. ₹${price} has been added to your wallet.`,
-      'system'
+      `We couldn't deliver your ${data.meal_type} on ${data.date}. ₹${mealPrice} has been added to your wallet.`
     );
-    const user = await db('users').where({ id: user_id }).select('email', 'name').first();
-    if (user) await sendDeliveryFailureNotice({ to: user.email, name: user.name, meal_type, date, credited_amount: price });
+    const user = await db('users').where({ id: data.user_id }).select('email', 'name').first();
+    if (user) await sendDeliveryFailureNotice({ to: user.email, name: user.name, meal_type: data.meal_type, date: data.date, credited_amount: mealPrice });
   });
 
   // ── Skip approved → wallet credit ──────────────────────────────────────────
   await boss.work(DomainEvent.MEAL_SKIPPED, async (job: any) => {
-    const { meal_cell_id, user_id, subscription_id, meal_type, date, is_grace_skip, is_holiday_skip } = job.data;
+    const data = job.data;
     // Credit wallet for grace skips OR holiday skips
-    if (is_grace_skip || is_holiday_skip) {
-      const price = await getMealPrice(meal_type);
-      await creditSkip(user_id, meal_cell_id, subscription_id, meal_type, date, price);
+    if (data.is_grace_skip || data.is_holiday_skip) {
+      const mealPrice = await getMealPrice(data.meal_type, data.subscription_id, data.date);
+      await creditSkip(data.user_id, data.meal_cell_id, data.subscription_id, data.meal_type, data.date, mealPrice);
     }
   });
 
@@ -169,9 +188,9 @@ export async function startJobWorkers(): Promise<void> {
       await debitWalletAtCheckout(user_id, subscription_id, wallet_applied, payment_id);
     }
     await sendNotification(user_id,
+      NotificationType.SYSTEM,
       'Plan confirmed!',
-      'Your subscription is active. Check your meal schedule.',
-      'system'
+      'Your subscription is active. Check your meal schedule.'
     );
     // Unlock 30-day plan if this is user's first completed subscription
     await boss.send('plan.unlock-check', { user_id });
@@ -186,13 +205,22 @@ export async function startJobWorkers(): Promise<void> {
         .where({ referred_id: user_id, status: 'pending' })
         .first();
       if (referral) {
+        // Integrity Guard: Block Referral Loops (A -> B -> A)
+        const isLoop = await db('referrals')
+          .where({ referrer_id: user_id, referred_id: referral.referrer_id })
+          .first();
+        
+        if (isLoop) {
+          console.error(`[Fraud] Blocked referral loop reward for users ${user_id} and ${referral.referrer_id}`);
+          return;
+        }
+
         const settings = await db('app_settings').where({ id: 1 }).first();
         const rewardPaise = settings?.referral_reward_amount ?? 5000;
-        const rewardRupees = Math.round(rewardPaise / 100);
-        if (rewardRupees > 0) {
+        if (rewardPaise > 0) {
           await Promise.all([
-            creditReferralReward(referral.referrer_id, referral.id, rewardRupees, 'referrer'),
-            creditReferralReward(user_id, referral.id, rewardRupees, 'referee'),
+            creditReferralReward(referral.referrer_id, referral.id, rewardPaise, 'referrer'),
+            creditReferralReward(user_id, referral.id, rewardPaise, 'referee'),
           ]);
           await db('referrals').where({ id: referral.id }).update({
             status: 'completed',
@@ -201,17 +229,26 @@ export async function startJobWorkers(): Promise<void> {
           // Notify referrer
           await sendNotification(
             referral.referrer_id,
+            NotificationType.PROMO,
             'Referral reward earned!',
-            `Your friend joined TiffinBox and placed their first order. ₹${rewardRupees} added to your wallet!`,
-            'offer'
+            `Your friend joined TiffinBox and placed their first order. ₹${rewardPaise/100} added to your wallet!`
           );
         }
       }
     }
-    // Increment promo used_count if a promo was applied
+    // Increment promo used_count if a promo was applied (with Failsafe Concurrency Guard)
     const subForPromo = await db('subscriptions').where({ id: subscription_id }).select('promo_code').first();
     if (subForPromo?.promo_code) {
-      await db('offers').where({ code: subForPromo.promo_code }).increment('used_count', 1);
+      const updated = await db('offers')
+        .where({ code: subForPromo.promo_code.toUpperCase() })
+        .where(function() {
+          this.whereNull('usage_limit').orWhereRaw('used_count < usage_limit');
+        })
+        .increment('used_count', 1);
+
+      if (updated === 0) {
+        console.error(`[Critical] Promo ${subForPromo.promo_code} reached limit during payment processing for sub ${subscription_id}.`);
+      }
     }
     // Send receipt email
     const [user, sub] = await Promise.all([
@@ -242,9 +279,9 @@ export async function startJobWorkers(): Promise<void> {
       .where({ id: subscription_id })
       .update({ state: 'failed_payment', updated_at: db.fn.now() });
     await sendNotification(user_id,
+      NotificationType.SYSTEM,
       'Payment failed',
-      'We couldn\'t process your payment. Please retry from your subscription page.',
-      'system'
+      'We couldn\'t process your payment. Please retry from your subscription page.'
     );
   });
 
@@ -254,9 +291,9 @@ export async function startJobWorkers(): Promise<void> {
   await boss.work(DomainEvent.DELIVERY_COMPLETED, async (job: any) => {
     const { user_id, meal_type, date } = job.data;
     await sendNotification(user_id,
+      NotificationType.DELIVERY,
       'Delivery confirmed ✓',
-      `Your ${meal_type} for ${date} has been delivered. Enjoy your meal!`,
-      'info'
+      `Your ${meal_type} for ${date} has been delivered. Enjoy your meal!`
     );
   });
 
@@ -264,9 +301,9 @@ export async function startJobWorkers(): Promise<void> {
   await boss.work(DomainEvent.PLAN_EXPIRING, async (job: any) => {
     const { user_id, end_date, subscription_id } = job.data;
     await sendNotification(user_id,
+      NotificationType.PAYMENTS,
       'Plan expiring soon',
-      `Your plan ends on ${end_date}. Renew to keep your meals coming.`,
-      'info'
+      `Your plan ends on ${end_date}. Renew to keep your meals coming.`
     );
     const [user, sub] = await Promise.all([
       db('users').where({ id: user_id }).select('email', 'name').first(),
@@ -296,7 +333,7 @@ export async function startJobWorkers(): Promise<void> {
         created_by: 'system',
       });
     }
-    await sendNotification(user_id, `${streak_days}-day streak reward!`, msg, 'info');
+    await sendNotification(user_id, NotificationType.STREAK, `${streak_days}-day streak reward!`, msg);
     const user = await db('users').where({ id: user_id }).select('email', 'name').first();
     if (user) {
       await sendStreakMilestone({
@@ -319,9 +356,9 @@ export async function startJobWorkers(): Promise<void> {
     if (!request) return;
     await sendNotification(
       request.user_id,
+      NotificationType.SYSTEM,
       'Skip request received',
-      `Your skip request for ${request.meal_type} on ${request.date} is pending admin approval.`,
-      'info'
+      `Your skip request for ${request.meal_type} on ${request.date} is pending admin approval.`
     );
   });
 
@@ -338,21 +375,138 @@ export async function startJobWorkers(): Promise<void> {
     if (parseInt((count as any).cnt, 10) >= 1) {
       await db('users').where({ id: user_id }).update({ monthly_plan_unlocked: true });
       await sendNotification(user_id,
+        NotificationType.OFFER,
         "You've unlocked Monthly — Best Value!",
-        'You completed your first plan. The 30-day plan is now available with our best discount.',
-        'offer'
+        'You completed your first plan. The 30-day plan is now available with our best discount.'
       );
     }
   });
 
-  console.log('All job workers registered');
-}
+  // ── Nightly: Housekeeping (Cleanup old drafts & expired OTPs) ──────────────
+  await boss.schedule('system.cleanup', '0 3 * * *', {}, { tz: 'Asia/Kolkata' });
+  await boss.work('system.cleanup', async () => {
+    // 1. Abandoned Cart Recovery (Notify users with drafts > 45 mins old)
+    const candidates = await db('subscriptions')
+      .where({ state: 'draft' })
+      .whereNull('abandonment_alert_sent_at')
+      .whereRaw("created_at < NOW() - INTERVAL '45 minutes'")
+      .whereRaw("created_at > NOW() - INTERVAL '1 hour'");
 
-async function sendNotification(
-  user_id: number,
-  title: string,
-  message: string,
-  type: 'info' | 'offer' | 'system' | 'greeting'
-): Promise<void> {
-  await db('notifications').insert({ user_id, title, message, type });
+    for (const sub of candidates) {
+      const person = await db('persons').where({ id: sub.person_id }).first();
+      await sendNotification(
+        sub.user_id,
+        NotificationType.OFFER,
+        "Ready to confirm? 🍱",
+        `Your plan for ${person?.name || 'your family'} is waiting. Complete checkout now to start healthy meals!`
+      );
+      await db('subscriptions').where({ id: sub.id }).update({ abandonment_alert_sent_at: db.fn.now() });
+    }
+
+    // 2. Prune old drafts (1 hour old)
+    const oldDrafts = await db('subscriptions')
+      .where({ state: 'draft' })
+      .whereRaw("created_at < NOW() - INTERVAL '60 minutes'");
+    
+    if (oldDrafts.length > 0) {
+      await db('subscriptions').whereIn('id', oldDrafts.map(d => d.id)).delete();
+    }
+    
+    // 3. Delete expired delivery OTPs
+    await db('delivery_otps').where('expires_at', '<', db.fn.now()).delete();
+    
+    console.log(`[cleanup] Pruned ${oldDrafts.length} draft subscriptions and expired OTPs.`);
+
+    // 3. Win-back Lapsed Users (Inactive for 7 days)
+    const lapsedUsers = await db('users')
+      .whereNull('winback_sent_at')
+      .whereNotExists(function() {
+        this.select('*').from('subscriptions')
+          .whereRaw('subscriptions.user_id = users.id')
+          .whereIn('state', ['active', 'paused']);
+      })
+      .whereRaw("updated_at < CURRENT_DATE - INTERVAL '7 days'")
+      .limit(50);
+
+    for (const user of lapsedUsers) {
+      // In a real app, we'd send an email here.
+      // await sendWinbackEmail({ to: user.email, name: user.name });
+      await db('users').where({ id: user.id }).update({ winback_sent_at: db.fn.now() });
+      await sendNotification(user.id, NotificationType.PROMO, 'We miss you! 🍱', 'Come back for a special 15% discount on your next plan. Use code MISSYOU15.');
+    }
+  });
+
+  // ── Sync: Re-map meal items when person preferences change ──────────────────
+  await boss.work(DomainEvent.PERSON_UPDATED, async (job: any) => {
+    const { person_id } = job.data;
+    const person = await db('persons').where({ id: person_id }).first();
+    if (!person) return;
+
+    // Find all future scheduled/preparing meals for this person
+    const cells = await db('meal_cells as mc')
+      .join('subscriptions as s', 's.id', 'mc.subscription_id')
+      .where({ 's.person_id': person_id })
+      .whereIn('mc.delivery_status', ['scheduled', 'preparing'])
+      .where('mc.date', '>=', db.raw('CURRENT_DATE'))
+      .select('mc.id', 'mc.date', 'mc.meal_type', 'mc.item_id', 'mc.subscription_id');
+
+    if (cells.length === 0) return;
+
+    // Pre-calculate default menu map
+    const defaultMenu = await db('default_menu');
+    const alternatives = await db('default_menu_alternatives');
+    const allItems = await db('meal_items').where({ is_available: true });
+
+    const settings = await db('app_settings').where({ id: 1 }).first();
+    const { getWeekNumberIST } = await import('../lib/time');
+    const updates: { id: number; item_id: number }[] = [];
+
+    for (const cell of cells) {
+      const dow = new Date(cell.date).getDay();
+      const weekNum = getWeekNumberIST(cell.date);
+      // Variety logic: different rotation indexes for different weeks
+      const baseRotation = settings?.menu_rotation_index ?? 0;
+      const weekRotation = weekNum % 4; // Cycles through 4 weekly variations
+      
+      const effectiveDow = (dow + baseRotation + weekRotation) % 7;
+      
+      const defaultRow = defaultMenu.find(m => m.weekday === effectiveDow && m.meal_type === cell.meal_type);
+      if (!defaultRow) continue;
+
+      // Pool of possible items for this slot (default + alternatives)
+      const possibleIds = [
+        defaultRow.item_id,
+        ...alternatives.filter(a => a.default_menu_id === defaultRow.id).map(a => a.item_id)
+      ];
+      const items = allItems.filter(i => possibleIds.includes(i.id));
+
+      // Pick best fit
+      let bestId = defaultRow.item_id;
+      if (person.is_vegan) {
+        bestId = items.find(i => i.tags?.includes('vegan'))?.id || bestId;
+      } else if (person.is_vegetarian) {
+        bestId = items.find(i => (i.tags?.includes('veg') || i.tags?.includes('vegan')))?.id || bestId;
+      } else {
+        // Non-veg person: preferred default or meat item
+        bestId = items.find(i => !i.tags?.includes('veg') && !i.tags?.includes('vegan'))?.id || defaultRow.item_id;
+      }
+
+      // Batch update logic
+      if (bestId !== cell.item_id) {
+        updates.push({ id: cell.id, item_id: bestId });
+      }
+    }
+
+    if (updates.length > 0) {
+      // Use efficient batch update (one transaction)
+      await db.transaction(async trx => {
+        for (const update of updates) {
+          await trx('meal_cells').where({ id: update.id }).update({ item_id: update.item_id, updated_at: db.fn.now() });
+        }
+      });
+    }
+    console.log(`[sync] Re-mapped ${cells.length} meals for person ${person_id}`);
+  });
+
+  console.log('All job workers registered');
 }
