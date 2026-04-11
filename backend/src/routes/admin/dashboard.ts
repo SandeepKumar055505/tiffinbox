@@ -10,10 +10,19 @@ router.get('/', requireAdmin, async (_req, res) => {
   const today = todayIST();
   const weekStartStr = weekStartIST(today);
 
-  const [stats] = await db.raw(`
-      (SELECT COUNT(*) FROM users WHERE DATE(created_at) = ?) AS new_users_today,
-      (SELECT COALESCE(AVG(rating), 0) FROM meal_ratings) AS avg_rating
+  // Core stats — single round-trip with correct SELECT + IST-aware date comparisons
+  // Params: [today, today, today, today, today, weekStartStr, today] = 7
+  const statsResult = await db.raw(`
+    SELECT
+      (SELECT COUNT(*) FROM users WHERE DATE(created_at AT TIME ZONE 'Asia/Kolkata') = ?) AS new_users_today,
+      (SELECT COUNT(*) FROM subscriptions WHERE state = 'active') AS active_subscriptions,
+      (SELECT COUNT(*) FROM meal_cells WHERE date = ? AND delivery_status = 'delivered') AS meals_delivered_today,
+      (SELECT COUNT(*) FROM meal_cells WHERE date = ? AND delivery_status = 'failed') AS meals_failed_today,
+      (SELECT COALESCE(SUM(amount), 0) FROM ledger_entries WHERE type = 'subscription_payment' AND DATE(created_at AT TIME ZONE 'Asia/Kolkata') = ?) AS revenue_today,
+      (SELECT COALESCE(SUM(amount), 0) FROM ledger_entries WHERE type = 'subscription_payment' AND DATE(created_at AT TIME ZONE 'Asia/Kolkata') >= ?) AS revenue_this_week,
+      (SELECT COALESCE(AVG(rating), 0) FROM meal_ratings WHERE DATE(created_at AT TIME ZONE 'Asia/Kolkata') >= ?) AS avg_rating
   `, [today, today, today, today, today, weekStartStr, today]);
+  const stats = statsResult.rows[0];
 
   // Prep list breakdown
   const prepList = await db('meal_cells as mc')
@@ -25,18 +34,24 @@ router.get('/', requireAdmin, async (_req, res) => {
     .groupBy('mi.name', 'mc.meal_type')
     .orderBy('mc.meal_type');
 
-  // Job health info (from audit logs or job records)
+  // Job health from audit logs
   const health = await db('audit_logs')
     .whereIn('action', ['jobs.streak_update', 'system.cleanup'])
     .orderBy('created_at', 'desc')
     .limit(2);
 
-  // Advanced Job Health: count actionable failed pgboss jobs (last 24 hours)
-  const failedJobsCount = await db('pgboss.job')
-    .where('state', 'failed')
-    .where('createdat', '>', db.raw("NOW() - INTERVAL '24 hours'"))
-    .count('id as cnt')
-    .first();
+  // Failed pg-boss jobs — wrapped in try/catch since pgboss schema may not exist yet
+  let failedJobsCount = 0;
+  try {
+    const result = await db('pgboss.job')
+      .where('state', 'failed')
+      .where('createdat', '>', db.raw("NOW() - INTERVAL '24 hours'"))
+      .count('id as cnt')
+      .first();
+    failedJobsCount = parseInt((result as any)?.cnt ?? '0', 10);
+  } catch {
+    // pg-boss schema not initialized — non-critical
+  }
 
   // Operational Hotspots (Friction)
   const hotspots = await db('meal_cells as mc')
@@ -71,23 +86,28 @@ router.get('/', requireAdmin, async (_req, res) => {
     .having(db.raw('AVG(mr.rating) < 3.0'))
     .orderBy('avg_rating', 'asc');
 
-  // Stale Meals: Count of meals in non-final status for > 4 hours
-  const staleCount = await db('meal_cells')
-    .whereIn('delivery_status', ['preparing', 'out_for_delivery'])
-    .where('last_status_change_at', '<', db.raw("NOW() - INTERVAL '4 hours'"))
-    .count('id as cnt')
-    .first();
+  // Stale Meals: meals stuck in-progress for > 4 hours
+  // last_status_change_at added in migration 036 — safe fallback if column missing
+  let staleMealsCount = 0;
+  try {
+    const staleResult = await db('meal_cells')
+      .whereIn('delivery_status', ['preparing', 'out_for_delivery'])
+      .where('last_status_change_at', '<', db.raw("NOW() - INTERVAL '4 hours'"))
+      .count('id as cnt')
+      .first();
+    staleMealsCount = parseInt((staleResult as any)?.cnt ?? '0', 10);
+  } catch {
+    // Column may not exist yet — non-critical
+  }
 
   // Operation Pulse: Last 20 system events
   const pulse = await db('audit_logs as al')
     .leftJoin('admins as a', 'a.id', 'al.admin_id')
-    .leftJoin('users as u', 'u.id', 'al.admin_id') // For user-driven events if logged there
     .select('al.*', 'a.name as admin_name')
     .orderBy('al.created_at', 'desc')
     .limit(20);
 
-  // Ω.9: Opportunity Pulse (Predictive)
-  // 1. Expiring VIPs (within 48h)
+  // Opportunity Pulse: Expiring subscriptions (within 48h)
   const expiringVIPs = await db('subscriptions as s')
     .join('users as u', 'u.id', 's.user_id')
     .where('s.state', 'active')
@@ -95,7 +115,7 @@ router.get('/', requireAdmin, async (_req, res) => {
     .select('u.name', 's.end_date', 's.id')
     .limit(5);
 
-  // 2. High Friction Users (3+ failures in last 3 days)
+  // High Friction Users (3+ failures in last 3 days)
   const bleedingUsers = await db('meal_cells as mc')
     .join('subscriptions as s', 's.id', 'mc.subscription_id')
     .join('users as u', 'u.id', 's.user_id')
@@ -107,14 +127,31 @@ router.get('/', requireAdmin, async (_req, res) => {
     .having(db.raw('COUNT(mc.id) > 2'))
     .limit(5);
 
-  res.json({ 
-    ...stats.rows[0], 
-    prep_list: prepList, 
+  // Achievement quanta — person_streaks may not exist yet on older DBs
+  let achievementQuanta = { elite_30: 0, pillar_14: 0, spark_7: 0 };
+  try {
+    const [elite, pillar, spark] = await Promise.all([
+      db('person_streaks').where('current_streak', '>=', 30).count('id as cnt').first(),
+      db('person_streaks').where('current_streak', '>=', 14).count('id as cnt').first(),
+      db('person_streaks').where('current_streak', '>=', 7).count('id as cnt').first(),
+    ]);
+    achievementQuanta = {
+      elite_30: parseInt((elite as any)?.cnt ?? '0', 10),
+      pillar_14: parseInt((pillar as any)?.cnt ?? '0', 10),
+      spark_7: parseInt((spark as any)?.cnt ?? '0', 10),
+    };
+  } catch {
+    // person_streaks table may not exist yet — non-critical
+  }
+
+  res.json({
+    ...stats,
+    prep_list: prepList,
     system_health: health.map(h => ({ action: h.action, last_run: h.created_at })),
-    failed_jobs: parseInt((failedJobsCount as any)?.cnt ?? '0', 10),
+    failed_jobs: failedJobsCount,
     bulk_subscribers: bulkSubscribersCount,
     low_ratings: lowRatings,
-    stale_meals_count: parseInt((staleCount as any)?.cnt ?? '0', 10),
+    stale_meals_count: staleMealsCount,
     hotspots,
     pulse: pulse.map(p => ({
       ...p,
@@ -124,24 +161,24 @@ router.get('/', requireAdmin, async (_req, res) => {
       ...expiringVIPs.map(v => ({ type: 'renewal', message: `${v.name}'s plan expires on ${v.end_date}`, target: `/admin/subscriptions/${v.id}` })),
       ...bleedingUsers.map(b => ({ type: 'friction', message: `${b.name} encountered ${b.failures} delivery failures`, target: `/admin/users/${b.id}` }))
     ],
-    achievement_quanta: {
-      elite_30: parseInt((await db('person_streaks').where('current_streak', '>=', 30).count('id as cnt').first() as any)?.cnt ?? '0', 10),
-      pillar_14: parseInt((await db('person_streaks').where('current_streak', '>=', 14).count('id as cnt').first() as any)?.cnt ?? '0', 10),
-      spark_7: parseInt((await db('person_streaks').where('current_streak', '>=', 7).count('id as cnt').first() as any)?.cnt ?? '0', 10),
-    }
+    achievement_quanta: achievementQuanta,
   });
 });
 
 // GET /api/admin/dashboard/stale-meals — detailed list of meals stuck in progress
-router.get('/stale-meals', requireAdmin, async (req, res) => {
-  const stale = await db('meal_cells as mc')
-    .join('subscriptions as s', 's.id', 'mc.subscription_id')
-    .join('users as u', 'u.id', 's.user_id')
-    .whereIn('mc.delivery_status', ['preparing', 'out_for_delivery'])
-    .where('mc.last_status_change_at', '<', db.raw("NOW() - INTERVAL '4 hours'"))
-    .select('mc.*', 'u.name as user_name', 'u.delivery_address')
-    .orderBy('mc.last_status_change_at', 'asc');
-  res.json(stale);
+router.get('/stale-meals', requireAdmin, async (_req, res) => {
+  try {
+    const stale = await db('meal_cells as mc')
+      .join('subscriptions as s', 's.id', 'mc.subscription_id')
+      .join('users as u', 'u.id', 's.user_id')
+      .whereIn('mc.delivery_status', ['preparing', 'out_for_delivery'])
+      .where('mc.last_status_change_at', '<', db.raw("NOW() - INTERVAL '4 hours'"))
+      .select('mc.*', 'u.name as user_name', 'u.delivery_address')
+      .orderBy('mc.last_status_change_at', 'asc');
+    res.json(stale);
+  } catch {
+    res.json([]); // Column may not exist yet
+  }
 });
 
 // GET /api/admin/delivery/today — daily delivery schedule
@@ -165,7 +202,6 @@ router.get('/delivery/today', requireAdmin, async (req, res) => {
       's.id as subscription_id'
     );
 
-  // Group by meal_type
   const grouped: Record<string, any[]> = { breakfast: [], lunch: [], dinner: [] };
   for (const row of rows) grouped[row.meal_type]?.push(row);
 
@@ -210,12 +246,11 @@ router.patch('/delivery/cells/:id', requireAdmin, async (req, res) => {
       date: cell.date,
     });
   } else if (status === 'out_for_delivery') {
-    // Generate delivery OTP when meal goes out
     await db('meal_cells').where({ id: req.params.id }).update({ delivery_status: status, updated_at: db.fn.now() });
     const settings = await db('app_settings').where({ id: 1 }).first();
     if (settings?.delivery_otp_enabled !== false) {
-      const otp = String(Math.floor(1000 + Math.random() * 9000)); // 4-digit
-      const expiresAt = new Date(Date.now() + 120 * 60 * 1000);   // 2 hours
+      const otp = String(Math.floor(1000 + Math.random() * 9000));
+      const expiresAt = new Date(Date.now() + 120 * 60 * 1000);
       await db('delivery_otps')
         .insert({ meal_cell_id: cell.id, otp, expires_at: expiresAt })
         .onConflict('meal_cell_id').merge({ otp, attempts: 0, verified: false, expires_at: expiresAt });
@@ -227,7 +262,6 @@ router.patch('/delivery/cells/:id', requireAdmin, async (req, res) => {
     });
   }
 
-  // Audit log
   await db('audit_logs').insert({
     admin_id: req.adminId,
     action: `delivery.${status}${status === 'failed' || status === 'delivered' ? '_event_emitted' : ''}`,
@@ -239,13 +273,12 @@ router.patch('/delivery/cells/:id', requireAdmin, async (req, res) => {
   res.status(202).json({ message: 'Request accepted', cell_id: cell.id, status });
 });
 
-// POST /api/admin/delivery/bulk-deliver — mark all today's scheduled as delivered
+// POST /api/admin/delivery/bulk-deliver — mark all today's out_for_delivery as delivered
 router.post('/delivery/bulk-deliver', requireAdmin, async (req, res) => {
   const { todayIST } = await import('../../lib/time');
   const date = req.body.date || todayIST();
-  const meal_type = req.body.meal_type; // optional filter
+  const meal_type = req.body.meal_type;
 
-  // Select cells first so we can emit events per cell
   const query = db('meal_cells as mc')
     .join('subscriptions as s', 's.id', 'mc.subscription_id')
     .where({ 'mc.date': date, 'mc.is_included': true, 'mc.delivery_status': 'out_for_delivery' });
@@ -257,11 +290,9 @@ router.post('/delivery/bulk-deliver', requireAdmin, async (req, res) => {
     return res.json({ updated: 0, date, meal_type });
   }
 
-  // Bulk update status
   const cellIds = cells.map((c: any) => c.id);
   await db('meal_cells').whereIn('id', cellIds).update({ delivery_status: 'delivered', updated_at: db.fn.now() });
 
-  // Emit DELIVERY_COMPLETED for each cell
   const { boss } = await import('../../jobs/client');
   const { DomainEvent } = await import('../../jobs/events');
   for (const cell of cells) {
@@ -273,7 +304,6 @@ router.post('/delivery/bulk-deliver', requireAdmin, async (req, res) => {
     });
   }
 
-  // Audit log
   await db('audit_logs').insert({
     admin_id: req.adminId,
     action: 'delivery.bulk_deliver',
@@ -292,11 +322,9 @@ router.post('/delivery/holiday-skip', requireAdmin, async (req, res) => {
     return res.status(422).json({ error: 'date required (YYYY-MM-DD)' });
   }
 
-  // Verify the date is a registered holiday
   const holiday = await db('holidays').where({ date, is_active: true }).first();
   if (!holiday) return res.status(409).json({ error: 'No active holiday registered for this date. Add it in Holidays first.' });
 
-  // Select cells still scheduled OR already skipped by user (upgrade user-skip to holiday-skip)
   const cells = await db('meal_cells as mc')
     .join('subscriptions as s', 's.id', 'mc.subscription_id')
     .where({ 'mc.date': date, 'mc.is_included': true })
@@ -314,7 +342,6 @@ router.post('/delivery/holiday-skip', requireAdmin, async (req, res) => {
     updated_at: db.fn.now(),
   });
 
-  // Emit MEAL_SKIPPED for each cell
   const { boss } = await import('../../jobs/client');
   const { DomainEvent } = await import('../../jobs/events');
   for (const cell of cells) {
@@ -325,7 +352,7 @@ router.post('/delivery/holiday-skip', requireAdmin, async (req, res) => {
       meal_type: cell.meal_type,
       date: cell.date,
       is_grace_skip: false,
-      is_holiday_skip: true, // This ensures skip_credit is applied regardless of weekly limit
+      is_holiday_skip: true,
     });
   }
 
@@ -346,7 +373,7 @@ router.post('/delivery/cells/:id/refresh-otp', requireAdmin, async (req, res) =>
   if (!cell) return res.status(404).json({ error: 'Meal cell not found' });
 
   const otp = String(Math.floor(1000 + Math.random() * 9000));
-  const expiresAt = new Date(Date.now() + 120 * 60 * 1000); // 2 hours
+  const expiresAt = new Date(Date.now() + 120 * 60 * 1000);
 
   await db('delivery_otps')
     .insert({ meal_cell_id: cell.id, otp, expires_at: expiresAt })
