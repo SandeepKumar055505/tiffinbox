@@ -9,6 +9,8 @@ const STATUS_COLORS: Record<string, string> = {
   delivered: 'bg-teal-500/20 text-teal-400',
   failed: 'bg-red-500/20 text-red-400',
   skipped: 'bg-gray-800/50 t-text-secondary',
+  skipped_by_admin: 'bg-gray-800/50 text-gray-400',
+  skipped_holiday: 'bg-purple-500/20 text-purple-400',
 };
 
 const NEXT_STATUS: Record<string, string> = {
@@ -16,6 +18,8 @@ const NEXT_STATUS: Record<string, string> = {
   preparing: 'out_for_delivery',
   out_for_delivery: 'delivered',
 };
+
+const TERMINAL_STATUSES = new Set(['delivered', 'failed', 'skipped', 'skipped_by_admin', 'skipped_holiday']);
 
 export default function AdminDeliveryPage() {
   const qc = useQueryClient();
@@ -115,7 +119,7 @@ export default function AdminDeliveryPage() {
                   → {NEXT_STATUS[cell.delivery_status]}
                 </button>
               )}
-              {cell.delivery_status !== 'failed' && cell.delivery_status !== 'delivered' && (
+              {!TERMINAL_STATUSES.has(cell.delivery_status) && (
                 <button
                   onClick={() => updateStatus.mutate({ id: cell.cell_id, status: 'failed' })}
                   className="text-xs bg-red-500/20 text-red-400 px-2 py-1 rounded hover:bg-red-500/30 transition-colors"

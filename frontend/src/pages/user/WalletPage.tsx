@@ -5,6 +5,17 @@ import { wallet as walletApi } from '../../services/api';
 import { LedgerEntry } from '../../types';
 import { formatRupees } from '../../utils/pricing';
 
+const ENTRY_TYPE_BADGE: Record<string, { label: string; className: string }> = {
+  skip_credit:              { label: 'Skip Refund',      className: 'bg-blue-500/10 text-blue-400' },
+  delivery_failure_credit:  { label: 'Delivery Failed',  className: 'bg-red-500/10 text-red-400' },
+  checkout_debit:           { label: 'Order',            className: 'bg-orange-500/10 text-orange-400' },
+  signup_bonus:             { label: 'Welcome Bonus',    className: 'bg-accent/10 text-accent' },
+  referral_credit:          { label: 'Referral Reward',  className: 'bg-purple-500/10 text-purple-400' },
+  streak_reward:            { label: 'Streak Reward',    className: 'bg-teal-500/10 text-teal-400' },
+  admin_credit:             { label: 'Admin Credit',     className: 'bg-green-500/10 text-green-400' },
+  admin_debit:              { label: 'Admin Debit',      className: 'bg-gray-500/10 text-gray-400' },
+};
+
 export default function WalletPage() {
   const { data: balance } = useQuery({ queryKey: ['wallet-balance'], queryFn: () => walletApi.balance().then(r => r.data) });
   const { data: entries = [] } = useQuery<LedgerEntry[]>({ queryKey: ['wallet-entries'], queryFn: () => walletApi.entries().then(r => r.data) });
@@ -13,7 +24,7 @@ export default function WalletPage() {
     <div className="min-h-screen bg-bg-primary relative overflow-hidden">
       {/* Mesh Accents */}
       <div className="absolute top-[-10%] -left-20 w-[40rem] h-[40rem] bg-accent/10 blur-[150px] rounded-full animate-mesh" />
-      
+
       <div className="max-w-2xl mx-auto px-6 space-y-8 relative z-10">
         {/* Apple Music Header */}
         <header className="pt-6 pb-3 border-b border-border/10 mb-6">
@@ -47,13 +58,20 @@ export default function WalletPage() {
             <div className="surface-glass rounded-2xl overflow-hidden divide-y divide-border/10 border border-white/5 shadow-sm">
               {entries.map(entry => (
                 <div key={entry.id} className="p-4 sm:p-5 flex items-center justify-between hover:bg-bg-secondary/40 transition-colors">
-                  <div className="flex-1 min-w-0 space-y-1">
+                  <div className="flex-1 min-w-0 space-y-1.5">
                     <p className="text-body-sm !text-base font-bold truncate">
                       {entry.description}
                     </p>
-                    <p className="text-label-caps !text-[10px] opacity-40 uppercase tracking-widest">
-                       {new Date(entry.created_at).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' })} • #{entry.id}
-                    </p>
+                    <div className="flex items-center gap-2">
+                      {entry.entry_type && ENTRY_TYPE_BADGE[entry.entry_type] && (
+                        <span className={`text-[9px] font-black uppercase tracking-widest px-1.5 py-0.5 rounded ${ENTRY_TYPE_BADGE[entry.entry_type].className}`}>
+                          {ENTRY_TYPE_BADGE[entry.entry_type].label}
+                        </span>
+                      )}
+                      <p className="text-label-caps !text-[10px] opacity-40 uppercase tracking-widest">
+                        {new Date(entry.created_at).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' })} • #{entry.id}
+                      </p>
+                    </div>
                   </div>
                   <span className={`text-h3 !text-lg sm:!text-xl font-black shrink-0 ${entry.direction === 'credit' ? 'text-accent' : 'opacity-80'}`}>
                     {entry.direction === 'credit' ? '+' : '−'}{formatRupees(entry.amount)}

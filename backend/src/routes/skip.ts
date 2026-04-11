@@ -5,6 +5,7 @@ import { requireUser } from '../middleware/auth';
 import { validate } from '../middleware/validate';
 import { canSkipMeal, hasReachedDayOffLimit } from '../services/policyEngine';
 import { emitEvent, DomainEvent } from '../jobs/events';
+import { weekStartIST, weekEndIST } from '../lib/time';
 
 const router = Router();
 
@@ -46,7 +47,21 @@ router.post(
     }
 
     if (eligibility.type === 'auto') {
-      // Auto-approve: mark skipped, emit event for wallet credit
+      // Determine if this is a grace skip (eligible for wallet credit)
+      const settings = await db('app_settings').where({ id: 1 }).first();
+      const graceLimit = settings?.max_grace_skips_per_week ?? 2;
+      const wkStart = weekStartIST(cell.date);
+      const wkEnd = weekEndIST(cell.date);
+
+      const graceSkipsUsed = await db('ledger_entries')
+        .where({ user_id: cell.user_id, entry_type: 'skip_credit' })
+        .whereBetween('created_at', [wkStart, wkEnd])
+        .count('id as cnt')
+        .first();
+      const usedCount = Number(graceSkipsUsed?.cnt ?? 0);
+      const isGraceSkip = usedCount < graceLimit;
+
+      // Auto-approve: mark skipped, emit event
       await db('meal_cells').where({ id: cell.id }).update({
         is_included: false,
         delivery_status: 'skipped',
@@ -70,9 +85,13 @@ router.post(
         subscription_id: cell.subscription_id,
         meal_type: cell.meal_type,
         date: cell.date,
+        is_grace_skip: isGraceSkip,
       });
 
-      return res.json({ status: 'auto', message: 'Skip applied. Wallet will be credited shortly.' });
+      const message = isGraceSkip
+        ? 'Skip applied. Wallet will be credited shortly.'
+        : 'Skip applied. No wallet credit (weekly grace skip limit reached).';
+      return res.json({ status: 'auto', is_grace_skip: isGraceSkip, message });
     }
 
     // Post-cutoff: create pending skip request for admin

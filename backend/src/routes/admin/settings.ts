@@ -25,7 +25,15 @@ router.patch(
     lunch_cutoff_hour: z.number().int().min(0).max(23).optional(),
     dinner_cutoff_hour: z.number().int().min(0).max(23).optional(),
     max_skip_days_per_week: z.number().int().min(0).max(7).optional(),
+    max_grace_skips_per_week: z.number().int().min(0).max(21).optional(),
     max_persons_per_user: z.number().int().min(1).max(50).optional(),
+    signup_wallet_credit: z.number().int().min(0).optional(),
+    referral_reward_amount: z.number().int().min(0).optional(),
+    breakfast_enabled: z.boolean().optional(),
+    lunch_enabled: z.boolean().optional(),
+    dinner_enabled: z.boolean().optional(),
+    delivery_otp_enabled: z.boolean().optional(),
+    ratings_enabled: z.boolean().optional(),
   })),
   async (req, res) => {
     const before = await db('app_settings').where({ id: 1 }).first();

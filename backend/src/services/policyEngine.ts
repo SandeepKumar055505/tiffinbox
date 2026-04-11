@@ -1,8 +1,12 @@
 import { db } from '../config/db';
+import { todayIST, currentHourIST, isTodayIST, isTomorrowIST, isPastIST } from '../lib/time';
 
 /**
  * Central policy engine — all business rule decisions live here.
  * No business logic scattered across routes.
+ *
+ * All time checks use IST helpers — Render servers run UTC,
+ * so raw new Date() would give wrong cutoff results.
  */
 
 export interface SkipEligibility {
@@ -14,6 +18,11 @@ export interface SkipEligibility {
 /**
  * Can a meal be skipped right now?
  * Checks cutoff time using per-subscription overrides or app defaults.
+ *
+ * Cutoff logic (all times IST):
+ *   - Breakfast: cutoff is previous day at cutoffHour
+ *   - Lunch/Dinner: cutoff is previous day at cutoffHour
+ *   - Admin can override per-subscription
  */
 export async function canSkipMeal(
   subscription_id: number,
@@ -26,20 +35,35 @@ export async function canSkipMeal(
     return { allowed: false, type: 'denied', reason: 'Subscription is not active' };
   }
 
+  // Can't skip past meals
+  if (isPastIST(meal_date)) {
+    return { allowed: false, type: 'denied', reason: 'Cannot skip past meals' };
+  }
+
   const settings = await db('app_settings').where({ id: 1 }).first();
   const cutoffHour: number = sub[`${meal_type}_cutoff_hour`] ?? settings[`${meal_type}_cutoff_hour`];
 
-  const now = new Date();
-  const mealDate = new Date(meal_date);
-  const cutoff = new Date(mealDate);
+  // Determine if we're before cutoff (IST)
+  const today = todayIST();
+  const nowHour = currentHourIST();
 
-  if (meal_type === 'breakfast') {
-    // Cutoff is previous day at cutoffHour
-    cutoff.setDate(cutoff.getDate() - 1);
+  let isBeforeCutoff = false;
+
+  if (meal_date > today) {
+    // Meal is in the future — check if cutoff for "previous day" has passed
+    if (isTomorrowIST(meal_date)) {
+      // Meal is tomorrow — cutoff is today at cutoffHour IST
+      isBeforeCutoff = nowHour < cutoffHour;
+    } else {
+      // Meal is 2+ days away — always before cutoff
+      isBeforeCutoff = true;
+    }
+  } else if (isTodayIST(meal_date)) {
+    // Meal is today — cutoff was yesterday, so always past cutoff
+    isBeforeCutoff = false;
   }
-  cutoff.setHours(cutoffHour, 0, 0, 0);
 
-  if (now < cutoff) {
+  if (isBeforeCutoff) {
     return { allowed: true, type: 'auto' };
   }
 
@@ -70,6 +94,8 @@ export async function canAccessMonthlyPlan(user_id: number): Promise<boolean> {
 
 /**
  * Check if complete day-off limit is reached for the week containing meal_date.
+ * Uses date string math — no timezone-dependent Date objects needed here
+ * since meal_date and DB dates are both YYYY-MM-DD strings.
  */
 export async function hasReachedDayOffLimit(
   subscription_id: number,
@@ -78,25 +104,28 @@ export async function hasReachedDayOffLimit(
   const settings = await db('app_settings').where({ id: 1 }).first();
   const limit: number = settings.max_skip_days_per_week;
 
-  // Week boundaries (Mon–Sun)
-  const d = new Date(meal_date);
-  const dayOfWeek = (d.getDay() + 6) % 7; // Mon=0 ... Sun=6
-  const weekStart = new Date(d);
-  weekStart.setDate(d.getDate() - dayOfWeek);
-  weekStart.setHours(0, 0, 0, 0);
-  const weekEnd = new Date(weekStart);
-  weekEnd.setDate(weekStart.getDate() + 6);
+  // Week boundaries (Mon–Sun) using date string math
+  const d = new Date(meal_date + 'T00:00:00Z'); // force UTC parse
+  const dayOfWeek = (d.getUTCDay() + 6) % 7; // Mon=0 ... Sun=6
+  const wsDate = new Date(d);
+  wsDate.setUTCDate(d.getUTCDate() - dayOfWeek);
+  const weDate = new Date(wsDate);
+  weDate.setUTCDate(wsDate.getUTCDate() + 6);
+
+  const weekStartStr = wsDate.toISOString().split('T')[0];
+  const weekEndStr = weDate.toISOString().split('T')[0];
 
   // Count dates in this week where ALL 3 meals are skipped
   const cells = await db('meal_cells')
     .where({ subscription_id })
-    .whereBetween('date', [weekStart.toISOString().split('T')[0], weekEnd.toISOString().split('T')[0]])
+    .whereBetween('date', [weekStartStr, weekEndStr])
     .where({ is_included: false });
 
   // Group by date, count full-day-off dates
   const byDate: Record<string, number> = {};
   for (const c of cells) {
-    byDate[c.date] = (byDate[c.date] || 0) + 1;
+    const dateKey = typeof c.date === 'string' ? c.date : new Date(c.date).toISOString().split('T')[0];
+    byDate[dateKey] = (byDate[dateKey] || 0) + 1;
   }
 
   const fullDayOffs = Object.values(byDate).filter(n => n >= 3).length;

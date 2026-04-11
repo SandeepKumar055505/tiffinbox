@@ -1,14 +1,25 @@
 import { db } from '../config/db';
 import { PerDayPrice, PriceSnapshot } from '../types';
 
-// Meal base prices in whole rupees
-export const MEAL_PRICES = {
-  breakfast: 100,
-  lunch: 120,
-  dinner: 100,
-} as const;
+type MealType = 'breakfast' | 'lunch' | 'dinner';
 
-type MealType = keyof typeof MEAL_PRICES;
+/**
+ * Get meal prices from app_settings (admin-controlled).
+ * Prices are stored in paise, returned in whole rupees.
+ * Cached per request — call once per quote, not per day.
+ */
+export async function getMealPrices(): Promise<Record<MealType, number>> {
+  const settings = await db('app_settings').where({ id: 1 }).first();
+  if (!settings) {
+    // Fallback defaults if settings somehow missing
+    return { breakfast: 100, lunch: 120, dinner: 100 };
+  }
+  return {
+    breakfast: Math.round(settings.breakfast_price / 100),
+    lunch: Math.round(settings.lunch_price / 100),
+    dinner: Math.round(settings.dinner_price / 100),
+  };
+}
 
 export interface DaySelection {
   date: string;   // YYYY-MM-DD
@@ -27,13 +38,15 @@ export interface QuoteInput {
 /**
  * Calculate pricing for a subscription.
  * Per-day calculation — never average. Mixed meal days handled correctly.
+ * Reads prices from admin settings (no hardcoded values).
  */
 export async function calculateQuote(input: QuoteInput): Promise<PriceSnapshot> {
+  const mealPrices = await getMealPrices();
   const discounts = await getDiscountTable(input.plan_days);
 
   const per_day: PerDayPrice[] = input.days.map(day => {
     const meal_count = day.meals.length;
-    const base = day.meals.reduce((sum, m) => sum + MEAL_PRICES[m], 0);
+    const base = day.meals.reduce((sum, m) => sum + mealPrices[m], 0);
     const discount = meal_count > 0 ? (discounts[meal_count] ?? 0) : 0;
     return {
       date: day.date,
@@ -90,16 +103,16 @@ export function buildDateRange(
   if (week_pattern === 'weekdays') { excluded.add(0); excluded.add(6); } // no Sat/Sun
 
   const dates: string[] = [];
-  const cursor = new Date(start_date);
+  const cursor = new Date(start_date + 'T00:00:00Z'); // force UTC parse
   let delivered = 0;
 
   while (delivered < plan_days) {
-    const dow = cursor.getDay();
+    const dow = cursor.getUTCDay();
     if (!excluded.has(dow)) {
       dates.push(cursor.toISOString().split('T')[0]);
       delivered++;
     }
-    cursor.setDate(cursor.getDate() + 1);
+    cursor.setUTCDate(cursor.getUTCDate() + 1);
   }
 
   return dates;

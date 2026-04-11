@@ -10,6 +10,8 @@ const NAV = [
   { to: '/admin/skip', label: 'Skip Requests', icon: '⏭️' },
   { to: '/admin/menu', label: 'Menu', icon: '🍱' },
   { to: '/admin/support', label: 'Support', icon: '💬' },
+  { to: '/admin/holidays', label: 'Holidays', icon: '🎉' },
+  { to: '/admin/ledger', label: 'Ledger', icon: '📒' },
   { to: '/admin/settings', label: 'Settings', icon: '⚙️' },
 ];
 
@@ -33,7 +35,7 @@ export default function AdminLayout() {
           </div>
           <ThemeToggle />
         </div>
-        
+
         <div className="p-4 flex items-center gap-4">
           <div className="w-10 h-10 rounded-2xl bg-accent/20 flex items-center justify-center text-accent font-bold text-sm ring-1 ring-accent/30 shadow-sm">
             {admin?.name?.charAt(0) || 'A'}
@@ -51,10 +53,9 @@ export default function AdminLayout() {
               to={item.to}
               end={item.end}
               className={({ isActive }) =>
-                `flex items-center gap-4 px-5 py-3 rounded-2xl text-sm font-semibold transition-all duration-500 group animate-glass ${
-                  isActive 
-                    ? 'bg-accent/10 border-2 border-accent/20 text-accent shadow-glow-subtle' 
-                    : 'text-text-secondary hover:text-accent hover:bg-bg-secondary'
+                `flex items-center gap-4 px-5 py-3 rounded-2xl text-sm font-semibold transition-all duration-500 group animate-glass ${isActive
+                  ? 'bg-accent/10 border-2 border-accent/20 text-accent shadow-glow-subtle'
+                  : 'text-text-secondary hover:text-accent hover:bg-bg-secondary'
                 }`
               }
             >
@@ -65,8 +66,8 @@ export default function AdminLayout() {
         </nav>
 
         <div className="p-6 border-t border-border/10">
-          <button 
-            onClick={handleLogout} 
+          <button
+            onClick={handleLogout}
             className="w-full py-3.5 rounded-2xl text-[11px] font-bold uppercase tracking-widest text-text-muted hover:text-red-500 hover:bg-red-500/5 transition-all border border-transparent hover:border-red-500/10 shadow-sm active:scale-95"
           >
             Logout

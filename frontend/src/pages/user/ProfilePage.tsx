@@ -3,7 +3,8 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { persons as personsApi, auth as authApi } from '../../services/api';
-import { Person } from '../../types';
+import { Person, Referral } from '../../types';
+import api from '../../services/api';
 
 type SpiceLevel = 'mild' | 'medium' | 'hot';
 interface IPersonForm { name: string; is_vegetarian: boolean; is_vegan: boolean; allergies: string[]; spice_level: SpiceLevel; notes: string; }
@@ -20,6 +21,9 @@ export default function ProfilePage() {
   const [showForm, setShowForm] = useState(false);
   const [addressEdit, setAddressEdit] = useState(false);
   const [addressVal, setAddressVal] = useState(user?.delivery_address ?? '');
+  const [phoneEdit, setPhoneEdit] = useState(false);
+  const [phoneVal, setPhoneVal] = useState('');
+  const [phoneSaved, setPhoneSaved] = useState(false);
 
   const updateProfile = useMutation({
     mutationFn: (data: { wallet_auto_apply?: boolean; delivery_address?: string }) =>
@@ -28,6 +32,20 @@ export default function ProfilePage() {
       refresh();
       setAddressEdit(false);
     },
+  });
+
+  const verifyPhone = useMutation({
+    mutationFn: (phone: string) => authApi.verifyPhone(phone),
+    onSuccess: () => {
+      refresh();
+      setPhoneEdit(false);
+      setPhoneSaved(true);
+    },
+  });
+
+  const { data: myReferrals = [] } = useQuery<Referral[]>({
+    queryKey: ['my-referrals'],
+    queryFn: () => api.get('/referrals').then(r => r.data).catch(() => []),
   });
 
   const { data: persons = [] } = useQuery<Person[]>({
@@ -87,7 +105,7 @@ export default function ProfilePage() {
           <div className="flex items-center justify-between px-4 pb-2">
             <h3 className="text-label-caps !text-[12px] !opacity-50 font-bold uppercase tracking-widest flex-1">Family Members</h3>
             {!showForm && editing === null && (
-              <button 
+              <button
                 onClick={() => { setForm(BLANK); setShowForm(true); }}
                 className="text-[11px] font-bold text-accent uppercase tracking-widest hover:opacity-80"
               >
@@ -98,12 +116,12 @@ export default function ProfilePage() {
 
           {(showForm || editing !== null) && (
             <div className="animate-glass">
-              <MemberForm 
+              <MemberForm
                 form={form}
                 setForm={setForm}
                 editing={editing}
                 onCancel={() => { setShowForm(false); setEditing(null); }}
-                onSubmit={() => editing ? update.mutate({ id: editing }) : create.mutate()} 
+                onSubmit={() => editing ? update.mutate({ id: editing }) : create.mutate()}
                 loading={editing ? update.isPending : create.isPending}
                 title={editing ? 'Edit Member' : 'New Member'}
               />
@@ -140,8 +158,8 @@ export default function ProfilePage() {
             <div className="surface-glass p-8 text-center rounded-2xl opacity-60">
               <p className="text-h3 !text-lg">No Members</p>
               <p className="text-body-sm !text-sm opacity-70 mt-1">Add family members to start subscribing for them.</p>
-              <button 
-                onClick={() => setShowForm(true)} 
+              <button
+                onClick={() => setShowForm(true)}
                 className="mt-6 text-[11px] font-bold text-white bg-accent px-5 py-2.5 rounded-full uppercase tracking-widest hover:opacity-90 transition-opacity"
               >
                 Add Member
@@ -181,10 +199,10 @@ export default function ProfilePage() {
                   >
                     {updateProfile.isPending ? 'Saving...' : 'Save'}
                   </button>
-                  <button 
-                    onClick={() => setAddressEdit(false)} 
+                  <button
+                    onClick={() => setAddressEdit(false)}
                     disabled={updateProfile.isPending}
-                    className="px-6 text-[12px] font-bold text-text-muted hover:text-accent transition-colors py-2.5 rounded-xl disabled:opacity-50"
+                    className="px-6 text-[12px] font-bold text-text-muted hover:text-white transition-colors py-2.5 rounded-xl disabled:opacity-50"
                   >
                     Cancel
                   </button>
@@ -204,6 +222,123 @@ export default function ProfilePage() {
                 </div>
               </div>
             )}
+          </div>
+        </section>
+
+        {/* Phone verification */}
+        <section className="space-y-2 animate-glass" style={{ animationDelay: '0.25s' }}>
+          <div className="flex items-center justify-between px-4 pb-2">
+            <h3 className="text-label-caps !text-[12px] !opacity-50 font-bold uppercase tracking-widest">Phone Number</h3>
+            {!phoneEdit && (
+              <button
+                onClick={() => { setPhoneVal(user?.phone ?? ''); setPhoneEdit(true); setPhoneSaved(false); }}
+                className="text-[11px] font-bold text-accent uppercase tracking-widest hover:opacity-80"
+              >
+                {user?.phone ? 'Edit' : 'Add'}
+              </button>
+            )}
+          </div>
+          <div className="surface-glass rounded-2xl border border-white/5 overflow-hidden">
+            {phoneEdit ? (
+              <div className="flex flex-col">
+                <div className="p-5 space-y-2">
+                  <p className="text-[10px] opacity-40 font-bold">Enter your Indian mobile number (+91)</p>
+                  <input
+                    type="tel"
+                    value={phoneVal}
+                    onChange={e => setPhoneVal(e.target.value)}
+                    placeholder="+91 9876543210"
+                    className="w-full bg-transparent border-0 border-b border-border/10 focus:ring-0 focus:outline-none !text-base !font-medium py-2"
+                  />
+                  <p className="text-[9px] opacity-30 font-bold uppercase tracking-widest">
+                    Firebase OTP verification happens in-app. Submit to confirm.
+                  </p>
+                </div>
+                <div className="flex gap-2 p-3 bg-white/[0.01]">
+                  <button
+                    onClick={() => verifyPhone.mutate(phoneVal.replace(/\s/g, ''))}
+                    disabled={verifyPhone.isPending || phoneVal.length < 10}
+                    className="flex-1 text-[12px] font-bold text-white bg-accent py-2.5 rounded-xl transition-all disabled:opacity-50"
+                  >
+                    {verifyPhone.isPending ? 'Saving...' : 'Verify & Save'}
+                  </button>
+                  <button onClick={() => setPhoneEdit(false)} className="px-6 text-[12px] font-bold opacity-40 hover:opacity-70 py-2.5 rounded-xl">
+                    Cancel
+                  </button>
+                </div>
+                {verifyPhone.isError && (
+                  <p className="text-[10px] text-red-400 font-bold px-5 pb-3">
+                    {(verifyPhone.error as any)?.response?.data?.error ?? 'Failed to save phone'}
+                  </p>
+                )}
+              </div>
+            ) : (
+              <div className="p-5 flex items-center gap-4">
+                <div className="text-3xl grayscale opacity-60">📱</div>
+                <div className="flex-1">
+                  {user?.phone ? (
+                    <div className="flex items-center gap-3">
+                      <p className="text-base font-bold">{user.phone}</p>
+                      {user.phone_verified && (
+                        <span className="text-[9px] font-black uppercase tracking-widest text-teal-500 bg-teal-500/10 px-2 py-0.5 rounded-full">Verified</span>
+                      )}
+                    </div>
+                  ) : (
+                    <p className="text-base opacity-40 italic">No phone number added.</p>
+                  )}
+                  {phoneSaved && <p className="text-[10px] text-teal-500 font-bold mt-1">Phone saved successfully!</p>}
+                </div>
+              </div>
+            )}
+          </div>
+        </section>
+
+        {/* Referral code */}
+        <section className="space-y-2 animate-glass" style={{ animationDelay: '0.28s' }}>
+          <h3 className="text-label-caps !text-[12px] !opacity-50 font-bold uppercase tracking-widest pl-4 pb-2">Invite Friends</h3>
+          <div className="surface-glass rounded-2xl border border-white/5 overflow-hidden">
+            <div className="p-5 space-y-4">
+              {user?.referral_code ? (
+                <>
+                  <div className="flex items-center gap-4">
+                    <div className="flex-1 bg-bg-primary/50 rounded-xl px-4 py-3 border border-white/5">
+                      <p className="text-[10px] opacity-40 font-black uppercase tracking-widest">Your referral code</p>
+                      <p className="text-2xl font-black tracking-[0.15em] text-accent mt-1">{user.referral_code}</p>
+                    </div>
+                    <button
+                      onClick={() => {
+                        const url = `${window.location.origin}/invite/${user.referral_code}`;
+                        navigator.clipboard?.writeText(url);
+                      }}
+                      className="w-12 h-12 rounded-xl bg-accent/10 flex items-center justify-center text-xl hover:bg-accent/20 transition-colors shrink-0"
+                      title="Copy invite link"
+                    >
+                      📋
+                    </button>
+                  </div>
+                  <p className="text-[10px] opacity-40 font-bold leading-relaxed">
+                    Share your link. Both you and your friend get wallet credits when they place their first order.
+                  </p>
+                  {myReferrals.length > 0 && (
+                    <div className="space-y-1 pt-1 border-t border-white/5">
+                      <p className="text-[10px] font-black uppercase tracking-widest opacity-40">Your referrals</p>
+                      <div className="flex gap-3">
+                        <div className="text-center">
+                          <p className="text-xl font-black text-accent">{myReferrals.length}</p>
+                          <p className="text-[9px] opacity-40 font-bold uppercase">Invited</p>
+                        </div>
+                        <div className="text-center">
+                          <p className="text-xl font-black text-teal-500">{myReferrals.filter(r => r.status === 'completed').length}</p>
+                          <p className="text-[9px] opacity-40 font-bold uppercase">Converted</p>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </>
+              ) : (
+                <p className="text-base opacity-40 italic">Referral code loading...</p>
+              )}
+            </div>
           </div>
         </section>
 
@@ -230,21 +365,21 @@ export default function ProfilePage() {
   );
 }
 
-const MemberForm = ({ 
-  form, 
-  setForm, 
-  editing, 
-  onSubmit, 
+const MemberForm = ({
+  form,
+  setForm,
+  editing,
+  onSubmit,
   onCancel,
-  loading, 
-  title 
-}: { 
-  form: IPersonForm; 
+  loading,
+  title
+}: {
+  form: IPersonForm;
   setForm: React.Dispatch<React.SetStateAction<IPersonForm>>;
   editing: number | null;
-  onSubmit: () => void; 
+  onSubmit: () => void;
   onCancel: () => void;
-  loading: boolean; 
+  loading: boolean;
   title: string;
 }) => (
   <div className="surface-glass p-5 sm:p-6 space-y-5 animate-glass rounded-2xl sm:rounded-[2rem] border-white/5 ring-1 ring-white/5 shadow-xl">
@@ -253,27 +388,27 @@ const MemberForm = ({
     </div>
     <div className="space-y-1.5">
       <p className="text-label-caps !text-[11px] !opacity-50 pl-1 font-semibold">Member Name</p>
-      <input 
-        placeholder="e.g. Rahul Sharma" 
-        value={form.name} 
+      <input
+        placeholder="e.g. Rahul Sharma"
+        value={form.name}
         onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
-        className="w-full input-field !text-lg !font-medium" 
+        className="w-full input-field !text-lg !font-medium"
       />
     </div>
-    
+
     <div className="flex gap-4 sm:gap-6 pl-1">
       {(['is_vegetarian', 'is_vegan'] as const).map(key => (
         <label key={key} className="flex items-center gap-2 cursor-pointer group">
-          <div className={`w-5 h-5 rounded-lg border flex items-center justify-center transition-all duration-300 ${ form[key] ? 'bg-accent border-accent shadow-glow-subtle' : 'border-border bg-bg-secondary' }`}>
+          <div className={`w-5 h-5 rounded-lg border flex items-center justify-center transition-all duration-300 ${form[key] ? 'bg-accent border-accent shadow-glow-subtle' : 'border-border bg-bg-secondary'}`}>
             {form[key] && <span className="text-white text-[10px]">✓</span>}
           </div>
-          <input 
-            type="checkbox" 
-            checked={form[key]} 
-            onChange={e => setForm(f => ({ ...f, [key]: e.target.checked }))} 
-            className="hidden" 
+          <input
+            type="checkbox"
+            checked={form[key]}
+            onChange={e => setForm(f => ({ ...f, [key]: e.target.checked }))}
+            className="hidden"
           />
-          <span className={`text-label-caps !text-[10px] font-bold transition-colors duration-300 ${ form[key] ? '!text-accent' : 'group-hover:!text-text-secondary opacity-60' }`}>
+          <span className={`text-label-caps !text-[10px] font-bold transition-colors duration-300 ${form[key] ? '!text-accent' : 'group-hover:!text-text-secondary opacity-60'}`}>
             {key === 'is_vegetarian' ? 'Vegetarian' : 'Vegan'}
           </span>
         </label>
@@ -284,8 +419,8 @@ const MemberForm = ({
       <p className="text-label-caps !text-[11px] !opacity-50 pl-1 font-semibold">Preferred Spice Level</p>
       <div className="flex gap-2">
         {(['mild', 'medium', 'hot'] as const).map(s => (
-          <button 
-            key={s} 
+          <button
+            key={s}
             onClick={() => setForm(f => ({ ...f, spice_level: s }))}
             className={`flex-1 px-3 py-2.5 rounded-xl text-label-caps !text-[10px] font-bold transition-all duration-300 ring-1 ${form.spice_level === s ? 'bg-accent !text-white shadow-glow-subtle ring-accent scale-[1.02]' : 'bg-bg-secondary !text-text-muted ring-white/5 hover:ring-accent/30'}`}
           >
@@ -297,24 +432,24 @@ const MemberForm = ({
 
     <div className="space-y-2">
       <p className="text-label-caps !text-[11px] !opacity-50 pl-1 font-semibold">Notes & Allergies</p>
-      <textarea 
-        placeholder="Any specific instructions or dietary preferences..." 
+      <textarea
+        placeholder="Any specific instructions or dietary preferences..."
         value={form.notes}
-        onChange={e => setForm(f => ({ ...f, notes: e.target.value }))} 
+        onChange={e => setForm(f => ({ ...f, notes: e.target.value }))}
         rows={3}
-        className="w-full input-field resize-none !text-sm leading-relaxed" 
+        className="w-full input-field resize-none !text-sm leading-relaxed"
       />
     </div>
 
     <div className="flex gap-3 pt-2">
-      <button 
-        onClick={onSubmit} 
+      <button
+        onClick={onSubmit}
         disabled={!form.name.trim() || loading}
         className="btn-primary flex-1 !py-2.5 !rounded-xl shadow-glow-subtle disabled:opacity-50"
       >
         {loading ? 'Saving…' : editing ? 'Update Member' : 'Save Member'}
       </button>
-      <button 
+      <button
         onClick={onCancel}
         className="btn-ghost !py-2.5 !px-6 font-bold text-xs"
       >

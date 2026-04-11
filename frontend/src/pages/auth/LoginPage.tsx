@@ -2,17 +2,19 @@ import React, { useEffect, useRef } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { auth } from '../../services/api';
+import { usePublicConfig } from '../../hooks/usePublicConfig';
+import { formatRupees } from '../../utils/pricing';
 
 declare global {
   interface Window { google?: any; }
 }
 
-export default function
-  () {
+export default function LoginPage() {
   const { user, login } = useAuth();
   const navigate = useNavigate();
   const btnRef = useRef<HTMLDivElement>(null);
   const initializedRef = useRef(false);
+  const { mealPrices } = usePublicConfig();
 
   useEffect(() => {
     if (user) navigate('/', { replace: true });
@@ -30,7 +32,10 @@ export default function
         client_id: clientId,
         callback: async (response: any) => {
           try {
-            const res = await auth.googleLogin(response.credential);
+            // Pick up any referral code stored by InvitePage
+            const referralCode = localStorage.getItem('tb_referral_code') ?? undefined;
+            const res = await auth.googleLogin(response.credential, referralCode);
+            if (referralCode) localStorage.removeItem('tb_referral_code');
             await login(res.data.token);
             navigate('/', { replace: true });
           } catch {
@@ -91,15 +96,15 @@ export default function
           <div className="grid grid-cols-3 gap-8 opacity-40 grayscale hover:grayscale-0 hover:opacity-100 transition-all duration-700 cursor-default">
             <div className="text-center space-y-2">
               <p className="text-label-caps !text-[10px]">Breakfast</p>
-              <p className="text-h3">₹100</p>
+              <p className="text-h3">{formatRupees(mealPrices.breakfast)}</p>
             </div>
             <div className="text-center space-y-2 border-x border-white/5">
               <p className="text-label-caps !text-[10px]">Lunch</p>
-              <p className="text-h3">₹120</p>
+              <p className="text-h3">{formatRupees(mealPrices.lunch)}</p>
             </div>
             <div className="text-center space-y-2">
               <p className="text-label-caps !text-[10px]">Dinner</p>
-              <p className="text-h3">₹100</p>
+              <p className="text-h3">{formatRupees(mealPrices.dinner)}</p>
             </div>
           </div>
         </div>

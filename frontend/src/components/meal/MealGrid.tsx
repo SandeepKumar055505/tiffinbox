@@ -1,6 +1,6 @@
 import React, { useState, useCallback } from 'react';
 import { MealType, DaySelection, MealItem } from '../../types';
-import { MEAL_PRICES, formatRupees } from '../../utils/pricing';
+import { formatRupees, type MealPrices } from '../../utils/pricing';
 import DishSwapModal from './DishSwapModal';
 
 interface MenuEntry {
@@ -15,6 +15,7 @@ interface MealGridProps {
   weekMenu: WeekMenu;
   planDays: number;
   maxDayOffs: number;
+  mealPrices: MealPrices;
   onChange: (days: DaySelection[]) => void;
 }
 
@@ -26,7 +27,7 @@ function getDayOffCount(days: DaySelection[]): number {
   return days.filter(d => d.meals.length === 0).length;
 }
 
-export default function MealGrid({ days, weekMenu, planDays, maxDayOffs, onChange }: MealGridProps) {
+export default function MealGrid({ days, weekMenu, planDays, maxDayOffs, mealPrices, onChange }: MealGridProps) {
   const [swapModal, setSwapModal] = useState<{ date: string; mealType: MealType } | null>(null);
   const dayOffCount = getDayOffCount(days);
 
@@ -105,7 +106,7 @@ export default function MealGrid({ days, weekMenu, planDays, maxDayOffs, onChang
         {MEAL_TYPES.map(m => (
           <div key={m} className="text-center space-y-0.5">
             <p className="text-label-caps !t-text-muted !text-[9px] font-black">{MEAL_LABELS[m]}</p>
-            <p className="text-h3 !text-[10px] text-accent/60 font-medium">{formatRupees(MEAL_PRICES[m])}</p>
+            <p className="text-h3 !text-[10px] text-accent/60 font-medium">{formatRupees(mealPrices[m])}</p>
           </div>
         ))}
       </div>

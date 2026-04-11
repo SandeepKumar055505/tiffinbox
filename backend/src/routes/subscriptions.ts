@@ -3,7 +3,7 @@ import { z } from 'zod';
 import { db } from '../config/db';
 import { requireUser } from '../middleware/auth';
 import { validate } from '../middleware/validate';
-import { calculateQuote, buildDateRange, MEAL_PRICES } from '../services/pricingEngine';
+import { calculateQuote, buildDateRange } from '../services/pricingEngine';
 import { canAccessMonthlyPlan, canTransitionTo } from '../services/policyEngine';
 import { getWalletBalance, debitWalletAtCheckout } from '../services/ledgerService';
 import { emitEvent, DomainEvent } from '../jobs/events';

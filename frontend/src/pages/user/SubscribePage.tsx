@@ -5,6 +5,7 @@ import { useAuth } from '../../context/AuthContext';
 import { persons as personsApi, menu as menuApi, subscriptions as subsApi, payments as paymentsApi, wallet as walletApi } from '../../services/api';
 import { Person, DaySelection, MealType, PriceSnapshot } from '../../types';
 import { calculatePriceSnapshot, buildDateRange, generateIdempotencyKey, formatRupees } from '../../utils/pricing';
+import { usePublicConfig } from '../../hooks/usePublicConfig';
 import MealGrid from '../../components/meal/MealGrid';
 import PriceBar from '../../components/meal/PriceBar';
 
@@ -27,6 +28,7 @@ const PATTERN_OPTIONS = [
 export default function SubscribePage() {
   const { user } = useAuth();
   const navigate = useNavigate();
+  const { mealPrices, discountTable } = usePublicConfig();
 
   const [step, setStep] = useState<Step>('setup');
   const [personId, setPersonId] = useState<number | null>(null);
@@ -78,8 +80,8 @@ export default function SubscribePage() {
   }
 
   const baseSnapshot: PriceSnapshot = useMemo(() =>
-    calculatePriceSnapshot(planDays, days, {}),
-    [planDays, days]
+    calculatePriceSnapshot(planDays, days, mealPrices, discountTable, {}),
+    [planDays, days, mealPrices, discountTable]
   );
 
   const promoDiscount = useMemo(() => {
@@ -91,12 +93,12 @@ export default function SubscribePage() {
   }, [promoResult, baseSnapshot]);
 
   const snapshot: PriceSnapshot = useMemo(() =>
-    calculatePriceSnapshot(planDays, days, {
+    calculatePriceSnapshot(planDays, days, mealPrices, discountTable, {
       wallet_balance: walletData?.balance,
       apply_wallet: applyWallet,
       promo_discount: promoDiscount,
     }),
-    [planDays, days, walletData?.balance, applyWallet, promoDiscount]
+    [planDays, days, mealPrices, discountTable, walletData?.balance, applyWallet, promoDiscount]
   );
 
   const createSub = useMutation({
@@ -188,13 +190,13 @@ export default function SubscribePage() {
       <div className="min-h-screen bg-bg-primary relative overflow-hidden">
         {/* Mesh Accents */}
         <div className="absolute top-[-10%] -left-20 w-[40rem] h-[40rem] bg-accent/10 blur-[150px] rounded-full animate-mesh" />
-        
-        <div className="max-w-xl mx-auto px-6 space-y-6 relative z-10 focus:outline-none">
+
+        <div className="max-w-2xl mx-auto px-6 space-y-8 relative z-10 focus:outline-none">
           {/* Apple Music Header */}
-          <header className="pt-4 pb-2 border-b border-border/10 mb-4 flex justify-between items-end">
+          <header className="pt-6 pb-3 border-b border-border/10 mb-6 flex justify-between items-end">
             <div>
-              <p className="text-label-caps !text-[10px] !text-accent font-black tracking-widest uppercase mb-1">01 / 03 • Person Selection</p>
-              <h1 className="text-h1 !text-[28px] font-extrabold tracking-tight">Subscribe</h1>
+              <p className="text-label-caps !text-[11px] !text-accent font-black tracking-widest uppercase mb-1">01 / 03 • Person Selection</p>
+              <h1 className="text-h1 !text-[34px] font-extrabold tracking-tight">Subscribe</h1>
             </div>
           </header>
 
@@ -341,14 +343,14 @@ export default function SubscribePage() {
   if (step === 'grid') {
     return (
       <div className="min-h-screen bg-bg-primary relative overflow-hidden">
-        <div className="max-w-xl mx-auto px-6 space-y-6 relative z-10">
+        <div className="max-w-2xl mx-auto px-6 space-y-8 relative z-10">
           {/* Apple Music Header */}
-          <header className="pt-4 pb-2 border-b border-border/10 mb-4 flex justify-between items-end">
+          <header className="pt-6 pb-3 border-b border-border/10 mb-6 flex justify-between items-end">
             <div>
-              <p className="text-label-caps !text-[10px] !text-accent font-black tracking-widest uppercase mb-1">02 / 03 • Craft Your Week</p>
-              <h1 className="text-h1 !text-[28px] font-extrabold tracking-tight">Customize</h1>
+              <p className="text-label-caps !text-[11px] !text-accent font-black tracking-widest uppercase mb-1">02 / 03 • Craft Your Week</p>
+              <h1 className="text-h1 !text-[34px] font-extrabold tracking-tight">Customize</h1>
             </div>
-            <button onClick={() => setStep('setup')} className="text-[10px] font-bold text-text-muted uppercase tracking-widest hover:text-accent transition-colors mb-2">
+            <button onClick={() => setStep('setup')} className="text-[11px] font-bold text-text-muted uppercase tracking-widest hover:text-white transition-colors mb-2">
               ← Back
             </button>
           </header>
@@ -366,6 +368,7 @@ export default function SubscribePage() {
                 weekMenu={weekMenu}
                 planDays={planDays}
                 maxDayOffs={planDays <= 7 ? 1 : 2}
+                mealPrices={mealPrices}
                 onChange={setDays}
               />
             </div>
@@ -385,25 +388,25 @@ export default function SubscribePage() {
   if (step === 'checkout') {
     return (
       <div className="min-h-screen bg-bg-primary relative overflow-hidden">
-        <div className="max-w-xl mx-auto px-6 space-y-6 relative z-10">
+        <div className="max-w-2xl mx-auto px-6 space-y-8 relative z-10">
           {/* Apple Music Header */}
-          <header className="pt-4 pb-2 border-b border-border/10 mb-4 flex justify-between items-end">
+          <header className="pt-6 pb-3 border-b border-border/10 mb-6 flex justify-between items-end">
             <div>
-              <p className="text-label-caps !text-[10px] !text-accent font-black tracking-widest uppercase mb-1">03 / 03 • Final Confirmation</p>
-              <h1 className="text-h1 !text-[28px] font-extrabold tracking-tight">Checkout</h1>
+              <p className="text-label-caps !text-[11px] !text-accent font-black tracking-widest uppercase mb-1">03 / 03 • Final Confirmation</p>
+              <h1 className="text-h1 !text-[34px] font-extrabold tracking-tight">Checkout</h1>
             </div>
-            <button onClick={() => setStep('grid')} className="text-[10px] font-bold text-text-muted uppercase tracking-widest hover:text-accent transition-colors mb-2">
+            <button onClick={() => setStep('grid')} className="text-[11px] font-bold text-text-muted uppercase tracking-widest hover:text-white transition-colors mb-2">
               ← Back
             </button>
           </header>
 
           {/* Order Snapshot (Nav-Elite) */}
-          <section className="glass p-4 sm:p-5 space-y-4 animate-glass rounded-2xl shadow-elite border-white/10 ring-1 ring-white/10">
+          <section className="surface-liquid p-5 sm:p-6 space-y-5 animate-glass rounded-2xl shadow-elite border-white/10 ring-1 ring-white/10">
             <div className="flex items-center gap-3">
-              <div className="w-7 h-7 rounded-lg bg-accent/10 flex items-center justify-center text-base shadow-glow-subtle border border-accent/20">📋</div>
-              <h3 className="text-h3 !text-lg !font-black">Summary</h3>
+              <div className="w-8 h-8 rounded-lg bg-accent/10 flex items-center justify-center text-lg shadow-glow-subtle border border-accent/20">📋</div>
+              <h3 className="text-h3 !font-black">Summary</h3>
             </div>
-            
+
             <div className="space-y-6 max-h-96 overflow-y-auto pr-4 scrollbar-none mask-fade-bottom">
               {snapshot.per_day.filter(d => d.meal_count > 0).map(d => (
                 <div key={d.date} className="flex justify-between items-center group py-2">
@@ -425,7 +428,7 @@ export default function SubscribePage() {
                 <span className="text-label-caps !text-sm opacity-40">Subtotal</span>
                 <span className="text-h3 !text-xl opacity-60">{formatRupees(snapshot.base_total)}</span>
               </div>
-              
+
               {snapshot.discount_total > 0 && (
                 <div className="flex justify-between items-center">
                   <div className="flex items-center gap-4">
@@ -435,7 +438,7 @@ export default function SubscribePage() {
                   <span className="text-accent font-bold text-xl">−{formatRupees(snapshot.discount_total)}</span>
                 </div>
               )}
-              
+
               {snapshot.promo_discount > 0 && (
                 <div className="flex justify-between items-center bg-accent/5 p-6 rounded-[2rem] border border-accent/10">
                   <div className="flex items-center gap-4">
@@ -597,11 +600,11 @@ export default function SubscribePage() {
 
         <div className="relative surface-liquid py-10 px-8 md:px-12 text-center max-w-xl w-full space-y-8 animate-glass rounded-[2rem] shadow-elite border-white/10 ring-1 ring-white/10 overflow-hidden">
           <div className="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-accent via-orange-500 to-accent animate-mesh" />
-          
+
           <div className="relative inline-block scale-[2] mb-6 animate-bounce cursor-default" style={{ animationDuration: '4s' }}>
             <span className="text-6xl drop-shadow-[0_0_40px_rgba(20,184,166,0.5)]">🍱</span>
           </div>
-          
+
           <div className="space-y-2">
             <h2 className="text-h1 !text-2xl sm:!text-4xl tracking-tighter">You're All Set!</h2>
             <p className="text-label-caps !text-accent font-black !text-[11px] sm:!text-sm tracking-[0.2em] uppercase">Subscription Activated</p>

@@ -27,8 +27,16 @@ import notificationRoutes from './routes/notifications';
 import supportRoutes from './routes/support';
 import streakRoutes from './routes/streaks';
 
+// Routes — public config (no auth)
+import configRoutes from './routes/config';
+
 // Routes — upload
 import uploadRoutes from './routes/upload';
+
+// Routes — new Phase A1
+import deliveryRoutes from './routes/delivery';
+import ratingsRoutes from './routes/ratings';
+import referralsRoutes from './routes/referrals';
 
 // Routes — admin
 import adminDashboardRoutes from './routes/admin/dashboard';
@@ -37,6 +45,8 @@ import adminSkipRoutes from './routes/admin/skip';
 import adminMenuRoutes from './routes/admin/menu';
 import adminSupportRoutes from './routes/admin/support';
 import adminSettingsRoutes from './routes/admin/settings';
+import adminHolidaysRoutes from './routes/admin/holidays';
+import adminLedgerRoutes from './routes/admin/ledger';
 
 const app = express();
 
@@ -75,6 +85,7 @@ const authLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 20, standardHeade
 app.get('/api/health', (_req, res) => res.json({ status: 'ok', ts: new Date().toISOString() }));
 app.get('/', (_req, res) => res.json({ status: 'TiffinBox API Live', website: env.FRONTEND_URL }));
 
+app.use('/api/config', configRoutes);
 app.use('/api/auth', authRoutes);
 app.use('/api/persons', personRoutes);
 app.use('/api/menu', menuRoutes);
@@ -86,6 +97,9 @@ app.use('/api/notifications', notificationRoutes);
 app.use('/api/support', supportRoutes);
 app.use('/api/streaks', streakRoutes);
 app.use('/api/upload', uploadRoutes);
+app.use('/api/delivery', deliveryRoutes);
+app.use('/api/ratings', ratingsRoutes);
+app.use('/api/referrals', referralsRoutes);
 
 // Admin routes
 app.use('/api/admin', adminDashboardRoutes);
@@ -94,6 +108,8 @@ app.use('/api/admin/skip', adminSkipRoutes);
 app.use('/api/admin/menu', adminMenuRoutes);
 app.use('/api/admin/support', adminSupportRoutes);
 app.use('/api/admin/settings', adminSettingsRoutes);
+app.use('/api/admin/holidays', adminHolidaysRoutes);
+app.use('/api/admin/ledger', adminLedgerRoutes);
 
 // ── Error handler ─────────────────────────────────────────────────────────────
 if (env.SENTRY_DSN) {
@@ -105,26 +121,20 @@ app.use((err: any, _req: express.Request, res: express.Response, _next: express.
   res.status(500).json({ error: 'Internal server error' });
 });
 
-// ── Export for Vercel serverless ──────────────────────────────────────────────
-export { app };
-
-// ── Start (only when NOT on Vercel) ───────────────────────────────────────────
-if (!process.env.VERCEL) {
-  async function main() {
-    app.listen(env.PORT, '0.0.0.0', () => {
-      console.log(`TiffinBox backend running on port ${env.PORT} (bound to 0.0.0.0)`);
-    });
-    // Start pg-boss in background — don't block HTTP server
-    startJobWorkers().catch(err => {
-      console.error('pg-boss failed to start (will retry on next request):', err.message);
-    });
-  }
-
-  main().catch(err => {
-    console.error('Failed to start:', err);
-    process.exit(1);
+async function main() {
+  app.listen(env.PORT, '0.0.0.0', () => {
+    console.log(`TiffinBox backend running on port ${env.PORT} (bound to 0.0.0.0)`);
+  });
+  // Start pg-boss in background — don't block HTTP server
+  startJobWorkers().catch(err => {
+    console.error('pg-boss failed to start:', err.message);
   });
 }
+
+main().catch(err => {
+  console.error('Failed to start:', err);
+  process.exit(1);
+});
 
 // ── Graceful shutdown ─────────────────────────────────────────────────────────
 async function shutdown(signal: string) {

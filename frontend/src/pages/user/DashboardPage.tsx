@@ -1,8 +1,8 @@
-import React from 'react';
-import { useQuery } from '@tanstack/react-query';
+import React, { useState } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
-import { subscriptions, wallet, persons as personsApi } from '../../services/api';
+import { subscriptions, wallet, persons as personsApi, delivery, ratings } from '../../services/api';
 import { Subscription, MealCell, Person, PersonStreak } from '../../types';
 import { formatRupees } from '../../utils/pricing';
 import NotificationPanel from '../../components/shared/NotificationPanel';
@@ -11,7 +11,10 @@ import api from '../../services/api';
 
 export default function DashboardPage() {
   const { user, logout } = useAuth();
+  const qc = useQueryClient();
   const today = new Date().toISOString().split('T')[0];
+  const [pendingRating, setPendingRating] = useState<{ cellId: number; mealType: string } | null>(null);
+  const [ratingValue, setRatingValue] = useState(0);
 
   const { data: subs = [] } = useQuery<Subscription[]>({
     queryKey: ['subscriptions'],
@@ -35,8 +38,8 @@ export default function DashboardPage() {
     queryKey: ['today-meals', active?.id],
     queryFn: () => active
       ? api.get(`/subscriptions/${active.id}`).then(r =>
-          (r.data.meal_cells as MealCell[]).filter(c => c.date === today)
-        )
+        (r.data.meal_cells as MealCell[]).filter(c => c.date === today)
+      )
       : Promise.resolve([]),
     enabled: !!active,
     refetchInterval: 60_000,
@@ -50,13 +53,35 @@ export default function DashboardPage() {
 
   const bestStreak = streaks.reduce((max: number, s: PersonStreak) => Math.max(max, s.current_streak), 0);
 
-  const DELIVERY_STATUS_LABEL: Record<string, { label: string; color: string }> = {
-    scheduled: { label: 'Scheduled', color: 't-text-muted' },
-    preparing: { label: 'Preparing', color: 'text-blue-400' },
-    out_for_delivery: { label: 'On the way 🛵', color: 'text-yellow-500 dark:text-yellow-400' },
-    delivered: { label: 'Delivered ✓', color: 'text-teal-500 dark:text-teal-400' },
-    failed: { label: 'Missed', color: 'text-red-500 dark:text-red-400' },
-    skipped: { label: 'Skipped', color: 't-text-faint' },
+  const submitRating = useMutation({
+    mutationFn: ({ cellId, rating }: { cellId: number; rating: number }) =>
+      ratings.submit(cellId, rating),
+    onSuccess: () => {
+      setPendingRating(null);
+      setRatingValue(0);
+      qc.invalidateQueries({ queryKey: ['today-meals'] });
+    },
+  });
+
+  // Fetch OTP for a specific cell (only when out_for_delivery)
+  const otpCellId = todayCells.find(c => c.delivery_status === 'out_for_delivery')?.id;
+  const { data: otpData } = useQuery({
+    queryKey: ['delivery-otp', otpCellId],
+    queryFn: () => delivery.getOtp(otpCellId!).then(r => r.data),
+    enabled: !!otpCellId,
+    refetchInterval: 30_000,
+  });
+
+  const DELIVERY_STATUS_LABEL: Record<string, { label: string; color: string; progress: number }> = {
+    scheduled:        { label: 'Scheduled',        color: 't-text-muted',                       progress: 15 },
+    preparing:        { label: 'Preparing',         color: 'text-blue-400',                      progress: 40 },
+    out_for_delivery: { label: 'On the way 🛵',     color: 'text-yellow-500 dark:text-yellow-400', progress: 75 },
+    delivered:        { label: 'Delivered ✓',       color: 'text-teal-500 dark:text-teal-400',   progress: 100 },
+    failed:           { label: 'Missed',            color: 'text-red-500 dark:text-red-400',     progress: 100 },
+    skipped:          { label: 'Skipped',           color: 't-text-faint',                       progress: 100 },
+    skipped_by_admin: { label: 'Cancelled by Admin', color: 'text-orange-500',                   progress: 100 },
+    skipped_holiday:  { label: 'Holiday',           color: 'text-purple-400',                    progress: 100 },
+    cancelled:        { label: 'Cancelled',         color: 't-text-faint',                       progress: 100 },
   };
 
   const MEAL_ICON: Record<string, string> = { breakfast: '☀️', lunch: '🍱', dinner: '🌙' };
@@ -134,27 +159,79 @@ export default function DashboardPage() {
               ) : (
                 <div className="grid gap-6">
                   {todayCells.filter(c => c.is_included).map(cell => {
-                    const status = DELIVERY_STATUS_LABEL[cell.delivery_status] ?? { label: cell.delivery_status, color: 'text-text-muted' };
+                    const status = DELIVERY_STATUS_LABEL[cell.delivery_status] ?? { label: cell.delivery_status, color: 't-text-muted', progress: 20 };
+                    const isOtpCell = cell.delivery_status === 'out_for_delivery' && cell.id === otpCellId;
+                    const isRatable = cell.delivery_status === 'delivered' && pendingRating?.cellId !== cell.id;
+                    const isRating = pendingRating?.cellId === cell.id;
                     return (
-                      <div key={cell.id} className="surface-glass p-3 sm:p-4 flex items-center gap-3 sm:gap-4 group hover:bg-bg-subtle transition-all duration-700 rounded-xl sm:rounded-2xl border-white/5 ring-1 ring-white/5">
-                        <div className="text-xl w-10 h-10 flex items-center justify-center rounded-lg bg-bg-primary/40 group-hover:scale-110 transition-all duration-700">
-                          {MEAL_ICON[cell.meal_type]}
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <p className="text-h3 !text-sm capitalize font-black">{cell.meal_type}</p>
-                          {cell.item_name && <p className="text-[10px] truncate opacity-50 font-bold tracking-tight">{cell.item_name}</p>}
-                        </div>
-                        <div className="text-right space-y-1.5 min-w-[80px]">
-                          <span className={`text-[8.5px] font-black uppercase tracking-widest block ${status.color}`}>
-                            {status.label}
-                          </span>
-                          <div className="w-full h-0.5 bg-bg-primary/30 rounded-full overflow-hidden">
-                            <div 
-                              className={`h-full bg-current transition-all duration-1000 rounded-full ${status.color} shadow-glow-subtle`}
-                              style={{ width: cell.delivery_status === 'delivered' ? '100%' : cell.delivery_status === 'out_for_delivery' ? '75%' : '20%' }}
-                            />
+                      <div key={cell.id} className="surface-glass p-3 sm:p-4 space-y-3 group hover:bg-bg-subtle transition-all duration-700 rounded-xl sm:rounded-2xl border-white/5 ring-1 ring-white/5">
+                        <div className="flex items-center gap-3 sm:gap-4">
+                          <div className="text-xl w-10 h-10 flex items-center justify-center rounded-lg bg-bg-primary/40 group-hover:scale-110 transition-all duration-700 shrink-0">
+                            {MEAL_ICON[cell.meal_type]}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-h3 !text-sm capitalize font-black">{cell.meal_type}</p>
+                            {cell.item_name && <p className="text-[10px] truncate opacity-50 font-bold tracking-tight">{cell.item_name}</p>}
+                          </div>
+                          <div className="text-right space-y-1.5 min-w-[80px]">
+                            <span className={`text-[8.5px] font-black uppercase tracking-widest block ${status.color}`}>
+                              {status.label}
+                            </span>
+                            <div className="w-full h-0.5 bg-bg-primary/30 rounded-full overflow-hidden">
+                              <div
+                                className={`h-full bg-current transition-all duration-1000 rounded-full ${status.color} shadow-glow-subtle`}
+                                style={{ width: `${status.progress}%` }}
+                              />
+                            </div>
                           </div>
                         </div>
+
+                        {/* Delivery OTP — shown when out_for_delivery */}
+                        {isOtpCell && otpData && (
+                          <div className="flex items-center justify-between bg-yellow-500/10 border border-yellow-500/20 rounded-xl px-4 py-3">
+                            <div className="space-y-0.5">
+                              <p className="text-[9px] font-black uppercase tracking-widest text-yellow-600">Show to delivery person</p>
+                              <p className="text-3xl font-black tracking-[0.3em] text-yellow-500">{otpData.otp}</p>
+                            </div>
+                            <div className="text-3xl">🔐</div>
+                          </div>
+                        )}
+
+                        {/* Rate meal — shown after delivery, before rated */}
+                        {isRatable && !cell.wallet_credited && (
+                          <button
+                            onClick={() => { setPendingRating({ cellId: cell.id, mealType: cell.meal_type }); setRatingValue(0); }}
+                            className="w-full text-[9px] font-black uppercase tracking-widest text-accent/70 hover:text-accent transition-colors py-1"
+                          >
+                            Rate this meal →
+                          </button>
+                        )}
+
+                        {/* Star rating inline */}
+                        {isRating && (
+                          <div className="flex items-center gap-3 pt-1">
+                            <div className="flex gap-1">
+                              {[1,2,3,4,5].map(star => (
+                                <button
+                                  key={star}
+                                  onClick={() => setRatingValue(star)}
+                                  className={`text-xl transition-all ${star <= ratingValue ? 'text-yellow-400' : 'text-white/20 hover:text-yellow-400/50'}`}
+                                >★</button>
+                              ))}
+                            </div>
+                            <button
+                              disabled={ratingValue === 0 || submitRating.isPending}
+                              onClick={() => submitRating.mutate({ cellId: cell.id, rating: ratingValue })}
+                              className="ml-auto text-[9px] font-black uppercase tracking-widest text-accent disabled:opacity-30 hover:opacity-80 transition-opacity"
+                            >
+                              {submitRating.isPending ? '...' : 'Submit'}
+                            </button>
+                            <button
+                              onClick={() => setPendingRating(null)}
+                              className="text-[9px] font-black uppercase tracking-widest opacity-30 hover:opacity-60"
+                            >✕</button>
+                          </div>
+                        )}
                       </div>
                     );
                   })}
@@ -270,7 +347,7 @@ export default function DashboardPage() {
             })}
             {personsList.length === 0 && (
               <Link to="/profile" className="surface-liquid hover:bg-bg-subtle px-6 py-5 text-label-caps text-text-faint flex items-center justify-center gap-3 border-dashed border-2 rounded-2xl transition-all duration-700 group min-w-[140px]">
-                <span className="text-xl opacity-20 group-hover:scale-125 transition-transform">+</span> 
+                <span className="text-xl opacity-20 group-hover:scale-125 transition-transform">+</span>
                 <span className="text-[10px]">Add Member</span>
               </Link>
             )}

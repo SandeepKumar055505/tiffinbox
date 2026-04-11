@@ -10,6 +10,9 @@ export interface AuthUser {
   monthly_plan_unlocked: boolean;
   wallet_auto_apply: boolean;
   delivery_address: string | null;
+  phone: string | null;
+  phone_verified: boolean;
+  referral_code: string | null;
   created_at: string;
 }
 
@@ -88,15 +91,38 @@ export interface MealCell {
   item_id: number;
   item_name?: string;
   image_url?: string;
-  delivery_status: 'scheduled' | 'preparing' | 'out_for_delivery' | 'delivered' | 'skipped' | 'cancelled' | 'failed';
+  delivery_status: 'scheduled' | 'preparing' | 'out_for_delivery' | 'delivered' | 'skipped' | 'skipped_by_admin' | 'skipped_holiday' | 'cancelled' | 'failed';
   wallet_credited: boolean;
 }
 
 export interface LedgerEntry {
   id: number;
   direction: 'credit' | 'debit';
+  entry_type: string;
   amount: number;
   description: string;
+  created_at: string;
+}
+
+export interface MealRating {
+  id: number;
+  meal_cell_id: number;
+  rating: number;
+  note: string | null;
+  created_at: string;
+}
+
+export interface DeliveryOtp {
+  otp: string;
+  expires_at: string;
+}
+
+export interface Referral {
+  id: number;
+  referrer_id: number;
+  referred_id: number;
+  status: 'pending' | 'completed' | 'expired';
+  rewarded_at: string | null;
   created_at: string;
 }
 
