@@ -44,6 +44,8 @@ router.post('/:id/approve', requireAdmin, async (req, res) => {
       subscription_id: sub.id,
       meal_type: request.meal_type,
       date: request.date,
+      is_grace_skip: true,   // admin approval always credits wallet
+      is_holiday_skip: false,
     });
   }
 

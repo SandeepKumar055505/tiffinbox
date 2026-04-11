@@ -96,8 +96,9 @@ router.patch(
     dinner_cutoff_hour: z.number().int().min(0).max(23).optional(),
   })),
   async (req, res) => {
+    const subId = parseInt(req.params.id, 10);
     const [updated] = await db('subscriptions')
-      .where({ id: req.params.id })
+      .where({ id: subId })
       .update({ ...req.body, updated_at: db.fn.now() })
       .returning('*');
 
@@ -105,7 +106,7 @@ router.patch(
       admin_id: req.adminId,
       action: 'subscription.cutoff_override',
       target_type: 'subscription',
-      target_id: parseInt(req.params.id),
+      target_id: subId,
       after_value: JSON.stringify(req.body),
     });
 

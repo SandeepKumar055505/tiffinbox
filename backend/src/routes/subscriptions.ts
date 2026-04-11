@@ -287,7 +287,8 @@ router.post('/:id/cancel', requireUser, async (req, res) => {
       return res.status(409).json({ error: `Cannot cancel from state: ${sub.state}` });
     }
 
-    const today = new Date().toISOString().split('T')[0];
+    const { todayIST } = await import('../lib/time');
+    const today = todayIST();
     if (sub.start_date > today) {
       // Full Refund Window (Automated)
       await trx('subscriptions').where({ id: sub.id }).update({ state: 'cancelled', updated_at: db.fn.now() });

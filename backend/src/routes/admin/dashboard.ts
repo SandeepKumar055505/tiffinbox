@@ -61,7 +61,8 @@ router.get('/', requireAdmin, async (_req, res) => {
 
   // Quality Watch: Average rating per item in last 7 days (those < 3.0)
   const lowRatings = await db('meal_ratings as mr')
-    .join('meal_items as mi', 'mi.id', 'mr.meal_item_id')
+    .join('meal_cells as mc', 'mc.id', 'mr.meal_cell_id')
+    .join('meal_items as mi', 'mi.id', 'mc.item_id')
     .where('mr.created_at', '>=', db.raw("CURRENT_DATE - INTERVAL '7 days'"))
     .select('mi.name')
     .avg('mr.rating as avg_rating')
