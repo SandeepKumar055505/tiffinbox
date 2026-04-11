@@ -6,22 +6,29 @@ const router = Router();
 
 // GET /api/admin/dashboard
 router.get('/', requireAdmin, async (_req, res) => {
-  const { todayIST, weekStartIST } = await import('../../lib/time');
+  const { todayIST, dayRangeUTC, weekRangeUTC } = await import('../../lib/time');
   const today = todayIST();
-  const weekStartStr = weekStartIST(today);
+  const day = dayRangeUTC(today);
+  const week = weekRangeUTC(today);
 
-  // Core stats — single round-trip with correct SELECT + IST-aware date comparisons
-  // Params: [today, today, today, today, today, weekStartStr, today] = 7
+  // Core stats — Optimized SARGable queries using Real UTC ranges
   const statsResult = await db.raw(`
     SELECT
-      (SELECT COUNT(*) FROM users WHERE DATE(created_at AT TIME ZONE 'Asia/Kolkata') = ?) AS new_users_today,
+      (SELECT COUNT(*) FROM users WHERE created_at >= ? AND created_at < ?) AS new_users_today,
       (SELECT COUNT(*) FROM subscriptions WHERE state = 'active') AS active_subscriptions,
       (SELECT COUNT(*) FROM meal_cells WHERE date = ? AND delivery_status = 'delivered') AS meals_delivered_today,
       (SELECT COUNT(*) FROM meal_cells WHERE date = ? AND delivery_status = 'failed') AS meals_failed_today,
-      (SELECT COALESCE(SUM(amount), 0) FROM ledger_entries WHERE type = 'subscription_payment' AND DATE(created_at AT TIME ZONE 'Asia/Kolkata') = ?) AS revenue_today,
-      (SELECT COALESCE(SUM(amount), 0) FROM ledger_entries WHERE type = 'subscription_payment' AND DATE(created_at AT TIME ZONE 'Asia/Kolkata') >= ?) AS revenue_this_week,
-      (SELECT COALESCE(AVG(rating), 0) FROM meal_ratings WHERE DATE(created_at AT TIME ZONE 'Asia/Kolkata') >= ?) AS avg_rating
-  `, [today, today, today, today, today, weekStartStr, today]);
+      (SELECT COALESCE(SUM(amount), 0) FROM ledger_entries WHERE type = 'subscription_payment' AND created_at >= ? AND created_at < ?) AS revenue_today,
+      (SELECT COALESCE(SUM(amount), 0) FROM ledger_entries WHERE type = 'subscription_payment' AND created_at >= ?) AS revenue_this_week,
+      (SELECT COALESCE(AVG(rating), 0) FROM meal_ratings WHERE created_at >= ?) AS avg_rating
+  `, [
+    day.start, day.end, // new_users_today
+    today,              // meals_delivered_today
+    today,              // meals_failed_today
+    day.start, day.end, // revenue_today
+    week.start,         // revenue_this_week
+    week.start          // avg_rating (last 7 days approx using week start)
+  ]);
   const stats = statsResult.rows[0];
 
   // Prep list breakdown

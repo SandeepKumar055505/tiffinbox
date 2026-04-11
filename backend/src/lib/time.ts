@@ -147,6 +147,22 @@ export function weekRangeUTC(date?: string): { start: Date; end: Date } {
 }
 
 /**
+ * Get the Real UTC range (start/end) for a single IST day.
+ * Returns Date objects in Real UTC for database queries.
+ * dateStr defaults to today IST.
+ */
+export function dayRangeUTC(dateStr?: string): { start: Date; end: Date } {
+  const date = dateStr ? parseDateIST(dateStr) : parseDateIST(todayIST());
+  
+  // Start of day: 00:00 IST
+  const start = new Date(date.getTime() - IST_OFFSET_MS);
+  // End of day: 00:00 IST next day
+  const end = new Date(date.getTime() + 24 * 60 * 60 * 1000 - IST_OFFSET_MS);
+
+  return { start, end };
+}
+
+/**
  * Convert IST hour to UTC cron hour.
  * IST is UTC+5:30, so:
  *   IST 22:00 = UTC 16:30
