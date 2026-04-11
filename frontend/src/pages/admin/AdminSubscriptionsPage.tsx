@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { adminSubscriptions } from '../../services/adminApi';
+import { useSensorial } from '../../context/SensorialContext';
 
 const STATE_COLORS: Record<string, string> = {
   active: 'bg-teal-500/20 text-teal-400',
@@ -15,9 +16,12 @@ const STATE_COLORS: Record<string, string> = {
 
 export default function AdminSubscriptionsPage() {
   const qc = useQueryClient();
+  const sensorial = useSensorial();
   const [stateFilter, setStateFilter] = useState('active');
   const [page, setPage] = useState(1);
   const [cutoffModal, setCutoffModal] = useState<any>(null);
+  const [cancelModal, setCancelModal] = useState<any>(null);
+  const [cancelReason, setCancelReason] = useState('');
 
   const { data } = useQuery({
     queryKey: ['admin-subs', stateFilter, page],
@@ -26,7 +30,11 @@ export default function AdminSubscriptionsPage() {
 
   const cancel = useMutation({
     mutationFn: ({ id, reason }: { id: number; reason: string }) => adminSubscriptions.cancel(id, reason),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['admin-subs'] }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['admin-subs'] });
+      setCancelModal(null);
+      setCancelReason('');
+    },
   });
 
   return (
@@ -71,10 +79,7 @@ export default function AdminSubscriptionsPage() {
                   Set Cutoff
                 </button>
                 <button
-                  onClick={() => {
-                    const reason = prompt('Cancel reason?') || '';
-                    cancel.mutate({ id: sub.id, reason });
-                  }}
+                  onClick={() => { setCancelModal(sub); setCancelReason(''); }}
                   className="text-xs text-red-400 hover:text-red-300 shrink-0 px-2 py-1"
                 >
                   Cancel
@@ -104,6 +109,45 @@ export default function AdminSubscriptionsPage() {
           qc.invalidateQueries({ queryKey: ['admin-subs'] });
           setCutoffModal(null);
         }} />
+      )}
+
+      {cancelModal && (
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={() => setCancelModal(null)}>
+          <div className="glass-elevated max-w-sm w-full p-6 space-y-5" onClick={e => e.stopPropagation()}>
+            <div className="space-y-1">
+              <h2 className="text-base font-bold t-text">Cancel Subscription</h2>
+              <p className="text-xs t-text-muted">
+                {cancelModal.person_name} ({cancelModal.user_name}) · {cancelModal.plan_days}-day plan
+              </p>
+              <p className="text-[10px] text-red-400 font-bold uppercase tracking-widest pt-1">
+                This will refund undelivered meals to wallet
+              </p>
+            </div>
+            <div className="space-y-1">
+              <label className="text-xs t-text-secondary">Reason (optional)</label>
+              <input
+                autoFocus
+                type="text"
+                value={cancelReason}
+                onChange={e => setCancelReason(e.target.value)}
+                placeholder="e.g. Customer request, payment issue..."
+                className="w-full glass border-transparent rounded-lg px-3 py-2 text-sm t-text focus:outline-none focus:border-red-500"
+              />
+            </div>
+            <div className="flex gap-3 justify-end pt-2 border-t border-border/10">
+              <button onClick={() => setCancelModal(null)} className="px-4 py-2 text-xs t-text-muted hover:t-text">
+                Keep Active
+              </button>
+              <button
+                onClick={() => cancel.mutate({ id: cancelModal.id, reason: cancelReason })}
+                disabled={cancel.isPending}
+                className="px-4 py-2 bg-red-600 text-white text-xs font-bold rounded-lg hover:bg-red-500 disabled:opacity-50"
+              >
+                {cancel.isPending ? 'Cancelling…' : 'Confirm Cancel'}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

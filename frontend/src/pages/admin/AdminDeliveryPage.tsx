@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { adminDashboard } from '../../services/adminApi';
 import { todayIST } from '../../utils/time';
+import { useSensorial } from '../../context/SensorialContext';
 
 const STATUS_COLORS: Record<string, string> = {
   scheduled: 'glass t-text-muted',
@@ -24,6 +25,7 @@ const TERMINAL_STATUSES = new Set(['delivered', 'failed', 'skipped', 'skipped_by
 
 export default function AdminDeliveryPage() {
   const qc = useQueryClient();
+  const sensorial = useSensorial();
   const [date, setDate] = useState(() => todayIST());
   const [otpSuccess, setOtpSuccess] = useState(false);
   const [mealFilter, setMealFilter] = useState<string>('all');
@@ -97,7 +99,16 @@ export default function AdminDeliveryPage() {
           <span className="text-red-400">Failed: <strong>{allCells.filter(c => c.delivery_status === 'failed').length}</strong></span>
           <span className="text-yellow-400">Pending: <strong>{allCells.filter(c => ['scheduled','preparing','out_for_delivery'].includes(c.delivery_status)).length}</strong></span>
           <button
-            onClick={() => bulkDeliver.mutate(mealFilter)}
+            onClick={async () => {
+              const pendingCount = allCells.filter(c => ['scheduled','preparing','out_for_delivery'].includes(c.delivery_status)).length;
+              const confirmed = await sensorial.confirm({
+                title: 'Bulk Mark Delivered',
+                message: `This will mark ${pendingCount} meal${pendingCount !== 1 ? 's' : ''} as delivered for ${date}. This cannot be undone.`,
+                confirmText: 'Mark All Delivered',
+                type: 'info',
+              });
+              if (confirmed) bulkDeliver.mutate(mealFilter);
+            }}
             disabled={bulkDeliver.isPending}
             className="ml-auto bg-teal-500/20 text-teal-400 border border-teal-500/30 px-3 py-1 rounded-lg text-xs hover:bg-teal-500/30 transition-colors"
           >

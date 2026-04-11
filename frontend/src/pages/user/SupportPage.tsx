@@ -20,6 +20,7 @@ export default function SupportPage() {
   const [reply, setReply] = useState('');
   const [attachment, setAttachment] = useState<string | null>(null);
   const [isUploading, setIsUploading] = useState(false);
+  const [uploadError, setUploadError] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
   const threadEnd = useRef<HTMLDivElement>(null);
 
@@ -58,11 +59,12 @@ export default function SupportPage() {
     if (!file) return;
     try {
       setIsUploading(true);
+      setUploadError('');
       const { upload } = await import('../../services/api');
       const res = await upload.image(file);
       setAttachment(res.data.url);
-    } catch (err) {
-      alert('Failed to upload image. Please try again.');
+    } catch {
+      setUploadError('Upload failed — please try a smaller image or try again.');
     } finally {
       setIsUploading(false);
     }
@@ -119,6 +121,11 @@ export default function SupportPage() {
 
           {thread.ticket.status !== 'resolved' && (
             <div className="py-8 border-t border-border/10 space-y-4 bg-bg-primary/40 backdrop-blur-xl sticky bottom-0 z-20 rounded-t-[3rem]">
+              {uploadError && (
+                <div className="px-8 animate-glass">
+                  <p className="text-xs text-red-400 font-medium">{uploadError}</p>
+                </div>
+              )}
               {attachment && (
                 <div className="px-8 animate-glass">
                   <div className="relative inline-block group">

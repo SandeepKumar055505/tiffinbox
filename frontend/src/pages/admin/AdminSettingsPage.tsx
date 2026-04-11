@@ -2,11 +2,13 @@ import React, { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { adminSettings } from '../../services/adminApi';
 import { todayIST } from '../../utils/time';
+import { useSensorial } from '../../context/SensorialContext';
 
 const BLANK_OFFER = { code: '', description: '', discount_type: 'flat' as const, value: 0, valid_from: todayIST(), valid_to: '', usage_limit: '' };
 
 export default function AdminSettingsPage() {
   const qc = useQueryClient();
+  const sensorial = useSensorial();
   const { data } = useQuery({ queryKey: ['admin-settings'], queryFn: () => adminSettings.get().then(r => r.data) });
 
   const [form, setForm] = useState<any>({});
@@ -252,7 +254,7 @@ export default function AdminSettingsPage() {
               Active
             </label>
             <button
-              onClick={() => { if (confirm('Delete this reward?')) deleteStreakReward.mutate(r.id); }}
+              onClick={async () => { if (await sensorial.confirm({ title: 'Delete Streak Reward', message: `Remove the ${r.streak_days}-day streak reward? This cannot be undone.`, confirmText: 'Delete', type: 'danger' })) deleteStreakReward.mutate(r.id); }}
               className="text-xs text-red-500 hover:text-red-400 ml-auto"
             >Delete</button>
           </div>
