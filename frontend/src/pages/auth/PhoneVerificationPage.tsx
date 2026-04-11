@@ -43,13 +43,14 @@ export default function PhoneVerificationPage() {
   };
 
   const handleSendOtp = async () => {
-    if (phone.length !== 10) { handleShake(); return; }
+    if (phone.length !== 10) { 
+       handleShake(); 
+       showToast('Please enter a valid 10-digit mobile number.', 'error');
+       return; 
+    }
     
     setLoading(true);
     try {
-      // In a real flow, this calls Firebase or your SMS provider
-      // For this implementation, we simulate the 'Send' step
-      // authApi.sendOtp('+91' + phone);
       showToast('OTP sent to +91 ' + phone, 'info');
       setStep('otp');
       if ('vibrate' in navigator) navigator.vibrate(50);
@@ -63,17 +64,19 @@ export default function PhoneVerificationPage() {
 
   const handleVerifyOtp = async (codeOverride?: string) => {
     const finalOtp = codeOverride || otp;
-    if (finalOtp.length < 4) { handleShake(); return; }
+    if (finalOtp.length < 4) { 
+       handleShake(); 
+       showToast('Please enter the 4-digit OTP.', 'error');
+       return; 
+    }
 
     setLoading(true);
     try {
-      // Verification logic: send normalized phone to backend
       await authApi.verifyPhone(phone);
       
       if ('vibrate' in navigator) navigator.vibrate([30, 30, 30]);
       showToast('Number verified successfully!', 'success');
       
-      // Refresh user state to clear onboarding flag
       await refresh();
       navigate('/', { replace: true });
     } catch (err: any) {
@@ -131,7 +134,7 @@ export default function PhoneVerificationPage() {
 
               <button
                 onClick={handleSendOtp}
-                disabled={loading || phone.length !== 10}
+                disabled={loading}
                 className="w-full btn-primary !py-5 !rounded-3xl shadow-glow-subtle disabled:grayscale disabled:opacity-30 disabled:scale-95 transition-all duration-500"
               >
                 {loading ? 'Processing...' : 'Send Verification OTP'}
