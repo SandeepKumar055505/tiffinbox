@@ -26,7 +26,7 @@ export default function AdminLedgerPage() {
   const [debitForm, setDebitForm] = useState({ user_id: '', amount: '', description: '' });
   const [activeTab, setActiveTab] = useState<'list' | 'credit' | 'debit'>('list');
 
-  const { data, isLoading } = useQuery({
+  const { data, isLoading } = useQuery<{ entries: any[]; total: number }>({
     queryKey: ['admin-ledger', userId, entryType, offset],
     queryFn: () => adminLedger.list({
       user_id: userId ? parseInt(userId) : undefined,
@@ -34,8 +34,7 @@ export default function AdminLedgerPage() {
       limit,
       offset,
     }).then(r => r.data),
-    keepPreviousData: true,
-  } as any);
+  });
 
   const credit = useMutation({
     mutationFn: () => adminLedger.credit({
