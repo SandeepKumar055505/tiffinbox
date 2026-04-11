@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { adminSettings } from '../../services/adminApi';
+import { todayIST } from '../../utils/time';
 
-const today = new Date().toISOString().split('T')[0];
-const BLANK_OFFER = { code: '', description: '', discount_type: 'flat' as const, value: 0, valid_from: today, valid_to: '', usage_limit: '' };
+const BLANK_OFFER = { code: '', description: '', discount_type: 'flat' as const, value: 0, valid_from: todayIST(), valid_to: '', usage_limit: '' };
 
 export default function AdminSettingsPage() {
   const qc = useQueryClient();
@@ -13,6 +13,8 @@ export default function AdminSettingsPage() {
   const [broadcastForm, setBroadcastForm] = useState({ title: '', message: '', type: 'info' });
   const [offerForm, setOfferForm] = useState(BLANK_OFFER);
   const [showOfferForm, setShowOfferForm] = useState(false);
+  const [savedFlash, setSavedFlash] = useState(false);
+  const [broadcastSent, setBroadcastSent] = useState(false);
 
   useEffect(() => {
     if (data?.settings) setForm(data.settings);
@@ -34,12 +36,20 @@ export default function AdminSettingsPage() {
       delivery_otp_enabled: !!form.delivery_otp_enabled,
       ratings_enabled: !!form.ratings_enabled,
     }),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['admin-settings'] }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['admin-settings'] });
+      setSavedFlash(true);
+      setTimeout(() => setSavedFlash(false), 3000);
+    },
   });
 
   const broadcast = useMutation({
     mutationFn: () => adminSettings.broadcast(broadcastForm),
-    onSuccess: () => setBroadcastForm({ title: '', message: '', type: 'info' }),
+    onSuccess: () => {
+      setBroadcastForm({ title: '', message: '', type: 'info' });
+      setBroadcastSent(true);
+      setTimeout(() => setBroadcastSent(false), 3000);
+    },
   });
 
   const { data: streakRewards = [] } = useQuery({
@@ -83,6 +93,16 @@ export default function AdminSettingsPage() {
 
   return (
     <div className="p-6 space-y-6 max-w-2xl">
+      {savedFlash && (
+        <div className="fixed bottom-6 right-6 z-50 bg-teal-500 text-white px-4 py-2 rounded-xl text-sm font-bold shadow-lg animate-in slide-in-from-right">
+          Settings saved
+        </div>
+      )}
+      {broadcastSent && (
+        <div className="fixed bottom-6 right-6 z-50 bg-accent text-white px-4 py-2 rounded-xl text-sm font-bold shadow-lg animate-in slide-in-from-right">
+          Broadcast sent
+        </div>
+      )}
       <h1 className="text-xl font-bold t-text">Settings</h1>
 
       {/* Cutoff times */}

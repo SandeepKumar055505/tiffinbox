@@ -37,6 +37,7 @@ import uploadRoutes from './routes/upload';
 import deliveryRoutes from './routes/delivery';
 import ratingsRoutes from './routes/ratings';
 import referralsRoutes from './routes/referrals';
+import voucherRoutes from './routes/vouchers';
 
 // Routes — admin
 import adminDashboardRoutes from './routes/admin/dashboard';
@@ -50,6 +51,11 @@ import adminLedgerRoutes from './routes/admin/ledger';
 import adminRatingsRoutes from './routes/admin/ratings';
 import adminReferralRoutes from './routes/admin/referrals';
 import adminUserRoutes from './routes/admin/users';
+import adminLogisticsRoutes from './routes/admin/logistics';
+import adminHolidayRoutes from './routes/admin/holidays';
+import adminAreaRoutes from './routes/admin/areas';
+import adminNarrativeRoutes from './routes/admin/narratives';
+import adminNotificationRoutes from './routes/admin/notifications';
 
 const app = express();
 
@@ -116,6 +122,7 @@ app.use('/api/upload', uploadRoutes);
 app.use('/api/delivery', deliveryRoutes);
 app.use('/api/ratings', ratingsRoutes);
 app.use('/api/referrals', referralsRoutes);
+app.use('/api/vouchers', voucherRoutes);
 
 // Admin routes
 app.use('/api/admin', adminDashboardRoutes);
@@ -129,15 +136,47 @@ app.use('/api/admin/ledger', adminLedgerRoutes);
 app.use('/api/admin/ratings', adminRatingsRoutes);
 app.use('/api/admin/referrals', adminReferralRoutes);
 app.use('/api/admin/users', adminUserRoutes);
+app.use('/api/admin/logistics', adminLogisticsRoutes);
+app.use('/api/admin/holidays', adminHolidayRoutes);
+app.use('/api/admin/areas', adminAreaRoutes);
+app.use('/api/admin/narratives', adminNarrativeRoutes);
+app.use('/api/admin/notifications', adminNotificationRoutes);
 
 // ── Error handler ─────────────────────────────────────────────────────────────
 if (env.SENTRY_DSN) {
   Sentry.setupExpressErrorHandler(app);
 }
 
-app.use((err: any, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
+app.use(async (err: any, req: express.Request, res: express.Response, _next: express.NextFunction) => {
   console.error(err);
-  res.status(500).json({ error: 'Internal server error' });
+  
+  const status = err.status || err.statusCode || 500;
+  const errorKey = err.errorKey || (err.response?.data?.error_key);
+  
+  // Ω.6: Log Friction to Audit Logs if it's a known operational gate
+  if (status >= 400 && status < 500 && errorKey) {
+    try {
+      const { db } = await import('./config/db');
+      await db('audit_logs').insert({
+        action: `friction.${errorKey}`,
+        target_type: 'user_request',
+        after_value: JSON.stringify({ 
+          url: req.url, 
+          method: req.method, 
+          status, 
+          ip: req.ip,
+          user_agent: req.headers['user-agent']
+        }),
+      });
+    } catch (auditErr) {
+      console.error('[audit log error]', auditErr);
+    }
+  }
+
+  res.status(status).json({ 
+    error: err.message || 'Internal server error',
+    error_key: errorKey 
+  });
 });
 
 async function main() {

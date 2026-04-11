@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { adminDashboard } from '../../services/adminApi';
+import { todayIST } from '../../utils/time';
 
 const STATUS_COLORS: Record<string, string> = {
   scheduled: 'glass t-text-muted',
@@ -23,10 +24,8 @@ const TERMINAL_STATUSES = new Set(['delivered', 'failed', 'skipped', 'skipped_by
 
 export default function AdminDeliveryPage() {
   const qc = useQueryClient();
-  const [date, setDate] = useState(() => {
-    const d = new Date();
-    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-  });
+  const [date, setDate] = useState(() => todayIST());
+  const [otpSuccess, setOtpSuccess] = useState(false);
   const [mealFilter, setMealFilter] = useState<string>('all');
 
   const { data } = useQuery({
@@ -50,7 +49,8 @@ export default function AdminDeliveryPage() {
   const refreshOtp = useMutation({
     mutationFn: (id: number) => adminDashboard.refreshOtp(id),
     onSuccess: () => {
-      alert('OTP refreshed successfully');
+      setOtpSuccess(true);
+      setTimeout(() => setOtpSuccess(false), 3000);
       qc.invalidateQueries({ queryKey: ['admin-delivery', date] });
     },
   });
@@ -63,6 +63,11 @@ export default function AdminDeliveryPage() {
 
   return (
     <div className="p-6 space-y-5">
+      {otpSuccess && (
+        <div className="fixed bottom-6 right-6 z-50 bg-teal-500 text-white px-4 py-2 rounded-xl text-sm font-bold shadow-lg animate-in slide-in-from-right">
+          OTP refreshed
+        </div>
+      )}
       <div className="flex items-center gap-4 flex-wrap">
         <h1 className="text-xl font-bold t-text">Delivery</h1>
         <input

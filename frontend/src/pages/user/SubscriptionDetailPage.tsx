@@ -4,13 +4,17 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { subscriptions as subsApi, skip as skipApi } from '../../services/api';
 import api from '../../services/api';
 import { formatRupees } from '../../utils/pricing';
+import { useSensorial, haptics } from '../../context/SensorialContext';
+import { usePublicConfig } from '../../hooks/usePublicConfig';
 import SmartPauseModal from '../../components/shared/SmartPauseModal';
+import ResumeConfirmModal from '../../components/shared/ResumeConfirmModal';
 
 export default function SubscriptionDetailPage() {
   const { id } = useParams<{ id: string }>();
   const [showPauseModal, setShowPauseModal] = useState(false);
-  const [skipError, setSkipError] = useState<string | null>(null);
-  const [skipSuccess, setSkipSuccess] = useState<string | null>(null);
+  const [showResumeModal, setShowResumeModal] = useState(false);
+  const sensorial = useSensorial();
+  const { config: publicConfig } = usePublicConfig();
   // cell IDs that have a pending admin-approval skip
   const [pendingSkipCells, setPendingSkipCells] = useState<Set<number>>(new Set());
   const qc = useQueryClient();
@@ -22,31 +26,52 @@ export default function SubscriptionDetailPage() {
   const skipMeal = useMutation({
     mutationFn: (meal_cell_id: number) => skipApi.request(meal_cell_id),
     onSuccess: (res, meal_cell_id) => {
-      setSkipError(null);
       const data = res.data;
       if (data.status === 'pending') {
-        // Post-cutoff: admin must approve — show pending badge on that cell
         setPendingSkipCells(prev => new Set([...prev, meal_cell_id]));
-        setSkipSuccess('Skip request sent — awaiting admin approval.');
+      } else if (data.status === 'soul_swap') {
+        haptics.heavy();
+        sensorial.confirm({
+          title: 'Soul Swap Manifested',
+          message: 'Your late skip has been recovered through the Covenant and converted into a Meal Voucher. You can manifest this meal on a future date from your dashboard vault.',
+          confirmText: 'Go to Dashboard',
+          cancelText: 'Stay Here'
+        }).then(res => { if (res) window.location.href = '/'; });
+        refetch();
       } else {
-        setSkipSuccess('Skip applied! Wallet will be credited shortly.');
         refetch();
       }
       qc.invalidateQueries({ queryKey: ['today-meals'] });
-      setTimeout(() => setSkipSuccess(null), 5000);
+      qc.invalidateQueries({ queryKey: ['wallet-history'] });
+      qc.invalidateQueries({ queryKey: ['vouchers'] });
     },
-    onError: (err: any) => setSkipError(err.response?.data?.error || 'Could not skip meal'),
+    onError: () => {
+      // Global axios interceptor handles the gourmet error modal automatically
+      haptics.error();
+    },
+  });
+
+  const resume = useMutation({
+    mutationFn: (shiftDates: boolean) => subsApi.resume(Number(id), shiftDates),
+    onSuccess: () => {
+      setShowResumeModal(false);
+      refetch();
+      qc.invalidateQueries({ queryKey: ['today-meals'] });
+    },
+    onError: () => {
+      haptics.error();
+    },
   });
 
   const swapMeal = useMutation({
-    mutationFn: ({ cellId, itemId }: { cellId: number; itemId: number }) => 
+    mutationFn: ({ cellId, itemId }: { cellId: number; itemId: number }) =>
       api.patch(`/subscriptions/${id}/cells/${cellId}/swap`, { item_id: itemId }),
     onSuccess: () => {
-      setSkipSuccess('Meal swapped successfully!');
       refetch();
-      setTimeout(() => setSkipSuccess(null), 5000);
     },
-    onError: (err: any) => setSkipError(err.response?.data?.error || 'Could not swap meal'),
+    onError: () => {
+      haptics.error();
+    },
   });
 
   if (isLoading) return (
@@ -137,32 +162,36 @@ export default function SubscriptionDetailPage() {
           {(sub.state === 'active' || sub.state === 'partially_skipped') && (
             <button
               onClick={() => setShowPauseModal(true)}
-              className="w-full surface-glass text-center !py-4 rounded-2xl border border-white/5 hover:border-text-muted/50 transition-colors"
+              disabled={publicConfig?.features?.pause_enabled === false}
+              className="w-full surface-glass text-center !py-4 rounded-2xl border border-white/5 hover:border-text-muted/50 transition-colors disabled:opacity-20"
             >
-              <span className="text-[11px] font-bold uppercase tracking-widest text-text-muted">Pause or Reschedule Subscription</span>
+              <span className="text-[11px] font-bold uppercase tracking-widest text-text-muted">
+                {publicConfig?.features?.pause_enabled === false ? 'Pausing Temporarily Restricted' : 'Pause or Reschedule Subscription'}
+              </span>
             </button>
           )}
 
           {sub.state === 'paused' && (
-            <div className="surface-glass border border-yellow-500/20 bg-yellow-500/10 p-5 rounded-2xl space-y-4">
-              <div className="space-y-1">
-                <p className="text-[11px] font-bold uppercase tracking-widest text-yellow-600">System Paused</p>
-                {sub.pause_reason && <p className="text-sm font-medium italic opacity-80">{sub.pause_reason}</p>}
+            <div className="surface-liquid border border-yellow-500/20 bg-yellow-500/5 p-6 sm:p-8 rounded-[2rem] space-y-6 shadow-elite">
+              <div className="space-y-2">
+                <div className="flex items-center gap-3">
+                   <span className="w-2.5 h-2.5 rounded-full bg-yellow-500 animate-pulse" />
+                   <p className="text-label-caps !text-yellow-600 font-black !text-[10px]">Plan Interval Paused</p>
+                </div>
+                {sub.pause_reason && <p className="text-h3 !text-lg italic opacity-70">"{sub.pause_reason}"</p>}
               </div>
-              <div className="flex gap-3">
+              <div className="flex flex-col sm:flex-row gap-4">
                 <button
-                  onClick={async () => {
-                    try { await subsApi.resume(sub.id); refetch(); } catch { alert('Could not resume'); }
-                  }}
-                  className="flex-1 bg-white text-black py-2.5 rounded-xl text-xs font-bold uppercase tracking-widest hover:opacity-90"
+                  onClick={() => setShowResumeModal(true)}
+                  className="flex-1 btn-primary !bg-white !text-black !py-4 rounded-2xl font-black text-[10px] tracking-widest uppercase hover:scale-105 active:scale-95 transition-all shadow-glow-subtle"
                 >
-                  Resume
+                  Resume Subcription
                 </button>
                 <button
                   onClick={() => setShowPauseModal(true)}
-                  className="px-6 border border-white/20 py-2.5 rounded-xl text-xs font-bold uppercase tracking-widest hover:bg-white/10 text-white"
+                  className="flex-1 btn-ghost border border-white/10 !py-4 rounded-2xl font-black text-[10px] tracking-widest uppercase hover:bg-white/5 active:scale-95 transition-all"
                 >
-                  Cancel
+                  Modify Reschedule
                 </button>
               </div>
             </div>
@@ -185,17 +214,7 @@ export default function SubscriptionDetailPage() {
             <p className="text-[10px] font-bold uppercase tracking-widest opacity-40">{(sub.meal_cells || []).length} Meals</p>
           </div>
 
-          {skipSuccess && (
-            <div className="surface-glass border-teal-500/20 bg-teal-500/5 px-4 py-3 rounded-xl text-[10px] font-bold uppercase text-teal-500 tracking-widest flex items-center gap-2 mb-4">
-              <span>✓</span> {skipSuccess}
-            </div>
-          )}
 
-          {skipError && (
-            <div className="surface-glass border-red-500/20 bg-red-500/5 px-4 py-3 rounded-xl text-[10px] font-bold uppercase text-red-500 tracking-widest flex items-center gap-2 mb-4">
-              <span>⚠️</span> {skipError}
-            </div>
-          )}
 
           <div className="space-y-4">
             {Object.entries(
@@ -293,9 +312,18 @@ export default function SubscriptionDetailPage() {
                               </div>
                             )}
                             <button
-                              onClick={() => skipMeal.mutate(cell.id)}
+                              onClick={async () => {
+                                if (await sensorial.confirm({ 
+                                  title: 'Skip Selection', 
+                                  message: 'Are you sure you wish to skip this gourmet meal? This action is processed by our prep-timers instantly.',
+                                  confirmText: 'Yes, Skip',
+                                  type: 'danger' 
+                                })) {
+                                  skipMeal.mutate(cell.id);
+                                }
+                              }}
                               disabled={skipMeal.isPending}
-                              className="text-[10px] font-bold text-orange-500 hover:text-white uppercase tracking-widest px-3 py-1.5 rounded disabled:opacity-50 transition-colors bg-orange-500/10 hover:bg-orange-500"
+                              className="text-[10px] font-black text-orange-500 hover:text-white uppercase tracking-widest px-4 py-2 rounded-xl disabled:opacity-50 transition-all border border-orange-500/10 hover:bg-orange-500 active:scale-95"
                             >
                               Skip
                             </button>
@@ -319,12 +347,12 @@ export default function SubscriptionDetailPage() {
         </section>
       </div>
 
-      {showPauseModal && (
-        <SmartPauseModal
-          subscriptionId={sub.id}
-          currentState={sub.state}
-          onDone={() => { setShowPauseModal(false); refetch(); }}
-          onClose={() => setShowPauseModal(false)}
+      {showResumeModal && (
+        <ResumeConfirmModal
+          isOpen={showResumeModal}
+          onClose={() => setShowResumeModal(false)}
+          onConfirm={(shift) => resume.mutate(shift)}
+          isPending={resume.isPending}
         />
       )}
     </div>

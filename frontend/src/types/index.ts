@@ -13,6 +13,7 @@ export interface AuthUser {
   phone: string | null;
   phone_verified: boolean;
   referral_code: string | null;
+  last_referrer_name: string | null;
   notification_mutes?: string[];
   created_at: string;
 }
@@ -21,8 +22,7 @@ export interface Person {
   id: number;
   user_id: number;
   name: string;
-  is_vegetarian: boolean;
-  is_vegan: boolean;
+  dietary_tag: string;
   allergies: string[];
   spice_level: 'mild' | 'medium' | 'hot';
   notes: string | null;
@@ -67,6 +67,7 @@ export interface Subscription {
   id: number;
   user_id: number;
   person_id: number;
+  delivery_address_id: number | null;
   plan_days: 1 | 7 | 14 | 30;
   week_pattern: 'full' | 'no_sun' | 'weekdays';
   start_date: string;
@@ -93,6 +94,10 @@ export interface MealCell {
   item_name?: string;
   image_url?: string;
   delivery_status: 'scheduled' | 'preparing' | 'out_for_delivery' | 'delivered' | 'skipped' | 'skipped_by_admin' | 'skipped_holiday' | 'cancelled' | 'failed';
+  proof_image_url?: string;
+  fail_reason?: string;
+  driver_name?: string;
+  picked_at?: string;
   wallet_credited: boolean;
 }
 
@@ -168,4 +173,14 @@ export interface SubscribeFormState {
   promo_code: string;
   apply_wallet: boolean;
   idempotency_key: string;
+}
+
+export interface Voucher {
+  id: number;
+  user_id: number;
+  person_id: number;
+  meal_type: MealType;
+  status: 'active' | 'used' | 'expired';
+  metadata: string;
+  created_at: string;
 }

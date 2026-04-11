@@ -1,14 +1,17 @@
-import React, { useState, useCallback } from 'react';
-import { MealType, DaySelection, MealItem } from '../../types';
+import React, { useState, useCallback, useMemo } from 'react';
 import { formatRupees, type MealPrices } from '../../utils/pricing';
+import { motion, AnimatePresence } from 'framer-motion';
+import { haptics, useSensorial } from '../../context/SensorialContext';
 import DishSwapModal from './DishSwapModal';
+import { GhostChefInsight } from './GhostChefInsight';
+import { MealType, MealItem, DaySelection } from '../../types';
 
 interface MenuEntry {
   default: MealItem;
   alternatives: MealItem[];
 }
 
-type WeekMenu = Record<number, Record<MealType, MenuEntry>>;
+type WeekMenu = Record<number, Partial<Record<MealType, MenuEntry>>>;
 
 interface MealGridProps {
   days: DaySelection[];
@@ -28,6 +31,7 @@ function getDayOffCount(days: DaySelection[]): number {
 }
 
 export default function MealGrid({ days, weekMenu, planDays, maxDayOffs, mealPrices, onChange }: MealGridProps) {
+  const sensorial = useSensorial();
   const [swapModal, setSwapModal] = useState<{ date: string; mealType: MealType } | null>(null);
   const dayOffCount = getDayOffCount(days);
 
@@ -37,7 +41,7 @@ export default function MealGrid({ days, weekMenu, planDays, maxDayOffs, mealPri
       const has = day.meals.includes(mealType);
       if (has) {
         // Removing this meal — check if it would make all 3 off
-        const newMeals = day.meals.filter(m => m !== mealType);
+        const newMeals = day.meals.filter((m: MealType) => m !== mealType);
         if (newMeals.length === 0 && dayOffCount >= maxDayOffs) {
           // Would exceed day-off limit — block
           return day;
@@ -68,13 +72,20 @@ export default function MealGrid({ days, weekMenu, planDays, maxDayOffs, mealPri
     return menuEntry.default;
   };
 
-  const handleSwapSelect = (date: string, mealType: MealType, itemId: number) => {
-    const updated = days.map(day => {
-      if (day.date !== date) return day;
-      return { ...day, overrides: { ...day.overrides, [mealType]: itemId } };
-    });
-    onChange(updated);
-    setSwapModal(null);
+  const handleSwapSelect = async (date: string, mealType: MealType, itemId: number) => {
+    // Logic updated to use confirm
+    if (await sensorial.confirm({
+      title: 'Confirm Gourmet Swap?',
+      message: 'You are manifesting an artisanal selection change for this specific slot. This selection will be anchored once prep-timers begin.',
+      confirmText: 'Anchor Selection'
+    })) {
+      const updated = days.map(day => {
+        if (day.date !== date) return day;
+        return { ...day, overrides: { ...day.overrides, [mealType]: itemId } };
+      });
+      onChange(updated);
+      setSwapModal(null);
+    }
   };
 
   const swapDay = swapModal ? days.find(d => d.date === swapModal.date) : null;
@@ -82,125 +93,154 @@ export default function MealGrid({ days, weekMenu, planDays, maxDayOffs, mealPri
   const swapEntry = swapModal ? weekMenu[swapDow]?.[swapModal.mealType] : null;
 
   return (
-    <div className="space-y-6 animate-glass">
+    <div className="space-y-6">
+      {/* Elite Advisory Rail */}
+      <div className="surface-glass rounded-[2rem] p-6 border-white/5 ring-1 ring-white/5 bg-accent/5 backdrop-blur-xl animate-glass">
+        <GhostChefInsight />
+      </div>
+
       {/* Legend + day-off counter */}
-      <div className="flex items-center justify-between px-1">
-        <div className="flex gap-4">
-          <div className="flex items-center gap-2">
-            <span className="w-2.5 h-2.5 rounded-full bg-accent shadow-glow-subtle" />
-            <span className="text-label-caps !text-[9px] font-bold opacity-60">Meal</span>
+      <div className="flex items-center justify-between px-2">
+        <div className="flex gap-6">
+          <div className="flex items-center gap-3">
+            <span className="w-2.5 h-2.5 rounded-full bg-accent shadow-glow" />
+            <span className="text-label-caps !text-[10px] font-black opacity-60 uppercase tracking-widest">Included</span>
           </div>
-          <div className="flex items-center gap-2">
-            <span className="w-2.5 h-2.5 rounded-full bg-border" />
-            <span className="text-label-caps !text-[9px] font-bold opacity-40">Skip</span>
+          <div className="flex items-center gap-3">
+            <span className="w-2.5 h-2.5 rounded-full bg-white/5 border border-white/10" />
+            <span className="text-label-caps !text-[10px] font-black opacity-30 uppercase tracking-widest">Skipped</span>
           </div>
         </div>
-        <span className={`text-[9px] font-black uppercase tracking-widest px-3 py-1 rounded-lg border transition-all duration-500 ${dayOffCount >= maxDayOffs ? 'bg-yellow-500/10 text-yellow-600 border-yellow-500/20' : 'bg-bg-secondary t-text-muted border-border/50'}`}>
-          {maxDayOffs - dayOffCount} Skips Left
-        </span>
+        
+        <div className={`px-5 py-2 rounded-full border transition-all duration-1000 flex items-center gap-3 ${dayOffCount >= maxDayOffs ? 'bg-orange-500/10 text-orange-500 border-orange-500/30 shadow-glow-subtle' : 'bg-white/5 border-white/10 opacity-60'}`}>
+          <div className="w-2 h-2 rounded-full bg-current animate-pulse" />
+          <span className="text-[11px] font-black uppercase tracking-[0.2em]">{maxDayOffs - dayOffCount} Skips Remaining</span>
+        </div>
       </div>
 
-      {/* Column headers */}
-      <div className="grid gap-2" style={{ gridTemplateColumns: '60px repeat(3, 1fr)' }}>
-        <div />
-        {MEAL_TYPES.map(m => (
-          <div key={m} className="text-center space-y-0.5">
-            <p className="text-label-caps !t-text-muted !text-[9px] font-black">{MEAL_LABELS[m]}</p>
-            <p className="text-h3 !text-[10px] text-accent/60 font-medium">{formatRupees(mealPrices[m])}</p>
-          </div>
-        ))}
-      </div>
-
-      {/* Rows */}
-      <div className="space-y-2">
-        {days.map(day => {
+      {/* Row Rendering */}
+      <div className="space-y-4">
+        {days.map((day, idx) => {
           const dow = new Date(day.date).getDay();
-          const isDayOff = day.meals.length === 0;
           const dateLabel = new Date(day.date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' });
 
-          if (isDayOff) {
-            return (
-              <div key={day.date} className="rounded-2xl p-4 transition-all duration-500 border-2 border-dashed border-border/10 bg-bg-secondary/20">
-                <div className="grid gap-2" style={{ gridTemplateColumns: '60px 1fr' }}>
-                  <div className="flex flex-col justify-center border-r border-border/10 pr-2">
-                    <span className="text-label-caps !text-[8px] !t-text-muted font-bold">{DAY_NAMES[dow]}</span>
-                    <span className="text-h3 !text-sm font-semibold">{dateLabel}</span>
-                  </div>
-                  <div className="flex items-center justify-between pl-4">
-                    <div className="space-y-0.5">
-                      <p className="text-label-caps !text-yellow-600 !text-[9px] font-black uppercase">Day Off</p>
-                    </div>
-                    <button
-                      onClick={() => onChange(days.map(d => d.date === day.date ? { ...d, meals: ['breakfast', 'lunch', 'dinner'] } : d))}
-                      className="btn-ghost !text-[9px] !px-4 !py-1.5 border border-accent/20 rounded-lg hover:bg-accent/5 text-accent font-black transition-all"
-                    >
-                      Add Meals
-                    </button>
-                  </div>
-                </div>
-              </div>
-            );
-          }
-
           return (
-            <div key={day.date} className="grid gap-2" style={{ gridTemplateColumns: '60px repeat(3, 1fr)' }}>
-              {/* Day label */}
-              <div className="flex flex-col justify-center pl-1 border-r border-border/5 pr-2">
-                <span className="text-label-caps !text-[8px] !t-text-muted font-bold">{DAY_NAMES[dow]}</span>
-                <span className="text-h3 !text-sm font-semibold">{dateLabel}</span>
-              </div>
+            <motion.div 
+              key={day.date}
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: idx * 0.05 }}
+              className="space-y-2"
+            >
+              <div className="grid gap-3" style={{ gridTemplateColumns: '70px repeat(3, 1fr)' }}>
+                {/* Day label */}
+                <div className="flex flex-col justify-center items-center py-2 bg-bg-secondary/30 rounded-[1.5rem] border border-white/5">
+                  <span className="text-label-caps !text-[9px] font-black opacity-30">{DAY_NAMES[dow]}</span>
+                  <span className="text-h3 !text-lg font-black tracking-tight">{dateLabel}</span>
+                </div>
 
-              {/* Meal cells */}
-              {MEAL_TYPES.map(mealType => {
-                const included = day.meals.includes(mealType);
-                const item = getItemForCell(day.date, mealType);
-                const blocked = wouldExceedDayOff(day.date, mealType);
+                {/* Meal cells */}
+                {MEAL_TYPES.map(mealType => {
+                  const included = day.meals.includes(mealType);
+                  const item = getItemForCell(day.date, mealType);
+                  const blocked = wouldExceedDayOff(day.date, mealType);
 
-                return (
-                  <div
-                    key={mealType}
-                    className={`rounded-2xl p-3 cursor-pointer select-none transition-all duration-500 relative border-2 h-full flex flex-col justify-between group ${
-                      included ? 'meal-cell-checked' : 'meal-cell-skipped'
-                    } ${blocked ? 'opacity-20 cursor-not-allowed grayscale' : 'hover:scale-[1.02] active:scale-[0.98]'}`}
-                    onClick={() => !blocked && toggleMeal(day.date, mealType)}
-                    title={blocked ? `Maximum ${maxDayOffs} day-offs per week reached` : undefined}
-                  >
-                    {/* Checkbox indicator */}
-                    <div className={`absolute top-2 right-2 w-5 h-5 rounded-lg flex items-center justify-center text-[10px] transition-all duration-500 ${
-                      included ? 'bg-white text-accent shadow-sm' : 'border-2 border-border group-hover:border-accent/30'
-                    }`}>
-                      {included && '✓'}
-                    </div>
-
-                    {/* Dish info */}
-                    <div className="pr-4">
-                      {item ? (
-                        <div className="text-left w-full">
-                          <p className={`text-[10px] font-bold leading-tight line-clamp-2 transition-colors duration-300 ${included ? 'text-white' : 't-text-secondary group-hover:text-accent'}`}>
-                            {item.name}
-                          </p>
+                  return (
+                    <motion.div
+                      key={mealType}
+                      whileHover={!blocked ? { scale: 1.02, y: -2 } : {}}
+                      whileTap={!blocked ? { scale: 0.96 } : {}}
+                      onClick={() => {
+                        if (blocked) {
+                          haptics.heavy();
+                        } else {
+                          toggleMeal(day.date, mealType);
+                          haptics.success();
+                        }
+                      }}
+                      className={`relative aspect-[4/5] rounded-[1.5rem] p-3 sm:p-4 flex flex-col justify-between cursor-pointer transition-all duration-700 border-2 overflow-hidden group ${
+                        included 
+                          ? 'bg-accent border-accent shadow-elite shadow-accent/20' 
+                          : 'bg-surface-glass border-white/5 shadow-inner'
+                      } ${blocked ? 'opacity-20 cursor-not-allowed grayscale' : ''}`}
+                    >
+                      {/* Background Visual (Meal Hint) */}
+                      {included && item?.image_url && (
+                        <div className="absolute inset-0 opacity-10 blur-sm scale-110 pointer-events-none">
+                          <img src={item.image_url} alt="" className="w-full h-full object-cover" />
                         </div>
-                      ) : (
-                        <p className="text-[9px] t-text-faint font-semibold uppercase tracking-widest text-center py-2">---</p>
                       )}
-                    </div>
 
-                    {included && (
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setSwapModal({ date: day.date, mealType });
-                        }}
-                        className="mt-2 text-[8px] font-black text-white/70 hover:text-white transition-all uppercase tracking-widest flex items-center gap-1 group-hover:translate-x-1"
-                      >
-                        <span>Swap</span>
-                        <span className="text-sm">→</span>
-                      </button>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
+                      {/* Header: Diet Icon / Check */}
+                      <div className="flex justify-between items-start relative z-10">
+                        <div className={`w-8 h-8 rounded-2xl flex items-center justify-center text-xs transition-all duration-500 ${
+                          included ? 'bg-white/20 text-white' : 'bg-accent/5 text-accent'
+                        }`}>
+                          {mealType === 'breakfast' ? '☕' : mealType === 'lunch' ? '🍱' : '🌙'}
+                        </div>
+                        {included && (
+                          <div className="w-6 h-6 rounded-full bg-white text-accent flex items-center justify-center text-[10px] font-black shadow-glow-subtle">
+                            ✓
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Content: Item Info & Spotlight */}
+                      <div className="relative z-10 space-y-2">
+                        {item ? (
+                          <>
+                            <p className={`text-[11px] font-black leading-tight line-clamp-2 transition-colors duration-500 ${
+                              included ? 'text-white' : 't-text-secondary group-hover:text-accent'
+                            }`}>
+                              {item.name}
+                            </p>
+                            
+                            {/* DishMetaPills (Admin Tags) */}
+                            {included && item.tags && item.tags.length > 0 && (
+                              <div className="flex flex-wrap gap-1">
+                                {item.tags.slice(0, 1).map((tag: string) => (
+                                  <span key={tag} className="text-[7px] font-black uppercase tracking-widest bg-white/10 text-white/80 px-1.5 py-0.5 rounded-full border border-white/10">
+                                    {tag}
+                                  </span>
+                                ))}
+                              </div>
+                            )}
+
+                            {/* Swap Triger */}
+                            {included && (
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setSwapModal({ date: day.date, mealType });
+                                  haptics.confirm();
+                                }}
+                                className="mt-1 flex items-center gap-1.5 group/swap"
+                              >
+                                <span className="text-[7px] font-black text-white/60 hover:text-white uppercase tracking-widest transition-all">Swap</span>
+                                <div className="w-3 h-3 rounded-full bg-white/10 flex items-center justify-center text-white/60 group-hover/swap:bg-white/20 group-hover/swap:text-white transition-all">
+                                  <span className="text-[10px] sm:text-[12px]">→</span>
+                                </div>
+                              </button>
+                            )}
+                          </>
+                        ) : (
+                          <p className="text-[8px] opacity-20 font-black uppercase text-center pb-2">Not Set</p>
+                        )}
+                      </div>
+
+                      {/* Ingredients Spotlight (Tooltip-lite) */}
+                      {!included && item?.description && (
+                        <div className="absolute inset-x-0 bottom-0 p-3 opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none">
+                          <div className="bg-bg-primary/95 p-3 rounded-2xl text-[8px] font-bold text-accent leading-snug border border-accent/10 shadow-elite">
+                            {item.description}
+                          </div>
+                        </div>
+                      )}
+                    </motion.div>
+                  );
+                })}
+              </div>
+            </motion.div>
           );
         })}
       </div>

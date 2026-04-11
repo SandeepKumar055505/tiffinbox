@@ -78,6 +78,35 @@ router.get('/', requireAdmin, async (_req, res) => {
     .count('id as cnt')
     .first();
 
+  // Operation Pulse: Last 20 system events
+  const pulse = await db('audit_logs as al')
+    .leftJoin('admins as a', 'a.id', 'al.admin_id')
+    .leftJoin('users as u', 'u.id', 'al.admin_id') // For user-driven events if logged there
+    .select('al.*', 'a.name as admin_name')
+    .orderBy('al.created_at', 'desc')
+    .limit(20);
+
+  // Ω.9: Opportunity Pulse (Predictive)
+  // 1. Expiring VIPs (within 48h)
+  const expiringVIPs = await db('subscriptions as s')
+    .join('users as u', 'u.id', 's.user_id')
+    .where('s.state', 'active')
+    .whereBetween('s.end_date', [today, db.raw("CURRENT_DATE + INTERVAL '2 days'")])
+    .select('u.name', 's.end_date', 's.id')
+    .limit(5);
+
+  // 2. High Friction Users (3+ failures in last 3 days)
+  const bleedingUsers = await db('meal_cells as mc')
+    .join('subscriptions as s', 's.id', 'mc.subscription_id')
+    .join('users as u', 'u.id', 's.user_id')
+    .where('mc.delivery_status', 'failed')
+    .where('mc.date', '>=', db.raw("CURRENT_DATE - INTERVAL '3 days'"))
+    .select('u.name', 'u.id')
+    .count('mc.id as failures')
+    .groupBy('u.name', 'u.id')
+    .having(db.raw('COUNT(mc.id) > 2'))
+    .limit(5);
+
   res.json({ 
     ...stats.rows[0], 
     prep_list: prepList, 
@@ -86,7 +115,20 @@ router.get('/', requireAdmin, async (_req, res) => {
     bulk_subscribers: bulkSubscribersCount,
     low_ratings: lowRatings,
     stale_meals_count: parseInt((staleCount as any)?.cnt ?? '0', 10),
-    hotspots
+    hotspots,
+    pulse: pulse.map(p => ({
+      ...p,
+      actor: p.admin_name || 'System / User'
+    })),
+    opportunities: [
+      ...expiringVIPs.map(v => ({ type: 'renewal', message: `${v.name}'s plan expires on ${v.end_date}`, target: `/admin/subscriptions/${v.id}` })),
+      ...bleedingUsers.map(b => ({ type: 'friction', message: `${b.name} encountered ${b.failures} delivery failures`, target: `/admin/users/${b.id}` }))
+    ],
+    achievement_quanta: {
+      elite_30: parseInt((await db('person_streaks').where('current_streak', '>=', 30).count('id as cnt').first() as any)?.cnt ?? '0', 10),
+      pillar_14: parseInt((await db('person_streaks').where('current_streak', '>=', 14).count('id as cnt').first() as any)?.cnt ?? '0', 10),
+      spark_7: parseInt((await db('person_streaks').where('current_streak', '>=', 7).count('id as cnt').first() as any)?.cnt ?? '0', 10),
+    }
   });
 });
 

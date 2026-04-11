@@ -1,146 +1,139 @@
 import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { adminHolidays } from '../../services/adminApi';
+import { motion, AnimatePresence } from 'framer-motion';
+import { haptics } from '../../context/SensorialContext';
+import { todayIST, formatDateSensorial } from '../../utils/time';
+
+/**
+ * Holiday Control Engine (Ω.3)
+ * Orchestrating the 'Great Pause' with absolute administrative sovereignity.
+ * Features 'Liquid Time' manifestation and impact awareness.
+ */
 
 export default function AdminHolidaysPage() {
   const qc = useQueryClient();
-  const year = new Date().getFullYear();
-  const [form, setForm] = useState({ date: '', name: '' });
-  const [showForm, setShowForm] = useState(false);
-  const [skipMsg, setSkipMsg] = useState<Record<string, string>>({});
+  const [newHoliday, setNewHoliday] = useState({ date: todayIST(), name: '' });
+  const [showConfirm, setShowConfirm] = useState(false);
 
-  const { data: holidays = [], isLoading } = useQuery({
-    queryKey: ['admin-holidays', year],
-    queryFn: () => adminHolidays.list(year).then(r => r.data),
+  const { data: holidays, isLoading } = useQuery({
+    queryKey: ['admin-holidays'],
+    queryFn: () => adminHolidays.list().then(r => r.data),
   });
 
-  const create = useMutation({
-    mutationFn: () => adminHolidays.create({ date: form.date, name: form.name }),
+  const createHoliday = useMutation({
+    mutationFn: (data: typeof newHoliday) => adminHolidays.create(data),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['admin-holidays'] });
-      setForm({ date: '', name: '' });
-      setShowForm(false);
+      setShowConfirm(false);
+      setNewHoliday({ date: todayIST(), name: '' });
+      haptics.success();
     },
   });
 
-  const toggle = useMutation({
-    mutationFn: ({ id, is_active }: { id: number; is_active: boolean }) =>
-      adminHolidays.update(id, { is_active }),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['admin-holidays'] }),
-  });
-
-  const remove = useMutation({
-    mutationFn: (id: number) => adminHolidays.remove(id),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['admin-holidays'] }),
-  });
-
-  const holidaySkip = useMutation({
-    mutationFn: (date: string) => adminHolidays.holidaySkip(date),
-    onSuccess: (res, date) => {
-      setSkipMsg(prev => ({ ...prev, [date]: `${res.data.skipped} meals skipped` }));
-      qc.invalidateQueries({ queryKey: ['delivery-today'] });
-    },
-    onError: (err: any, date) => {
-      setSkipMsg(prev => ({ ...prev, [date]: err.response?.data?.error ?? 'Failed' }));
-    },
-  });
+  if (isLoading) return <div className="p-20 text-center animate-pulse opacity-20">Reading Temporal Ledger...</div>;
 
   return (
-    <div className="p-6 space-y-6 max-w-2xl">
-      <div className="flex items-center justify-between">
-        <h1 className="text-xl font-bold t-text">Holidays {year}</h1>
-        <button
-          onClick={() => setShowForm(v => !v)}
-          className="bg-teal-500 hover:bg-teal-400 text-white text-sm px-4 py-2 rounded-lg"
-        >
-          {showForm ? 'Cancel' : '+ Add Holiday'}
-        </button>
-      </div>
+    <div className="p-6 sm:p-12 space-y-12 max-w-[1200px] mx-auto pb-32">
+      <header className="space-y-2 text-center sm:text-left">
+         <h1 className="text-h1 !text-4xl tracking-tighter">The Great Pause</h1>
+         <p className="text-[10px] font-black uppercase tracking-widest opacity-40">Ecosystem Holiday & Liquid Time Orchestration</p>
+      </header>
 
-      {showForm && (
-        <div className="glass p-5 space-y-4">
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-1">
-              <p className="text-xs t-text-muted">Date</p>
-              <input
-                type="date"
-                value={form.date}
-                onChange={e => setForm(f => ({ ...f, date: e.target.value }))}
-                className="w-full glass border-transparent rounded px-3 py-2 t-text text-sm outline-none focus:border-teal-500"
-              />
-            </div>
-            <div className="space-y-1">
-              <p className="text-xs t-text-muted">Holiday Name</p>
-              <input
-                type="text"
-                value={form.name}
-                onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
-                placeholder="e.g. Diwali"
-                className="w-full glass border-transparent rounded px-3 py-2 t-text text-sm outline-none focus:border-teal-500"
-              />
-            </div>
-          </div>
-          <button
-            onClick={() => create.mutate()}
-            disabled={!form.date || !form.name || create.isPending}
-            className="bg-teal-500 hover:bg-teal-400 disabled:opacity-50 text-white text-sm px-4 py-2 rounded-lg"
-          >
-            {create.isPending ? 'Saving…' : 'Save Holiday'}
-          </button>
-          {create.isError && (
-            <p className="text-xs text-red-400">{(create.error as any)?.response?.data?.error}</p>
-          )}
-        </div>
-      )}
+      {/* Manifest New Holiday */}
+      <section className="surface-liquid p-8 sm:p-10 rounded-[4rem] border-white/5 ring-1 ring-white/10 space-y-8">
+         <div className="space-y-1">
+            <h3 className="text-h1 !text-xl">Declare a Pause</h3>
+            <p className="text-[10px] opacity-40 font-black uppercase">Adding a holiday will skip all meals and extend subscriptions forward (Liquid Time).</p>
+         </div>
 
-      <div className="glass p-5 space-y-3">
-        {isLoading && <p className="text-sm t-text-muted">Loading…</p>}
-        {!isLoading && (holidays as any[]).length === 0 && (
-          <p className="text-sm t-text-faint">No holidays configured for {year}.</p>
-        )}
-        {(holidays as any[]).map((h: any) => (
-          <div key={h.id} className="flex items-center gap-4 py-2 border-b border-border/10 last:border-0">
-            <div className="flex-1 min-w-0">
-              <p className={`text-sm font-semibold ${h.is_active ? 't-text' : 't-text-faint line-through'}`}>
-                {h.name}
-              </p>
-              <p className="text-xs t-text-muted">{h.date}</p>
+         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="space-y-2">
+               <p className="text-label-caps opacity-40">Pause Date</p>
+               <input 
+                 type="date" 
+                 value={newHoliday.date}
+                 onChange={e => setNewHoliday({ ...newHoliday, date: e.target.value })}
+                 className="w-full surface-glass p-5 rounded-[2rem] outline-none border-white/5 ring-1 ring-white/10 text-sm font-bold appearance-none bg-transparent"
+               />
             </div>
+            <div className="space-y-2">
+               <p className="text-label-caps opacity-40">Holiday Identity</p>
+               <input 
+                 type="text" 
+                 placeholder="e.g. Independence Day Zenith"
+                 value={newHoliday.name}
+                 onChange={e => setNewHoliday({ ...newHoliday, name: e.target.value })}
+                 className="w-full surface-glass p-5 rounded-[2rem] outline-none border-white/5 ring-1 ring-white/10 text-sm font-bold bg-transparent"
+               />
+            </div>
+         </div>
 
-            {/* Holiday skip button */}
-            <div className="flex flex-col items-end gap-1">
-              {skipMsg[h.date] && (
-                <p className="text-[10px] text-teal-400 font-bold">{skipMsg[h.date]}</p>
-              )}
-              <button
-                onClick={() => {
-                  if (confirm(`Skip all scheduled meals on ${h.date} (${h.name})?`)) {
-                    holidaySkip.mutate(h.date);
-                  }
-                }}
-                disabled={!h.is_active || holidaySkip.isPending}
-                className="text-xs bg-orange-500/20 text-orange-400 hover:bg-orange-500/30 px-3 py-1 rounded-lg disabled:opacity-30 transition-colors"
+         <button 
+           onClick={() => { haptics.impact(); setShowConfirm(true); }}
+           disabled={!newHoliday.name}
+           className="btn-primary !py-6 rounded-[3rem] w-full font-bold tracking-[0.2em] uppercase shadow-glow-subtle disabled:opacity-30"
+         >
+           Manifest Ecosystem Pause →
+         </button>
+      </section>
+
+      {/* Historical Ledger */}
+      <div className="space-y-6">
+         <div className="flex items-center gap-4 px-4">
+            <h3 className="text-label-caps !text-xs">Temporal Ledger</h3>
+            <div className="h-px flex-1 bg-white/5" />
+         </div>
+         
+         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            {holidays?.map((h: any) => (
+              <motion.div 
+                key={h.id}
+                className="surface-glass p-6 rounded-[2.5rem] border-white/5 ring-1 ring-white/10 space-y-4"
               >
-                Skip meals
-              </button>
-            </div>
-
-            <button
-              onClick={() => toggle.mutate({ id: h.id, is_active: !h.is_active })}
-              className={`text-xs px-2 py-1 rounded ${h.is_active ? 'bg-teal-500/20 text-teal-400' : 'bg-white/10 t-text-faint'}`}
-            >
-              {h.is_active ? 'Active' : 'Disabled'}
-            </button>
-
-            <button
-              onClick={() => { if (confirm(`Delete ${h.name}?`)) remove.mutate(h.id); }}
-              className="text-xs text-red-500/60 hover:text-red-400 transition-colors"
-            >
-              Delete
-            </button>
-          </div>
-        ))}
+                 <div className="flex items-center justify-between">
+                    <span className="text-xs font-black text-teal-500">{formatDateSensorial(h.date)}</span>
+                    <span className="text-[9px] opacity-40 font-black uppercase">PAUSED</span>
+                 </div>
+                 <p className="text-h1 !text-lg truncate">{h.name}</p>
+              </motion.div>
+            ))}
+         </div>
       </div>
+
+      <AnimatePresence>
+        {showConfirm && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-6 bg-black/60 backdrop-blur-md">
+             <motion.div 
+               initial={{ scale: 0.9, opacity: 0 }}
+               animate={{ scale: 1, opacity: 1 }}
+               exit={{ scale: 0.9, opacity: 0 }}
+               className="surface-liquid w-full max-w-[450px] p-10 text-center space-y-8 rounded-[4rem] shadow-elite border-white/5 ring-1 ring-white/10"
+             >
+                <div className="text-6xl">🕰️</div>
+                <div className="space-y-2">
+                   <h2 className="text-h1 !text-2xl">Confirm Liquid Shift?</h2>
+                   <p className="text-[11px] opacity-50 font-black tracking-tight uppercase">Manifesting this holiday will automatically extend all active user subscriptions by 1 day. This is a non-reversal ecosystem sync.</p>
+                </div>
+                <div className="flex flex-col gap-3">
+                   <button 
+                     onClick={() => createHoliday.mutate(newHoliday)}
+                     disabled={createHoliday.isPending}
+                     className="btn-primary !py-5 rounded-[2.5rem] font-bold tracking-[0.2em] uppercase"
+                   >
+                     {createHoliday.isPending ? 'Syncing Ecosystem...' : 'Anchor Holiday'}
+                   </button>
+                   <button 
+                     onClick={() => setShowConfirm(false)}
+                     className="text-[10px] font-black opacity-40 hover:opacity-100 transition-opacity uppercase tracking-widest"
+                   >
+                     Relinquish manifestation
+                   </button>
+                </div>
+             </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

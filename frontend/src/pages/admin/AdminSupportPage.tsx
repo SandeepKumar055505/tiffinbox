@@ -1,116 +1,164 @@
 import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { adminSupport } from '../../services/adminApi';
+import { useSensorial, haptics } from '../../context/SensorialContext';
 
 export default function AdminSupportPage() {
   const qc = useQueryClient();
-  const [selected, setSelected] = useState<number | null>(null);
+  const { showError, confirm } = useSensorial();
+  const [selectedTicketId, setSelectedTicketId] = useState<number | null>(null);
   const [reply, setReply] = useState('');
-  const [filter, setFilter] = useState('open');
 
   const { data: tickets = [] } = useQuery({
-    queryKey: ['admin-tickets', filter],
-    queryFn: () => adminSupport.tickets(filter).then(r => r.data),
-    refetchInterval: 15_000,
+    queryKey: ['admin-tickets'],
+    queryFn: () => adminSupport.listTickets().then(r => r.data),
+    refetchInterval: 60_000,
   });
 
-  const { data: thread } = useQuery({
-    queryKey: ['admin-ticket', selected],
-    queryFn: () => selected ? adminSupport.getTicket(selected).then(r => r.data) : null,
-    enabled: !!selected,
-    refetchInterval: 10_000,
+  const { data: ticketDetail } = useQuery({
+    queryKey: ['admin-ticket', selectedTicketId],
+    queryFn: () => adminSupport.getTicket(selectedTicketId!).then(r => r.data),
+    enabled: !!selectedTicketId,
   });
 
   const sendReply = useMutation({
-    mutationFn: () => adminSupport.reply(selected!, reply),
-    onSuccess: () => { setReply(''); qc.invalidateQueries({ queryKey: ['admin-ticket', selected] }); },
+    mutationFn: (message: string) => adminSupport.reply(selectedTicketId!, message),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['admin-ticket', selectedTicketId] });
+      setReply('');
+      haptics.confirm();
+    },
   });
 
   const updateStatus = useMutation({
-    mutationFn: (status: string) => adminSupport.updateStatus(selected!, status),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ['admin-tickets', filter] }); },
+    mutationFn: (status: 'open' | 'pending' | 'resolved') => adminSupport.updateStatus(selectedTicketId!, status),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['admin-tickets'] }),
   });
 
+  const selectedTicket = tickets.find((t: any) => t.id === selectedTicketId);
+
   return (
-    <div className="p-6 space-y-5 h-screen flex flex-col">
-      <div className="flex items-center gap-4">
-        <h1 className="text-xl font-bold t-text">Support Tickets</h1>
-        <div className="flex gap-2 ml-auto">
-          {['open', 'pending', 'resolved'].map(s => (
-            <button key={s} onClick={() => setFilter(s)}
-              className={`px-3 py-1 rounded-lg text-xs ${filter === s ? 'bg-teal-500 text-white' : 'glass t-text-secondary hover:t-text'}`}>
-              {s}
-            </button>
-          ))}
+    <div className="grid grid-cols-12 h-[calc(100vh-140px)] gap-6 p-6 animate-in fade-in duration-700">
+      {/* Ticket List Manifest */}
+      <div className="col-span-4 glass flex flex-col overflow-hidden" style={{ borderRadius: '2.5rem' }}>
+        <div className="p-6 border-b border-white/5 flex items-center justify-between">
+           <div className="space-y-1">
+             <h3 className="text-sm font-black t-text tracking-widest uppercase">Support Orbit</h3>
+             <p className="text-[10px] t-text-muted">Manifesting {tickets.length} Active Signals</p>
+           </div>
+           <div className="w-2 h-2 rounded-full bg-blue-500 animate-pulse" />
+        </div>
+        
+        <div className="flex-1 overflow-y-auto p-4 space-y-3 custom-scrollbar">
+           {tickets.map((ticket: any) => (
+             <button
+               key={ticket.id}
+               onClick={() => { setSelectedTicketId(ticket.id); haptics.light(); }}
+               className={`w-full text-left p-5 rounded-[1.8rem] transition-all border ${selectedTicketId === ticket.id ? 'bg-white/10 border-white/10 shadow-xl' : 'hover:bg-white/5 border-transparent'}`}
+             >
+                <div className="flex justify-between items-start mb-2">
+                   <p className="text-[10px] font-black uppercase tracking-widest text-blue-400">{ticket.status}</p>
+                   <p className="text-[9px] t-text-muted">{new Date(ticket.updated_at).toLocaleDateString()}</p>
+                </div>
+                <p className="text-xs font-bold t-text line-clamp-1">{ticket.subject}</p>
+                <p className="text-[10px] t-text-muted mt-1">{ticket.user_name}</p>
+             </button>
+           ))}
         </div>
       </div>
 
-      <div className="flex gap-4 flex-1 min-h-0">
-        {/* Ticket list */}
-        <div className="w-72 shrink-0 space-y-2 overflow-y-auto">
-          {tickets.length === 0 && <div className="glass p-5 text-center t-text-muted text-sm">No {filter} tickets</div>}
-          {tickets.map((t: any) => (
-            <button key={t.id} onClick={() => setSelected(t.id)}
-              className={`w-full glass p-3 text-left transition-all ${selected === t.id ? 'border-accent' : 'glass-hover'}`}>
-              <p className="text-sm font-medium t-text truncate">{t.subject}</p>
-              <p className="text-xs t-text-muted">{t.user_name} · {new Date(t.updated_at).toLocaleDateString('en-IN')}</p>
-            </button>
-          ))}
-        </div>
-
-        {/* Thread */}
-        {thread ? (
-          <div className="flex-1 glass rounded-xl flex flex-col min-h-0">
-            <div className="p-4 border-b border-border/10 flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium t-text">{thread.ticket.subject}</p>
-                <p className="text-xs t-text-muted">{thread.ticket.user_name}</p>
-              </div>
-              <div className="flex gap-2">
-                {['open', 'pending', 'resolved'].map(s => (
-                  <button key={s} onClick={() => updateStatus.mutate(s)}
-                    className={`text-xs px-2 py-1 rounded ${thread.ticket.status === s ? 'bg-teal-500 text-white' : 'glass t-text-secondary hover:t-text'}`}>
-                    {s}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            <div className="flex-1 overflow-y-auto p-4 space-y-3">
-              {thread.messages.map((m: any) => (
-                <div key={m.id} className={`flex ${m.author_role === 'admin' ? 'justify-end' : 'justify-start'}`}>
-                  <div className={`max-w-xs rounded-xl px-3 py-2 text-sm ${
-                    m.author_role === 'admin' ? 'bg-teal-500/20 text-teal-100' : 'bg-white/5 text-gray-200'
-                  }`}>
-                    <p>{m.message}</p>
-                    <p className="text-xs opacity-50 mt-1">{new Date(m.sent_at).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}</p>
-                  </div>
+      {/* Ticket Context & Nerve Center */}
+      <div className="col-span-8 grid grid-cols-12 gap-6 h-full">
+         {selectedTicketId && ticketDetail ? (
+           <>
+             {/* Conversation Manifest */}
+             <div className="col-span-8 glass flex flex-col overflow-hidden" style={{ borderRadius: '2.5rem' }}>
+                <div className="p-6 border-b border-white/5">
+                   <h3 className="text-lg font-black t-text">{ticketDetail.ticket.subject}</h3>
+                   <p className="text-[10px] t-text-muted">Ticket ID: #{ticketDetail.ticket.id} · Established with {ticketDetail.ticket.user_name}</p>
                 </div>
-              ))}
-            </div>
 
-            <div className="p-3 border-t border-border/10 flex gap-2">
-              <input
-                value={reply}
-                onChange={e => setReply(e.target.value)}
-                placeholder="Type reply..."
-                className="flex-1 glass border-transparent rounded-lg px-3 py-2 text-sm t-text outline-none focus:border-accent"
-                onKeyDown={e => e.key === 'Enter' && !e.shiftKey && sendReply.mutate()}
-              />
-              <button
-                onClick={() => sendReply.mutate()}
-                disabled={!reply.trim() || sendReply.isPending}
-                className="bg-teal-500 hover:bg-teal-400 disabled:opacity-50 text-white px-4 py-2 rounded-lg text-sm font-medium"
-              >
-                Send
-              </button>
-            </div>
-          </div>
-        ) : (
-          <div className="flex-1 glass rounded-xl flex items-center justify-center t-text-muted text-sm">
-            Select a ticket
-          </div>
-        )}
+                <div className="flex-1 overflow-y-auto p-8 space-y-6 custom-scrollbar">
+                   {ticketDetail.messages.map((msg: any, i: number) => (
+                     <div key={i} className={`flex ${msg.author_role === 'admin' ? 'justify-end' : 'justify-start'}`}>
+                        <div className={`max-w-[80%] p-4 rounded-3xl ${msg.author_role === 'admin' ? 'bg-teal-500 text-white rounded-tr-none' : 'glass border-white/5 rounded-tl-none'}`}>
+                           <p className="text-xs font-medium leading-relaxed">{msg.message}</p>
+                           <p className={`text-[8px] mt-2 font-bold uppercase tracking-widest opacity-40 ${msg.author_role === 'admin' ? 'text-white' : 't-text-muted'}`}>
+                              {new Date(msg.sent_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                           </p>
+                        </div>
+                     </div>
+                   ))}
+                </div>
+
+                <div className="p-6 bg-black/20 border-t border-white/5 space-y-4">
+                   <textarea
+                     value={reply}
+                     onChange={e => setReply(e.target.value)}
+                     placeholder="Manifest artisanal support reply..."
+                     className="w-full bg-transparent t-text text-sm outline-none resize-none placeholder:opacity-20 h-20"
+                   />
+                   <div className="flex justify-between items-center">
+                      <div className="flex gap-2">
+                         <button 
+                           onClick={() => updateStatus.mutate('resolved')}
+                           className="text-[10px] font-black uppercase tracking-widest text-green-400 hover:text-green-300 transition-colors"
+                         >
+                            Mark Resolved
+                         </button>
+                      </div>
+                      <button
+                        disabled={!reply || sendReply.isPending}
+                        onClick={() => sendReply.mutate(reply)}
+                        className="bg-white text-black font-black px-8 py-3 rounded-full text-xs hover:scale-105 active:scale-95 transition-all disabled:opacity-30"
+                      >
+                         Inaugurate Reply
+                      </button>
+                   </div>
+                </div>
+             </div>
+
+             {/* User Context Sidepanel */}
+             <div className="col-span-4 space-y-6">
+                <div className="glass p-6 space-y-4" style={{ borderRadius: '2rem' }}>
+                   <p className="text-[10px] font-black uppercase tracking-widest opacity-30">User Vitality</p>
+                   <div className="space-y-3">
+                      <div className="flex justify-between items-center">
+                         <p className="text-xs font-bold t-text-secondary">Identify</p>
+                         <p className="text-xs font-black t-text">{ticketDetail.ticket.user_name}</p>
+                      </div>
+                      <div className="flex justify-between items-center">
+                         <p className="text-xs font-bold t-text-secondary">Establishment</p>
+                         <p className="text-[10px] font-black t-text-muted">Nov 2024</p>
+                      </div>
+                      <div className="flex justify-between items-center">
+                         <p className="text-xs font-bold t-text-secondary">Zone</p>
+                         <div className="px-2 py-0.5 bg-teal-500/10 text-teal-400 rounded-full text-[9px] font-black uppercase">Core Satellite</div>
+                      </div>
+                   </div>
+                </div>
+
+                <div className="glass p-6 space-y-4" style={{ borderRadius: '2rem' }}>
+                   <p className="text-[10px] font-black uppercase tracking-widest opacity-30">Financial Pulse</p>
+                   <div className="space-y-2">
+                      <p className="text-xl font-black t-text">₹1,442.00</p>
+                      <p className="text-[9px] text-green-400 font-bold uppercase tracking-widest">Wallet Active</p>
+                   </div>
+                </div>
+                
+                <button className="w-full glass glass-hover p-4 text-[10px] font-black uppercase tracking-widest t-text-secondary rounded-2xl transition-all">
+                   View Manifest History
+                </button>
+             </div>
+           </>
+         ) : (
+           <div className="col-span-12 glass flex items-center justify-center border-dashed border-white/5" style={{ borderRadius: '2.5rem' }}>
+              <div className="text-center space-y-2 opacity-20">
+                 <p className="text-6xl">📡</p>
+                 <p className="text-sm font-bold tracking-widest uppercase">Select a Signal to Manifest Context</p>
+              </div>
+           </div>
+         )}
       </div>
     </div>
   );

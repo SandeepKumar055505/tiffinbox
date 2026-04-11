@@ -1,29 +1,52 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
+import { useToast } from '../../context/ToastContext';
+import FlavorMeter from '../../components/user/FlavorMeter';
 import { persons as personsApi, auth as authApi } from '../../services/api';
 import { Person, Referral } from '../../types';
 import api from '../../services/api';
+import { formatRupees } from '../../utils/pricing';
+import { useSensorial, haptics } from '../../context/SensorialContext';
+import AddressVault from '../../components/user/AddressVault';
 
 type SpiceLevel = 'mild' | 'medium' | 'hot';
-interface IPersonForm { name: string; is_vegetarian: boolean; is_vegan: boolean; allergies: string[]; spice_level: SpiceLevel; notes: string; }
+interface IPersonForm { 
+  name: string; 
+  dietary_tag: string; 
+  allergies: string[]; 
+  spice_level: SpiceLevel; 
+  notes: string; 
+}
 const BLANK: IPersonForm = {
-  name: '', is_vegetarian: false, is_vegan: false,
-  allergies: [], spice_level: 'medium', notes: '',
+  name: '', 
+  dietary_tag: 'Veg', 
+  allergies: [], 
+  spice_level: 'medium', 
+  notes: '',
 };
 
 export default function ProfilePage() {
   const { user, logout, refresh } = useAuth();
+  const { showToast } = useToast();
+  const sensorial = useSensorial();
   const qc = useQueryClient();
+  
   const [form, setForm] = useState<IPersonForm>(BLANK);
   const [editing, setEditing] = useState<number | null>(null);
   const [showForm, setShowForm] = useState(false);
   const [addressEdit, setAddressEdit] = useState(false);
   const [addressVal, setAddressVal] = useState(user?.delivery_address ?? '');
-  const [phoneEdit, setPhoneEdit] = useState(false);
-  const [phoneVal, setPhoneVal] = useState('');
-  const [phoneSaved, setPhoneSaved] = useState(false);
+
+  // Profile Health Logic
+  const healthScore = useMemo(() => {
+    let score = 20; // Base for Google Login
+    if (user?.phone_verified) score += 30;
+    if (user?.delivery_address) score += 30;
+    if (user?.referral_code) score += 20;
+    return score;
+  }, [user]);
 
   const updateProfile = useMutation({
     mutationFn: (data: { wallet_auto_apply?: boolean; delivery_address?: string; notification_mutes?: string[] }) =>
@@ -31,24 +54,22 @@ export default function ProfilePage() {
     onSuccess: () => {
       refresh();
       setAddressEdit(false);
+      showToast('Address updated!');
     },
-  });
-
-  const verifyPhone = useMutation({
-    mutationFn: (phone: string) => authApi.verifyPhone(phone),
-    onSuccess: () => {
-      refresh();
-      setPhoneEdit(false);
-      setPhoneSaved(true);
-    },
+    onError: (err: any) => {
+      showToast(err.response?.data?.error || 'Failed to update address', 'error');
+    }
   });
 
   const deleteAccount = useMutation({
     mutationFn: () => authApi.deleteAccount(),
     onSuccess: () => {
-      alert('Your account has been deleted successfully.');
-      logout();
+      showToast('Account anonymized successfully');
+      setTimeout(() => logout(), 1000);
     },
+    onError: (err: any) => {
+      showToast('Failed to close account', 'error');
+    }
   });
 
   const NOTIFICATIONS = [
@@ -81,6 +102,14 @@ export default function ProfilePage() {
     queryFn: () => api.get('/wallet/balance').then(r => r.data),
   });
 
+  const { data: streaks = [] } = useQuery({
+    queryKey: ['person-streaks'],
+    queryFn: () => api.get('/streaks').then(r => r.data).catch(() => []),
+    enabled: persons.length > 0,
+  });
+
+  const bestStreak = (streaks as any[]).reduce((max: number, s: any) => Math.max(max, s.current_streak ?? 0), 0);
+
   const create = useMutation({
     mutationFn: () => personsApi.create(form),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ['persons'] }); setForm(BLANK); setShowForm(false); },
@@ -97,7 +126,13 @@ export default function ProfilePage() {
   });
 
   function startEdit(p: Person) {
-    setForm({ name: p.name, is_vegetarian: p.is_vegetarian, is_vegan: p.is_vegan, allergies: p.allergies, spice_level: p.spice_level, notes: p.notes || '' });
+    setForm({ 
+      name: p.name, 
+      dietary_tag: p.dietary_tag || 'Veg', 
+      allergies: p.allergies, 
+      spice_level: p.spice_level, 
+      notes: p.notes || '' 
+    });
     setEditing(p.id);
     setShowForm(false);
   }
@@ -107,19 +142,41 @@ export default function ProfilePage() {
       <div className="max-w-2xl mx-auto px-6 space-y-8 relative z-10">
         {/* Apple Music Header */}
         <header className="pt-6 pb-3 border-b border-border/10 mb-6 flex justify-between items-end">
-          <h1 className="text-h1 !text-[34px] font-extrabold tracking-tight">Account</h1>
-          <button onClick={logout} className="text-red-500 font-bold text-[11px] uppercase tracking-widest bg-red-500/10 px-4 py-2 rounded-full mb-1 hover:bg-red-500/20 transition-colors">
-            Sign Out
+          <div className="space-y-1">
+            <h1 className="text-h1 !text-[34px] font-extrabold tracking-tight">Account</h1>
+            <p className="text-[10px] font-black uppercase tracking-widest opacity-40">TiffinBox v1.0.4</p>
+          </div>
+          <button onClick={logout} className="text-red-500 font-black text-[10px] uppercase tracking-[0.2em] bg-red-500/5 px-6 py-2.5 rounded-2xl mb-1 hover:bg-red-500/10 transition-all active:scale-95 shadow-glow-rose/10">
+            Exit Portal
           </button>
         </header>
+
+        {/* Profile Health Bar (Diamond Standard) */}
+        <div className="surface-liquid p-6 rounded-3xl border border-white/5 space-y-4 shadow-elite">
+          <div className="flex justify-between items-center px-1">
+            <p className="text-[10px] font-black uppercase tracking-widest opacity-40">Profile Health</p>
+            <p className="text-[10px] font-black uppercase tracking-widest text-accent">{healthScore}% Complete</p>
+          </div>
+          <div className="h-2 w-full bg-white/5 rounded-full overflow-hidden">
+            <div 
+              className="h-full bg-accent transition-all duration-1000 shadow-glow-subtle"
+              style={{ width: `${healthScore}%` }}
+            />
+          </div>
+          {healthScore < 100 && (
+            <p className="text-[10px] opacity-40 font-bold italic px-1">
+              ✨ {healthScore < 50 ? 'Add a phone number to reach 50%' : 'Complete your delivery address to hit 100%!'}
+            </p>
+          )}
+        </div>
 
         {/* User Profile (Apple Music / iOS Style) */}
         <section className="animate-glass">
           <div className="flex items-center gap-5 py-4 px-2 mb-4">
             {user?.avatar_url ? (
-              <img src={user.avatar_url} className="w-20 h-20 rounded-full object-cover shadow-lg" alt="" />
+              <img src={user.avatar_url} className="w-20 h-20 rounded-[1.5rem] object-cover shadow-2xl border-2 border-white/10" alt="" />
             ) : (
-              <div className="w-20 h-20 rounded-full bg-accent/10 flex items-center justify-center text-accent font-black text-3xl shadow-glow-subtle">
+              <div className="w-20 h-20 rounded-[1.5rem] bg-accent/10 flex items-center justify-center text-accent font-black text-3xl shadow-glow-subtle border border-accent/20">
                 {user?.name?.[0]?.toUpperCase()}
               </div>
             )}
@@ -129,29 +186,36 @@ export default function ProfilePage() {
             </div>
           </div>
 
-          {/* Wallet Balance Integration */}
-          <Link to="/wallet" className="surface-glass p-5 rounded-2xl border border-white/5 flex items-center justify-between group hover:bg-bg-secondary/40 transition-all duration-300 mx-1 mb-8">
-            <div className="flex items-center gap-4">
-              <div className="w-12 h-12 rounded-xl bg-teal-500/10 flex items-center justify-center text-2xl group-hover:scale-110 transition-transform">
-                💳
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
+            {/* Wallet Balance Integration */}
+            <Link to="/wallet" className="surface-glass p-5 rounded-3xl border border-white/5 flex items-center justify-between group hover:bg-bg-secondary/40 transition-all duration-300">
+              <div className="flex items-center gap-4">
+                <div className="w-10 h-10 rounded-xl bg-teal-500/10 flex items-center justify-center text-xl group-hover:scale-110 transition-transform">
+                  💳
+                </div>
+                <div>
+                  <p className="text-[10px] uppercase font-black tracking-widest opacity-40">Wallet</p>
+                  <p className="text-xl font-black text-teal-500">{formatRupees(walletData?.balance || 0)}</p>
+                </div>
               </div>
-              <div>
-                <p className="text-[10px] uppercase font-black tracking-widest opacity-40">Wallet Balance</p>
-                <div className="flex items-baseline gap-1">
-                  <span className="text-2xl font-black text-teal-500">
-                    ₹{((walletData?.balance || 0) / 100).toLocaleString('en-IN', { minimumFractionDigits: 0 })}
-                  </span>
+            </Link>
+
+            <div className="surface-glass p-5 rounded-3xl border border-white/5 flex items-center justify-between">
+              <div className="flex items-center gap-4">
+                <div className="w-10 h-10 rounded-xl bg-accent/10 flex items-center justify-center text-xl">
+                  🚀
+                </div>
+                <div>
+                  <p className="text-[10px] uppercase font-black tracking-widest opacity-40">Streak</p>
+                  <p className="text-xl font-black text-accent">{bestStreak} {bestStreak === 1 ? 'Day' : 'Days'}</p>
                 </div>
               </div>
             </div>
-            <div className="text-teal-500 opacity-0 group-hover:opacity-100 transition-opacity translate-x-1">
-              →
-            </div>
-          </Link>
+          </div>
         </section>
 
         {/* Persons */}
-        <section className="space-y-2 animate-glass" style={{ animationDelay: '0.1s' }}>
+        <section className="space-y-4 animate-glass" style={{ animationDelay: '0.1s' }}>
           <div className="flex items-center justify-between px-4 pb-2">
             <h3 className="text-label-caps !text-[12px] !opacity-50 font-bold uppercase tracking-widest flex-1">Family Members</h3>
             {!showForm && editing === null && (
@@ -179,25 +243,41 @@ export default function ProfilePage() {
           )}
 
           {persons.length > 0 && !showForm && (
-            <div className="surface-glass rounded-2xl overflow-hidden divide-y divide-border/10 border border-white/5 shadow-sm">
+            <div className="surface-glass rounded-[2rem] overflow-hidden divide-y divide-border/10 border border-white/5 shadow-sm">
               {persons.map(p => (
                 <div key={p.id} className="p-4 sm:p-5 flex items-center justify-between gap-4 hover:bg-bg-secondary/40 transition-colors">
                   <div className="flex items-center gap-4 flex-1 min-w-0">
-                    <div className="w-10 h-10 rounded-full bg-accent/10 flex items-center justify-center text-lg text-accent shrink-0">
+                    <div className="w-12 h-12 rounded-2xl bg-accent/10 flex items-center justify-center text-lg text-accent shrink-0 font-black">
                       {p.name[0].toUpperCase()}
                     </div>
                     <div className="min-w-0 space-y-0.5">
-                      <p className="text-body-sm !text-base font-bold truncate">{p.name}</p>
-                      <div className="flex gap-2 flex-wrap">
-                        {p.is_vegan && <span className="text-[9px] font-bold uppercase tracking-widest text-accent/60">Vegan</span>}
-                        {!p.is_vegan && p.is_vegetarian && <span className="text-[9px] font-bold uppercase tracking-widest text-teal-600/60">Veg</span>}
-                        <span className="text-[9px] font-bold uppercase tracking-widest opacity-40">{p.spice_level} Spice</span>
+                      <p className="text-lg font-bold truncate text-gray-900">{p.name}</p>
+                      <div className="flex gap-2 flex-wrap items-center">
+                        <span className="inline-flex items-center rounded-full bg-orange-50 px-2.5 py-0.5 text-[10px] font-black uppercase tracking-widest text-orange-600 border border-orange-100/50">
+                          {p.dietary_tag}
+                        </span>
+                        <span className="text-[10px] font-black uppercase tracking-widest opacity-30 px-1">{p.spice_level} Spice</span>
                       </div>
                     </div>
                   </div>
                   <div className="flex gap-4 shrink-0 px-2">
-                    <button onClick={() => startEdit(p)} className="text-[10px] font-bold uppercase tracking-widest text-accent opacity-80 hover:opacity-100">Edit</button>
-                    <button onClick={() => { if (confirm(`Remove ${p.name}?`)) remove.mutate(p.id); }} className="text-[10px] font-bold uppercase tracking-widest text-red-500 opacity-80 hover:opacity-100">Remove</button>
+                    <button onClick={() => startEdit(p)} className="text-[10px] font-black uppercase tracking-widest text-accent hover:scale-105 transition-all">Edit</button>
+                    <button 
+                      onClick={async () => {
+                        if (await sensorial.confirm({
+                          title: 'Remove Choice?',
+                          message: `Are you sure you want to remove ${p.name} from your boutique circle?`,
+                          confirmText: 'Remove',
+                          type: 'danger'
+                        })) {
+                          remove.mutate(p.id);
+                          showToast(`${p.name} has left the circle.`, 'success');
+                        }
+                      }} 
+                      className="text-[10px] font-black uppercase tracking-widest text-red-500 hover:scale-105 transition-all"
+                    >
+                      Remove
+                    </button>
                   </div>
                 </div>
               ))}
@@ -205,12 +285,17 @@ export default function ProfilePage() {
           )}
 
           {persons.length === 0 && !showForm && (
-            <div className="surface-glass p-8 text-center rounded-2xl opacity-60">
-              <p className="text-h3 !text-lg">No Members</p>
-              <p className="text-body-sm !text-sm opacity-70 mt-1">Add family members to start subscribing for them.</p>
+            <div className="surface-liquid p-12 text-center rounded-[2.5rem] border border-white/5 space-y-6">
+              <div className="text-5xl grayscale opacity-20">👪</div>
+              <div className="space-y-2">
+                <h3 className="text-xl font-black tracking-tight">Expand the Circle</h3>
+                <p className="text-sm opacity-40 leading-relaxed max-w-[240px] mx-auto font-medium">
+                  Add family members to customize their spice levels and diet.
+                </p>
+              </div>
               <button
                 onClick={() => setShowForm(true)}
-                className="mt-6 text-[11px] font-bold text-white bg-accent px-5 py-2.5 rounded-full uppercase tracking-widest hover:opacity-90 transition-opacity"
+                className="btn-primary !py-3 !px-8 !rounded-2xl"
               >
                 Add Member
               </button>
@@ -218,217 +303,117 @@ export default function ProfilePage() {
           )}
         </section>
 
-        {/* Delivery address */}
-        <section className="space-y-2 animate-glass" style={{ animationDelay: '0.2s' }}>
-          <div className="flex items-center justify-between px-4 pb-2">
-            <h3 className="text-label-caps !text-[12px] !opacity-50 font-bold uppercase tracking-widest">Delivery Address</h3>
-            {!addressEdit && (
-              <button
-                onClick={() => { setAddressVal(user?.delivery_address ?? ''); setAddressEdit(true); }}
-                className="text-[11px] font-bold text-accent uppercase tracking-widest hover:opacity-80"
-              >
-                {user?.delivery_address ? 'Edit' : 'Set'}
-              </button>
-            )}
-          </div>
-          <div className="surface-glass rounded-2xl border border-white/5 overflow-hidden">
-            {addressEdit ? (
-              <div className="flex flex-col">
-                <textarea
-                  rows={3}
-                  value={addressVal}
-                  onChange={e => setAddressVal(e.target.value)}
-                  placeholder="Street name, apartment number, area..."
-                  className="w-full bg-transparent border-0 border-b border-border/10 focus:ring-0 focus:outline-none resize-none !text-base !font-medium leading-relaxed p-5"
-                />
-                <div className="flex gap-2 p-3 bg-white/[0.01]">
-                  <button
-                    onClick={() => updateProfile.mutate({ delivery_address: addressVal.trim() })}
-                    disabled={updateProfile.isPending}
-                    className="flex-1 text-[12px] font-bold text-white bg-accent py-2.5 rounded-xl transition-all disabled:opacity-50"
-                  >
-                    {updateProfile.isPending ? 'Saving...' : 'Save'}
-                  </button>
-                  <button
-                    onClick={() => setAddressEdit(false)}
-                    disabled={updateProfile.isPending}
-                    className="px-6 text-[12px] font-bold text-text-muted hover:text-white transition-colors py-2.5 rounded-xl disabled:opacity-50"
-                  >
-                    Cancel
-                  </button>
-                </div>
-              </div>
-            ) : (
-              <div className="p-5 flex items-center gap-4">
-                <div className="text-3xl grayscale opacity-60">📍</div>
-                <div className="flex-1">
-                  {user?.delivery_address ? (
-                    <p className="text-body-sm !text-base !font-medium leading-relaxed">
-                      {user.delivery_address}
-                    </p>
-                  ) : (
-                    <p className="text-base opacity-40 italic">No delivery address set.</p>
-                  )}
-                </div>
-              </div>
-            )}
-          </div>
+        {/* Delivery Address Vault */}
+        <section className="animate-glass" style={{ animationDelay: '0.2s' }}>
+          <AddressVault />
         </section>
 
-        {/* Phone verification */}
-        <section className="space-y-2 animate-glass" style={{ animationDelay: '0.25s' }}>
-          <div className="flex items-center justify-between px-4 pb-2">
-            <h3 className="text-label-caps !text-[12px] !opacity-50 font-bold uppercase tracking-widest">Phone Number</h3>
-            {!phoneEdit && (
-              <button
-                onClick={() => { setPhoneVal(user?.phone ?? ''); setPhoneEdit(true); setPhoneSaved(false); }}
-                className="text-[11px] font-bold text-accent uppercase tracking-widest hover:opacity-80"
-              >
-                {user?.phone ? 'Edit' : 'Add'}
-              </button>
-            )}
-          </div>
-          <div className="surface-glass rounded-2xl border border-white/5 overflow-hidden">
-            {phoneEdit ? (
-              <div className="flex flex-col">
-                <div className="p-5 space-y-2">
-                  <p className="text-[10px] opacity-40 font-bold">Enter your Indian mobile number (+91)</p>
-                  <input
-                    type="tel"
-                    value={phoneVal}
-                    onChange={e => setPhoneVal(e.target.value)}
-                    placeholder="+91 9876543210"
-                    className="w-full bg-transparent border-0 border-b border-border/10 focus:ring-0 focus:outline-none !text-base !font-medium py-2"
-                  />
-                  <p className="text-[9px] opacity-30 font-bold uppercase tracking-widest">
-                    Firebase OTP verification happens in-app. Submit to confirm.
-                  </p>
-                </div>
-                <div className="flex gap-2 p-3 bg-white/[0.01]">
-                  <button
-                    onClick={() => verifyPhone.mutate(phoneVal.replace(/\s/g, ''))}
-                    disabled={verifyPhone.isPending || phoneVal.length < 10}
-                    className="flex-1 text-[12px] font-bold text-white bg-accent py-2.5 rounded-xl transition-all disabled:opacity-50"
-                  >
-                    {verifyPhone.isPending ? 'Saving...' : 'Verify & Save'}
-                  </button>
-                  <button onClick={() => setPhoneEdit(false)} className="px-6 text-[12px] font-bold opacity-40 hover:opacity-70 py-2.5 rounded-xl">
-                    Cancel
-                  </button>
-                </div>
-                {verifyPhone.isError && (
-                  <p className="text-[10px] text-red-400 font-bold px-5 pb-3">
-                    {(verifyPhone.error as any)?.response?.data?.error ?? 'Failed to save phone'}
-                  </p>
-                )}
-              </div>
-            ) : (
-              <div className="p-5 flex items-center gap-4">
+        {/* User security — Diamond Shield Link */}
+        <section className="space-y-4 animate-glass" style={{ animationDelay: '0.25s' }}>
+          <h3 className="text-label-caps !text-[12px] !opacity-50 font-bold uppercase tracking-widest pl-4">Account Security</h3>
+          <div className="surface-glass rounded-3xl border border-white/5 overflow-hidden shadow-sm">
+            <Link 
+              to="/onboarding/phone" 
+              className="p-6 flex items-center justify-between hover:bg-bg-secondary/40 transition-all group"
+            >
+              <div className="flex items-center gap-5">
                 <div className="text-3xl grayscale opacity-60">📱</div>
                 <div className="flex-1">
-                  {user?.phone ? (
-                    <div className="flex items-center gap-3">
-                      <p className="text-base font-bold">{user.phone}</p>
-                      {user.phone_verified && (
-                        <span className="text-[9px] font-black uppercase tracking-widest text-teal-500 bg-teal-500/10 px-2 py-0.5 rounded-full">Verified</span>
-                      )}
-                    </div>
-                  ) : (
-                    <p className="text-base opacity-40 italic">No phone number added.</p>
-                  )}
-                  {phoneSaved && <p className="text-[10px] text-teal-500 font-bold mt-1">Phone saved successfully!</p>}
+                  <div className="flex items-center gap-3">
+                    <p className="text-lg font-black">{user?.phone || 'Connect Masked Number'}</p>
+                    {user?.phone_verified && (
+                      <span className="text-[10px] font-black uppercase tracking-widest text-teal-500 bg-teal-500/10 px-3 py-1 rounded-full shadow-glow-teal/20">Secure</span>
+                    )}
+                  </div>
+                  <p className="text-[10px] opacity-40 font-bold uppercase tracking-widest mt-1">
+                    Manage your identity and delivery contact
+                  </p>
                 </div>
               </div>
-            )}
+              <span className="text-accent text-2xl opacity-0 group-hover:opacity-100 transition-all translate-x-1 group-hover:translate-x-2">→</span>
+            </Link>
           </div>
         </section>
 
-        {/* Referral code */}
-        <section className="space-y-2 animate-glass" style={{ animationDelay: '0.28s' }}>
-          <h3 className="text-label-caps !text-[12px] !opacity-50 font-bold uppercase tracking-widest pl-4 pb-2">Invite Friends</h3>
-          <div className="surface-glass rounded-2xl border border-white/5 overflow-hidden">
-            <div className="p-5 space-y-4">
-              {user?.referral_code ? (
-                <>
-                  <div className="flex items-center gap-4">
-                    <div className="flex-1 bg-bg-primary/50 rounded-xl px-4 py-3 border border-white/5">
-                      <p className="text-[10px] opacity-40 font-black uppercase tracking-widest">Your referral code</p>
-                      <p className="text-2xl font-black tracking-[0.15em] text-accent mt-1">{user.referral_code}</p>
-                    </div>
-                    <button
-                      onClick={() => {
-                        const url = `${window.location.origin}/invite/${user.referral_code}`;
-                        navigator.clipboard?.writeText(url);
-                      }}
-                      className="w-12 h-12 rounded-xl bg-accent/10 flex items-center justify-center text-xl hover:bg-accent/20 transition-colors shrink-0"
-                      title="Copy invite link"
-                    >
-                      📋
-                    </button>
+        {/* Member Loop Visualizer (Referrals) */}
+        <section className="space-y-4 animate-glass" style={{ animationDelay: '0.28s' }}>
+          <h3 className="text-label-caps !text-[12px] !opacity-50 font-bold uppercase tracking-widest pl-4">Diamond Loop</h3>
+          <div className="surface-liquid p-8 rounded-[2.5rem] border border-white/5 space-y-8 shadow-elite relative overflow-hidden">
+            <div className="absolute top-0 right-0 w-32 h-32 bg-accent/5 blur-3xl pointer-events-none" />
+            
+            <div className="flex items-center gap-5">
+              <div className="flex-1 bg-bg-primary/50 rounded-[1.5rem] px-6 py-5 border border-white/5 group transition-all hover:border-accent/30">
+                <p className="text-[10px] opacity-40 font-black uppercase tracking-widest">Personal Referral Link</p>
+                <p className="text-2xl font-black tracking-[0.15em] text-accent mt-1">{user?.referral_code || '---'}</p>
+              </div>
+              <button
+                onClick={() => {
+                  const url = `${window.location.origin}/invite/${user?.referral_code}`;
+                  navigator.clipboard?.writeText(url);
+                  haptics.success();
+                  showToast('Gourmet link secured!', 'success');
+                }}
+                className="w-16 h-16 rounded-[1.5rem] bg-accent/10 flex items-center justify-center text-2xl hover:bg-accent/20 transition-all shadow-glow-subtle hover:scale-105 active:scale-95 border border-accent/20"
+              >
+                📋
+              </button>
+            </div>
+            
+            <div className="flex items-center gap-6 px-1">
+              <div className="flex -space-x-3">
+                {[1,2,3,4].map(i => (
+                  <div key={i} className="w-10 h-10 rounded-full border-2 border-bg-primary bg-bg-secondary flex items-center justify-center text-sm shadow-xl relative z-[10] hover:z-20 transition-all hover:-translate-y-1">
+                    {i === 1 ? '👤' : i === 2 ? '🥗' : i === 3 ? '🍲' : '✨'}
                   </div>
-                  <p className="text-[10px] opacity-40 font-bold leading-relaxed">
-                    Share your link. Both you and your friend get wallet credits when they place their first order.
-                  </p>
-                  {myReferrals.length > 0 && (
-                    <div className="space-y-1 pt-1 border-t border-white/5">
-                      <p className="text-[10px] font-black uppercase tracking-widest opacity-40">Your referrals</p>
-                      <div className="flex gap-3">
-                        <div className="text-center">
-                          <p className="text-xl font-black text-accent">{myReferrals.length}</p>
-                          <p className="text-[9px] opacity-40 font-bold uppercase">Invited</p>
-                        </div>
-                        <div className="text-center">
-                          <p className="text-xl font-black text-teal-500">{myReferrals.filter(r => r.status === 'completed').length}</p>
-                          <p className="text-[9px] opacity-40 font-bold uppercase">Converted</p>
-                        </div>
-                      </div>
-                    </div>
-                  )}
-                </>
-              ) : (
-                <p className="text-base opacity-40 italic">Referral code loading...</p>
-              )}
+                ))}
+              </div>
+              <div className="space-y-0.5">
+                <p className="text-[11px] font-black uppercase tracking-widest text-white/80">Viral Growth Shield</p>
+                <p className="text-[10px] opacity-40 font-bold leading-tight max-w-[200px]">
+                  Unlock ₹50 for every friend who enjoys their first tiffin.
+                </p>
+              </div>
             </div>
           </div>
         </section>
 
-        {/* Wallet toggle */}
-        <section className="space-y-2 animate-glass" style={{ animationDelay: '0.3s' }}>
-          <h3 className="text-label-caps !text-[12px] !opacity-50 font-bold uppercase tracking-widest pl-4 pb-1">Preferences</h3>
-          <div className="surface-glass rounded-2xl border border-white/5 overflow-hidden">
+        {/* Preferences */}
+        <section className="space-y-4 animate-glass" style={{ animationDelay: '0.3s' }}>
+          <h3 className="text-label-caps !text-[12px] !opacity-50 font-bold uppercase tracking-widest pl-4">Preferences</h3>
+          <div className="surface-glass rounded-3xl border border-white/5 overflow-hidden shadow-sm">
             <button
               onClick={() => updateProfile.mutate({ wallet_auto_apply: !user?.wallet_auto_apply })}
-              className="w-full p-5 flex items-center justify-between text-left hover:bg-bg-secondary/40 transition-colors"
+              className="w-full p-6 flex items-center justify-between text-left hover:bg-bg-secondary/40 transition-colors group"
             >
               <div className="flex-1">
-                <p className="text-base font-bold">Auto-Apply Wallet Credits</p>
-                <p className="text-[11px] opacity-50 mt-1 uppercase font-bold tracking-widest">Apply balance to renewals</p>
+                <p className="text-lg font-black opacity-90">Auto-Apply Wallet Credits</p>
+                <p className="text-[11px] opacity-40 mt-1 uppercase font-bold tracking-widest">Seamless renewals on first priority</p>
               </div>
-              <div className={`w-14 h-8 rounded-full transition-all duration-300 flex items-center px-1 shrink-0 ${user?.wallet_auto_apply ? 'bg-accent' : 'bg-bg-secondary border border-white/10'}`}>
-                <div className={`w-6 h-6 bg-white rounded-full shadow-md transition-transform duration-300 ${user?.wallet_auto_apply ? 'translate-x-6' : 'translate-x-0'}`} />
+              <div className={`w-14 h-8 rounded-full transition-all duration-500 flex items-center px-1 shrink-0 ${user?.wallet_auto_apply ? 'bg-accent shadow-glow-subtle' : 'bg-bg-secondary border border-white/10'}`}>
+                <div className={`w-6 h-6 bg-white rounded-full shadow-elite transition-transform duration-500 ${user?.wallet_auto_apply ? 'translate-x-6' : 'translate-x-0'}`} />
               </div>
             </button>
           </div>
         </section>
 
         {/* Notifications */}
-        <section className="space-y-2 animate-glass" style={{ animationDelay: '0.35s' }}>
-          <h3 className="text-label-caps !text-[12px] !opacity-50 font-bold uppercase tracking-widest pl-4 pb-1">Notifications</h3>
-          <div className="surface-glass rounded-2xl border border-white/5 overflow-hidden divide-y divide-white/5">
+        <section className="space-y-4 animate-glass" style={{ animationDelay: '0.35s' }}>
+          <h3 className="text-label-caps !text-[12px] !opacity-50 font-bold uppercase tracking-widest pl-4">Digital Mutes</h3>
+          <div className="surface-glass rounded-[2rem] border border-white/5 overflow-hidden divide-y divide-white/5 shadow-sm">
             {NOTIFICATIONS.map(n => {
               const muted = user?.notification_mutes?.includes(n.id);
               return (
                 <button
                   key={n.id}
                   onClick={() => toggleMute(n.id)}
-                  className="w-full p-4 flex items-center justify-between text-left hover:bg-bg-secondary/40 transition-colors"
+                  className="w-full p-5 flex items-center justify-between text-left hover:bg-bg-secondary/40 transition-colors group"
                 >
                   <div className="flex items-center gap-4">
-                    <span className="text-xl">{n.icon}</span>
-                    <span className="text-sm font-bold">{n.label}</span>
+                    <span className="text-2xl grayscale group-hover:grayscale-0 transition-all">{n.icon}</span>
+                    <span className="text-sm font-black opacity-70 group-hover:opacity-100 transition-opacity">{n.label}</span>
                   </div>
-                  <div className={`w-12 h-6 rounded-full transition-all duration-300 flex items-center px-1 shrink-0 ${!muted ? 'bg-teal-500' : 'bg-bg-secondary border border-white/10'}`}>
-                    <div className={`w-4 h-4 bg-white rounded-full shadow-md transition-transform duration-300 ${!muted ? 'translate-x-6' : 'translate-x-0'}`} />
+                  <div className={`w-12 h-6 rounded-full transition-all duration-500 flex items-center px-1 shrink-0 ${!muted ? 'bg-teal-500 shadow-glow-teal/30' : 'bg-bg-secondary border border-white/10'}`}>
+                    <div className={`w-4 h-4 bg-white rounded-full shadow-sm transition-transform duration-500 ${!muted ? 'translate-x-6' : 'translate-x-0'}`} />
                   </div>
                 </button>
               );
@@ -437,16 +422,28 @@ export default function ProfilePage() {
         </section>
 
         {/* Danger zone */}
-        <section className="pt-8 pb-12 animate-glass" style={{ animationDelay: '0.4s' }}>
-          <div className="px-4 space-y-4">
+        <section className="pt-12 pb-20 animate-glass" style={{ animationDelay: '0.4s' }}>
+          <div className="px-6 space-y-6">
              <button 
-               onClick={() => { if(confirm('Are you absolutely sure? This will cancel all subscriptions and delete your personal data. This cannot be undone.')) deleteAccount.mutate(); }}
+               onClick={async () => {
+                 if (await sensorial.confirm({
+                   title: 'Terminal Wipe?',
+                   message: 'This will immediately anonymize your gourmet profile. This action is irreversible and permanent.',
+                   confirmText: 'Begin Wipe',
+                   type: 'danger'
+                 })) {
+                   deleteAccount.mutate();
+                 }
+               }}
                disabled={deleteAccount.isPending}
-               className="w-full py-4 text-[11px] font-black uppercase tracking-[0.2em] text-red-500/40 hover:text-red-500 transition-colors border border-dashed border-red-500/10 hover:border-red-500/30 rounded-2xl"
+               className="w-full py-5 text-[11px] font-black uppercase tracking-[0.25em] text-red-500/30 hover:text-red-500 transition-all border border-dashed border-red-500/10 hover:border-red-500/40 rounded-3xl group"
              >
-               {deleteAccount.isPending ? 'Processing...' : 'Delete Account'}
+               {deleteAccount.isPending ? 'Finalizing...' : 'Close Account & Wipe Trace'}
              </button>
-             <p className="text-[9px] text-center opacity-20 font-bold uppercase tracking-widest">TiffinBox v1.0.4 — Build 2026.04.11</p>
+             <div className="text-center space-y-2">
+               <p className="text-[9px] opacity-20 font-black uppercase tracking-[0.3em]">TiffinBox Diamond Framework • 2026</p>
+               <p className="text-[8px] opacity-10 italic">Proudly serving fresh home-cooked health.</p>
+             </div>
           </div>
         </section>
       </div>
@@ -470,80 +467,84 @@ const MemberForm = ({
   onCancel: () => void;
   loading: boolean;
   title: string;
-}) => (
-  <div className="surface-glass p-5 sm:p-6 space-y-5 animate-glass rounded-2xl sm:rounded-[2rem] border-white/5 ring-1 ring-white/5 shadow-xl">
-    <div className="flex items-center justify-between pb-2 border-b border-white/5">
-      <h4 className="text-h3 !text-lg">{title}</h4>
-    </div>
-    <div className="space-y-1.5">
-      <p className="text-label-caps !text-[11px] !opacity-50 pl-1 font-semibold">Member Name</p>
-      <input
-        placeholder="e.g. Rahul Sharma"
-        value={form.name}
-        onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
-        className="w-full input-field !text-lg !font-medium"
-      />
-    </div>
+}) => {
+  const { config } = useAuth(); // Assuming config is exposed in AuthContext, or fetch here
+  const dietTags = (config as any)?.dietary_tags || ['Veg', 'Vegan', 'Non-Veg', 'Jain'];
 
-    <div className="flex gap-4 sm:gap-6 pl-1">
-      {(['is_vegetarian', 'is_vegan'] as const).map(key => (
-        <label key={key} className="flex items-center gap-2 cursor-pointer group">
-          <div className={`w-5 h-5 rounded-lg border flex items-center justify-center transition-all duration-300 ${form[key] ? 'bg-accent border-accent shadow-glow-subtle' : 'border-border bg-bg-secondary'}`}>
-            {form[key] && <span className="text-white text-[10px]">✓</span>}
-          </div>
-          <input
-            type="checkbox"
-            checked={form[key]}
-            onChange={e => setForm(f => ({ ...f, [key]: e.target.checked }))}
-            className="hidden"
-          />
-          <span className={`text-label-caps !text-[10px] font-bold transition-colors duration-300 ${form[key] ? '!text-accent' : 'group-hover:!text-text-secondary opacity-60'}`}>
-            {key === 'is_vegetarian' ? 'Vegetarian' : 'Vegan'}
-          </span>
-        </label>
-      ))}
-    </div>
+  return (
+    <div className="surface-liquid p-8 sm:p-10 space-y-10 animate-glass rounded-[3rem] border border-white/10 shadow-elite relative overflow-hidden ring-glass">
+      <div className="absolute top-0 right-0 w-32 h-32 bg-accent/5 blur-3xl" />
+      
+      <div className="flex items-center justify-between pb-4 border-b border-white/5">
+        <h4 className="text-2xl font-black tracking-tight">{title}</h4>
+        <div className="text-[10px] font-black uppercase tracking-widest opacity-20">{editing ? 'ID#' + editing : 'New Member'}</div>
+      </div>
+      
+      <div className="space-y-3">
+        <p className="text-label-caps !text-[11px] !opacity-50 pl-1 font-semibold">Full Name</p>
+        <input
+          placeholder="e.g. Rahul Sharma"
+          value={form.name}
+          onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
+          className="w-full bg-white/40 border border-white/10 rounded-2xl py-5 px-6 text-xl font-bold focus:ring-4 focus:ring-accent/10 outline-none transition-all placeholder:opacity-20 shadow-inner"
+        />
+      </div>
 
-    <div className="space-y-4">
-      <p className="text-label-caps !text-[11px] !opacity-50 pl-1 font-semibold">Preferred Spice Level</p>
-      <div className="flex gap-2">
-        {(['mild', 'medium', 'hot'] as const).map(s => (
-          <button
-            key={s}
-            onClick={() => setForm(f => ({ ...f, spice_level: s }))}
-            className={`flex-1 px-3 py-2.5 rounded-xl text-label-caps !text-[10px] font-bold transition-all duration-300 ring-1 ${form.spice_level === s ? 'bg-accent !text-white shadow-glow-subtle ring-accent scale-[1.02]' : 'bg-bg-secondary !text-text-muted ring-white/5 hover:ring-accent/30'}`}
-          >
-            {s.charAt(0).toUpperCase() + s.slice(1)}
-          </button>
-        ))}
+      <div className="space-y-4">
+        <p className="text-label-caps !text-[11px] !opacity-50 pl-1 font-semibold">Dietary Selection (Admin Managed)</p>
+        <div className="flex flex-wrap gap-2">
+          {dietTags.map((tag: string) => (
+            <button
+              key={tag}
+              onClick={() => setForm(f => ({ ...f, dietary_tag: tag }))}
+              className={`px-6 py-3 rounded-2xl text-[11px] font-black uppercase tracking-widest transition-all ${
+                form.dietary_tag === tag 
+                ? 'bg-accent text-white shadow-glow-subtle' 
+                : 'bg-white/5 text-gray-500 hover:bg-white/10'
+              }`}
+            >
+              {tag}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div className="space-y-6">
+        <FlavorMeter
+          value={form.spice_level}
+          onChange={(level) => setForm(f => ({ ...f, spice_level: level }))}
+        />
+        <p className="text-[10px] opacity-30 italic font-bold text-center px-4">
+          Note: This preference is displayed to the kitchen to guide their seasoning depth.
+        </p>
+      </div>
+
+      <div className="space-y-3">
+        <p className="text-label-caps !text-[11px] !opacity-50 pl-1 font-semibold">Gourmet Notes & Allergies</p>
+        <textarea
+          placeholder="e.g. No Peanuts, Extra Coriander..."
+          value={form.notes}
+          onChange={e => setForm(f => ({ ...f, notes: e.target.value }))}
+          rows={3}
+          className="w-full bg-white/40 border border-white/10 rounded-[2rem] p-6 text-base font-medium leading-relaxed focus:ring-4 focus:ring-accent/10 outline-none transition-all resize-none shadow-inner"
+        />
+      </div>
+
+      <div className="flex flex-col gap-4 pt-6">
+        <button
+          onClick={onSubmit}
+          disabled={!form.name.trim() || loading}
+          className="w-full rounded-[1.5rem] bg-gradient-to-r from-orange-500 to-amber-600 py-5 text-sm font-black uppercase tracking-[0.2em] text-white shadow-lg shadow-orange-200 transition-all hover:shadow-orange-300 active:scale-95 disabled:opacity-50"
+        >
+          {loading ? 'Simmering...' : editing ? 'Update Member' : 'Plat List Member'}
+        </button>
+        <button
+          onClick={onCancel}
+          className="text-[10px] font-black uppercase tracking-[0.3em] opacity-30 hover:opacity-100 transition-all py-2"
+        >
+          Discard Changes
+        </button>
       </div>
     </div>
-
-    <div className="space-y-2">
-      <p className="text-label-caps !text-[11px] !opacity-50 pl-1 font-semibold">Notes & Allergies</p>
-      <textarea
-        placeholder="Any specific instructions or dietary preferences..."
-        value={form.notes}
-        onChange={e => setForm(f => ({ ...f, notes: e.target.value }))}
-        rows={3}
-        className="w-full input-field resize-none !text-sm leading-relaxed"
-      />
-    </div>
-
-    <div className="flex gap-3 pt-2">
-      <button
-        onClick={onSubmit}
-        disabled={!form.name.trim() || loading}
-        className="btn-primary flex-1 !py-2.5 !rounded-xl shadow-glow-subtle disabled:opacity-50"
-      >
-        {loading ? 'Saving…' : editing ? 'Update Member' : 'Save Member'}
-      </button>
-      <button
-        onClick={onCancel}
-        className="btn-ghost !py-2.5 !px-6 font-bold text-xs"
-      >
-        Cancel
-      </button>
-    </div>
-  </div>
-);
+  );
+};

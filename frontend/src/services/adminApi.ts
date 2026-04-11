@@ -6,6 +6,16 @@ export const adminAuth = {
 
 export const adminDashboard = {
   stats: () => api.get('/admin'),
+  // Ω.3: Logistics Command Enpoints
+  manifest: (date?: string) => api.get('/admin/logistics/manifest', { params: { date } }),
+  updateLogisticsStatus: (id: number, data: { 
+    status: string; 
+    proof_image_url?: string; 
+    fail_reason?: string;
+    driver_name?: string;
+  }) => api.patch(`/admin/logistics/${id}/status`, data),
+  
+  // Legacy (Keeping for audit purposes during migration)
   deliveryToday: (date?: string) => api.get('/admin/delivery/today', { params: { date } }),
   updateCellStatus: (id: number, status: string, note?: string) =>
     api.patch(`/admin/delivery/cells/${id}`, { status, note }),
@@ -32,14 +42,38 @@ export const adminMenu = {
   get: () => api.get('/admin/menu'),
   items: () => api.get('/admin/menu/items'),
   updateSlot: (id: number, item_id: number) => api.patch(`/admin/menu/${id}`, { item_id }),
+  updateItem: (id: number, data: any) => api.patch(`/admin/menu/items/${id}`, data),
   addAlternative: (menuId: number, item_id: number) => api.post(`/admin/menu/${menuId}/alternatives`, { item_id }),
   removeAlternative: (id: number) => api.delete(`/admin/menu/alternatives/${id}`),
+  massSwap: (data: { date: string; meal_type: string; source_item_id?: number; target_item_id: number }) => 
+    api.post('/admin/menu/mass-swap', data),
   createItem: (data: any) => api.post('/admin/menu/items', data),
   uploadImage: (data: string) => api.post('/upload/meal-image', { data }),
 };
 
+export const adminRewards = {
+  listMilestones: () => api.get('/admin/rewards/milestones'),
+  updateMilestone: (id: number, data: any) => api.patch(`/admin/rewards/milestones/${id}`, data),
+};
+
+export const adminUsers = {
+  list: () => api.get('/admin/users'),
+  get: (id: number) => api.get(`/admin/users/${id}`),
+  updateStatus: (id: number, data: any) => api.patch(`/admin/users/${id}/status`, data),
+  giftWallet: (id: number, amount: number, description: string) => api.post(`/admin/users/${id}/wallet/gift`, { amount, description }),
+};
+
+export const adminNotifications = {
+  getHealth: () => api.get('/admin/notifications/health'),
+  broadcast: (data: any) => api.post('/admin/notifications/broadcast', data),
+};
+
+export const adminJobs = {
+  trigger: (queue: string) => api.post('/admin/jobs/trigger', { queue }),
+};
+
 export const adminSupport = {
-  tickets: (status?: string) => api.get('/admin/support/tickets', { params: { status } }),
+  listTickets: (status?: string) => api.get('/admin/support/tickets', { params: { status } }),
   getTicket: (id: number) => api.get(`/admin/support/tickets/${id}`),
   reply: (id: number, message: string) => api.post(`/admin/support/tickets/${id}/reply`, { message }),
   updateStatus: (id: number, status: string) => api.patch(`/admin/support/tickets/${id}/status`, { status }),
@@ -60,6 +94,17 @@ export const adminSettings = {
   getOffers: () => api.get('/admin/settings/offers'),
   createOffer: (data: any) => api.post('/admin/settings/offers', data),
   updateOffer: (id: number, data: any) => api.patch(`/admin/settings/offers/${id}`, data),
+};
+
+export const adminAreas = {
+  list: () => api.get('/admin/areas'),
+  create: (data: any) => api.post('/admin/areas', data),
+  update: (id: number, data: any) => api.patch(`/admin/areas/${id}`, data),
+};
+
+export const adminNarratives = {
+  list: () => api.get('/admin/narratives'),
+  update: (id: number, data: any) => api.patch(`/admin/narratives/${id}`, data),
 };
 
 export const adminHolidays = {

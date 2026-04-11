@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { translateToGourmet } from '../utils/GourmetTranslator';
 
 const api = axios.create({
   baseURL: import.meta.env.VITE_API_URL || '/api',
@@ -14,6 +15,7 @@ api.interceptors.request.use(config => {
 api.interceptors.response.use(
   res => res,
   err => {
+    // Handling unauthorised access - redirect to login
     if (err.response?.status === 401) {
       const isAdmin = window.location.pathname.startsWith('/admin');
       localStorage.removeItem('tb_token');
@@ -23,7 +25,16 @@ api.interceptors.response.use(
       } else {
         window.location.href = '/login';
       }
+      return Promise.reject(err);
     }
+
+    // Best in World: Sensorial Error Orchestration
+    // Technical culprits are translated into Gourmet narratives
+    const gourmet = translateToGourmet(err);
+    window.dispatchEvent(new CustomEvent('diamond-sensorial-error', {
+      detail: { title: gourmet.title, message: gourmet.message }
+    }));
+
     return Promise.reject(err);
   }
 );
@@ -68,7 +79,7 @@ export const subscriptions = {
   create: (data: any) => api.post('/subscriptions', data),
   cancel: (id: number, reason?: string) => api.post(`/subscriptions/${id}/cancel`, { reason }),
   pause: (id: number, reason?: string) => api.post(`/subscriptions/${id}/pause`, { reason }),
-  resume: (id: number) => api.post(`/subscriptions/${id}/resume`),
+  resume: (id: number, shiftDates: boolean) => api.post(`/subscriptions/${id}/resume`, { shiftDates }),
 };
 
 // ── Payments ──────────────────────────────────────────────────────────────────
@@ -135,4 +146,20 @@ export const ratings = {
 // ── Referrals ─────────────────────────────────────────────────────────────────
 export const referrals = {
   myReferrals: () => api.get('/referrals'),
+};
+
+// ── Addresses ─────────────────────────────────────────────────────────────────
+export const addresses = {
+  list: () => api.get('/addresses'),
+  create: (data: { label: string; address: string; is_default: boolean }) => api.post('/addresses', data),
+  remove: (id: number) => api.delete(`/addresses/${id}`),
+};
+
+// ── Vouchers ──────────────────────────────────────────────────────────────────
+export const vouchers = {
+  list: () => api.get('/vouchers'),
+  inaugurate: (data: { voucher_id: number; date: string; subscription_id: number }) => 
+    api.post('/vouchers/inaugurate', data),
+  gift: (id: number, target_person_id: number) => 
+    api.post(`/vouchers/${id}/gift`, { target_person_id }),
 };

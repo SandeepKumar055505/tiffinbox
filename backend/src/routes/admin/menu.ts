@@ -116,4 +116,41 @@ router.patch('/items/:itemId', requireAdmin, async (req, res) => {
   res.json(updated);
 });
 
+// POST /api/admin/menu/mass-swap — Sovereign Override for all active manifests
+router.post(
+  '/mass-swap',
+  requireAdmin,
+  validate(z.object({
+    date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+    meal_type: z.enum(['breakfast', 'lunch', 'dinner']),
+    source_item_id: z.number().int().optional(),
+    target_item_id: z.number().int().positive()
+  })),
+  async (req, res) => {
+    const { date, meal_type, source_item_id, target_item_id } = req.body;
+
+    const query = db('meal_cells')
+      .where({ date, meal_type })
+      .whereIn('delivery_status', ['scheduled', 'preparing']);
+
+    if (source_item_id) {
+      query.andWhere({ item_id: source_item_id });
+    }
+
+    const updatedCount = await query.update({
+      item_id: target_item_id,
+      updated_at: db.fn.now()
+    });
+
+    await db('audit_logs').insert({
+      admin_id: req.adminId,
+      action: 'menu.mass_swap',
+      target_type: 'meal_cells',
+      after_value: JSON.stringify({ date, meal_type, source_item_id, target_item_id, count: updatedCount }),
+    });
+
+    res.json({ success: true, count: updatedCount });
+  }
+);
+
 export default router;

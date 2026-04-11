@@ -30,4 +30,19 @@ router.get('/', requireAdmin, async (req, res) => {
   res.json(processed);
 });
 
+// GET /api/admin/referrals/alerts — Recently blocked fraud attempts
+router.get('/alerts', requireAdmin, async (req, res) => {
+  const alerts = await db('fraud_alerts as f')
+    .leftJoin('users as u', 'u.id', 'f.user_id')
+    .select(
+      'f.*',
+      'u.name as user_name',
+      'u.email as user_email'
+    )
+    .orderBy('f.created_at', 'desc')
+    .limit(50);
+
+  res.json(alerts);
+});
+
 export default router;

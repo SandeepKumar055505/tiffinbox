@@ -5,7 +5,7 @@ import { requireUser } from '../middleware/auth';
 import { validate } from '../middleware/validate';
 import { canSkipMeal, hasReachedDayOffLimit } from '../services/policyEngine';
 import { emitEvent, DomainEvent } from '../jobs/events';
-import { weekStartIST, weekEndIST, weekRangeUTC } from '../lib/time';
+import { nowIST, weekStartIST, weekEndIST, weekRangeUTC } from '../lib/time';
 
 const router = Router();
 
@@ -94,21 +94,52 @@ router.post(
       return res.json({ status: 'auto', is_grace_skip: isGraceSkip, message });
     }
 
-    // Post-cutoff: create pending skip request for admin
-    const [request] = await db('skip_requests').insert({
-      subscription_id: cell.subscription_id,
-      meal_cell_id: cell.id,
-      date: cell.date,
-      meal_type: cell.meal_type,
-      status: 'pending',
-    }).returning('*');
+    // Past cutoff — "The Soul Swap" (Zenith v4.1 Logic)
+    // Instead of pending admin approval, we immediately issue a Meal Voucher
+    // and mark the cell as skipped. No wallet credit, but future meal preserved.
+    return await db.transaction(async (trx) => {
+      await trx('meal_cells').where({ id: cell.id }).update({
+        is_included: false,
+        delivery_status: 'skipped',
+        updated_at: db.fn.now(),
+      });
 
-    await emitEvent(DomainEvent.SKIP_REQUEST_CREATED, { skip_request_id: request.id });
+      const [voucher] = await trx('meal_vouchers').insert({
+        user_id: req.userId,
+        subscription_id: cell.subscription_id,
+        meal_type: cell.meal_type,
+        origin_reason: 'late_skip',
+        status: 'active',
+        metadata: JSON.stringify({
+          original_date: cell.date,
+          original_cell_id: cell.id,
+          cultivated_at: nowIST().toISOString(),
+        }),
+      }).returning('*');
 
-    return res.status(202).json({
-      status: 'pending',
-      skip_request_id: request.id,
-      message: 'Skip request sent for admin approval (past cutoff time).',
+      await trx('skip_requests').insert({
+        subscription_id: cell.subscription_id,
+        meal_cell_id: cell.id,
+        date: cell.date,
+        meal_type: cell.meal_type,
+        status: 'auto_voucher',
+      });
+
+      await emitEvent(DomainEvent.MEAL_SKIPPED, {
+        meal_cell_id: cell.id,
+        user_id: cell.user_id,
+        subscription_id: cell.subscription_id,
+        meal_type: cell.meal_type,
+        date: cell.date,
+        is_grace_skip: false,
+        voucher_id: voucher.id,
+      });
+
+      return res.status(200).json({
+        status: 'soul_swap',
+        message: 'Late skip recovered! We have issued a Meal Voucher to your vault. You can use this to add a future meal at any time.',
+        voucher_id: voucher.id,
+      });
     });
   }
 );

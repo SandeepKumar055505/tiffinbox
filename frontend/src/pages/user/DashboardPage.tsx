@@ -3,18 +3,29 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { subscriptions, wallet, persons as personsApi, delivery, ratings } from '../../services/api';
-import { Subscription, MealCell, Person, PersonStreak } from '../../types';
+import { Subscription, MealCell, Person, PersonStreak, Voucher } from '../../types';
 import { formatRupees } from '../../utils/pricing';
 import NotificationPanel from '../../components/shared/NotificationPanel';
 import ThemeToggle from '../../components/shared/ThemeToggle';
 import { usePublicConfig } from '../../hooks/usePublicConfig';
-import api from '../../services/api';
+import { useSensorial } from '../../context/SensorialContext';
+import { useLivingTheme } from '../../hooks/useLivingTheme';
+import { useHeartbeatSync } from '../../hooks/useHeartbeatSync';
+import { ChronosStatusOrb } from '../../components/dashboard/ChronosStatusOrb';
+import { VitalityFractals } from '../../components/dashboard/VitalityFractals';
+import { GhostChefInsight } from '../../components/meal/GhostChefInsight';
+import { motion, AnimatePresence } from 'framer-motion';
+import api, { vouchers as vouchersApi } from '../../services/api';
+import { todayIST } from '../../utils/time';
 
 export default function DashboardPage() {
   const { user, logout } = useAuth();
   const { config: publicConfig } = usePublicConfig();
+  const sensorial = useSensorial();
+  const atmosphere = useLivingTheme();
   const qc = useQueryClient();
-  const today = new Date().toISOString().split('T')[0];
+
+  const today = todayIST();
   const [pendingRating, setPendingRating] = useState<{ cellId: number; mealType: string } | null>(null);
   const [ratingValue, setRatingValue] = useState(0);
 
@@ -26,6 +37,11 @@ export default function DashboardPage() {
   const { data: walletData } = useQuery({
     queryKey: ['wallet-balance'],
     queryFn: () => wallet.balance().then(r => r.data),
+  });
+
+  const { data: vouchers = [] } = useQuery({
+    queryKey: ['vouchers'],
+    queryFn: () => vouchersApi.list().then(r => r.data),
   });
 
   const { data: personsList = [] } = useQuery<Person[]>({
@@ -54,6 +70,9 @@ export default function DashboardPage() {
   });
 
   const bestStreak = streaks.reduce((max: number, s: PersonStreak) => Math.max(max, s.current_streak), 0);
+
+  // Activate Biorhythmic Heartbeat (Zenith v5.0 Meta-Integration)
+  const { manifest } = useHeartbeatSync(bestStreak);
 
   const submitRating = useMutation({
     mutationFn: ({ cellId, rating }: { cellId: number; rating: number }) =>
@@ -91,41 +110,54 @@ export default function DashboardPage() {
   const MEAL_ICON: Record<string, string> = { breakfast: '☀️', lunch: '🍱', dinner: '🌙' };
 
   return (
-    <div className="min-h-screen pb-40 animate-glass bg-bg-primary relative overflow-hidden">
-      {/* Background Mesh Accents */}
-      <div className="absolute top-[-20%] -left-40 w-[60rem] h-[60rem] bg-accent/10 blur-[180px] rounded-full animate-mesh" />
-      <div className="absolute bottom-[-20%] -right-40 w-[60rem] h-[60rem] bg-orange-500/5 blur-[200px] rounded-full animate-mesh" style={{ animationDelay: '10s' }} />
+    <div className="min-h-screen pb-40 bg-bg-primary relative overflow-hidden transition-colors duration-1000">
+      {/* 1. Vitality Fractals (Metaphysical Backdrop) */}
+      <VitalityFractals momentum={bestStreak} />
 
-      <div className="max-w-2xl mx-auto px-6 space-y-8 relative z-10">
+      {/* 2. Floating Atmospheric Mesh (Circadian Linked) */}
+      <div className={`absolute top-[-20%] -left-40 w-[60rem] h-[60rem] bg-accent/5 blur-[220px] rounded-full animate-mesh pointer-events-none transition-all duration-[3000ms] ${atmosphere.gradient}`} />
+      <div className={`absolute bottom-[-10%] -right-20 w-[60rem] h-[60rem] bg-orange-500/5 blur-[220px] rounded-full animate-mesh pointer-events-none transition-all duration-[3000ms] style={{ animationDelay: '5s' }}`} />
+
+      <div className="max-w-2xl mx-auto px-6 space-y-10 relative z-10">
         {/* Apple Music Header */}
-        <header className="flex items-end justify-between pt-6 pb-3 border-b border-border/10 mb-6">
+        <header className="flex items-end justify-between pt-6 pb-3 border-b border-border/10 mb-6 relative">
           <div className="space-y-1">
-            <p className="text-label-caps !text-[11px] !text-accent font-black tracking-widest uppercase">Welcome back</p>
+            <p className="text-label-caps !text-[11px] font-black tracking-widest uppercase transition-colors" style={{ color: atmosphere.accent }}>{atmosphere.label}</p>
             <h1 className="text-h1 !text-[34px] font-extrabold tracking-tight">Dashboard</h1>
           </div>
           <div className="flex items-center gap-3 pb-1">
             <ThemeToggle />
             <NotificationPanel />
-            <Link to="/profile" className="w-10 h-10 rounded-full bg-accent text-white flex items-center justify-center font-bold text-lg hover:scale-105 transition-transform shadow-elite">
+            <Link to="/profile" className="w-10 h-10 rounded-2xl bg-accent text-white flex items-center justify-center font-bold text-lg hover:rotate-6 transition-all shadow-elite">
               {user?.name?.[0]?.toUpperCase()}
             </Link>
           </div>
         </header>
 
-        {/* Status Section */}
-        <div className="space-y-6">
+        {/* The Artisan's Insight (Zenith v4.2) */}
+        <div className="surface-glass !bg-transparent border-none py-2">
+           <GhostChefInsight status={todayCells.find(c => ['preparing', 'out_for_delivery', 'delivered'].includes(c.delivery_status))?.delivery_status} />
+        </div>
+
+        {/* Status Section — The Zenith Flow */}
+        <div className="space-y-10">
           {/* Draft payment banner (Liquid - Compact) */}
           {draft && (
-            <div className="surface-liquid group p-5 sm:p-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-5 sm:gap-6 animate-glass rounded-2xl sm:rounded-[2rem] shadow-elite ring-1 ring-orange-500/10 bg-orange-500/5">
-              <div className="space-y-2">
-                <div className="flex items-center gap-2.5">
-                  <span className="w-2 h-2 rounded-full bg-orange-500 animate-pulse shadow-[0_0_12px_rgba(249,115,22,0.5)]" />
-                  <p className="text-label-caps !text-orange-500 font-black !text-[9px]">Action Required</p>
+            <motion.div 
+               initial={{ opacity: 0, y: 20 }}
+               animate={{ opacity: 1, y: 0 }}
+               className="surface-liquid group p-6 sm:p-7 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6 sm:gap-8 animate-glass rounded-3xl shadow-elite ring-1 ring-orange-500/10 bg-orange-500/5 relative overflow-hidden"
+            >
+              <div className="absolute inset-0 bg-gradient-to-r from-orange-500/0 via-orange-500/5 to-orange-500/0 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-1000" />
+              <div className="space-y-3 relative z-10">
+                <div className="flex items-center gap-3">
+                  <span className="w-2.5 h-2.5 rounded-full bg-orange-500 animate-pulse shadow-[0_0_15px_rgba(249,115,22,0.6)]" />
+                  <p className="text-label-caps !text-orange-500 font-black !text-[10px]">Action Required</p>
                 </div>
-                <div className="space-y-0.5">
-                  <p className="text-h3 !text-base">Subscription Pending</p>
-                  <p className="text-[11px] font-bold opacity-60">
-                    Secure your spot for {formatRupees(
+                <div className="space-y-1">
+                  <p className="text-h1 !text-xl tracking-tight">Subscription Pending</p>
+                  <p className="text-[12px] font-bold opacity-60">
+                    Secure your gourment journey for {formatRupees(
                       (typeof draft.price_snapshot === 'string' ? JSON.parse(draft.price_snapshot) : draft.price_snapshot)?.final_total ?? draft.price_paid ?? 0
                     )}
                   </p>
@@ -133,114 +165,96 @@ export default function DashboardPage() {
               </div>
               <Link
                 to={`/subscriptions/${draft.id}`}
-                className="btn-primary w-full sm:w-auto !py-3 !bg-orange-500 !shadow-[0_12px_24px_rgba(249,115,22,0.25)] hover:!bg-orange-600 rounded-xl"
+                className="btn-primary w-full sm:w-auto !py-4 !px-8 !bg-orange-600 !shadow-[0_15px_30px_rgba(249,115,22,0.3)] hover:scale-105 rounded-2xl transition-all relative z-10"
               >
-                Pay Now
+                Pay Now →
               </Link>
-            </div>
+            </motion.div>
           )}
 
-          {/* Today hero (Nav-Elite) */}
+          {/* Today hero (The Chronos Orb) */}
           {active ? (
-            <section className="surface-elevated p-4 sm:p-5 space-y-5 rounded-2xl sm:rounded-[2rem] shadow-elite border-white/5 ring-1 ring-white/10">
-              <div className="flex items-center justify-between gap-4">
-                <div className="flex items-center gap-3">
-                  <div className="w-12 h-12 rounded-xl bg-accent/10 flex items-center justify-center text-2xl shadow-glow-subtle border border-accent/20">🍱</div>
-                  <div className="space-y-0">
-                    <h2 className="text-h3 !text-lg !font-black">Listen Now</h2>
-                    <p className="text-label-caps opacity-40">Today's Schedule</p>
-                  </div>
-                </div>
-                <Link to={`/subscriptions/${active.id}`} className="btn-ghost !text-accent !px-3 !py-1.5 border border-accent/10 rounded-lg">
-                  History
-                </Link>
-              </div>
+            <section className="relative py-4">
+               <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full h-full bg-accent/5 blur-[120px] rounded-full pointer-events-none" />
+               
+               {/* 3D Depth Tracking Header */}
+               <div className="text-center space-y-2 mb-10">
+                  <p className="text-label-caps !text-[10px] text-accent font-black tracking-[0.3em] uppercase">Chronos Synchronized</p>
+                  <h2 className="text-h1 !text-[32px] tracking-tighter">Liquid Intelligence</h2>
+               </div>
 
-              {todayCells.length === 0 ? (
-                <div className="text-center py-16 surface-subtle border-dashed border-2 border-border/10 rounded-[2.5rem]">
-                  <p className="text-body-sm italic opacity-40">No meals scheduled for today</p>
-                </div>
-              ) : (
-                <div className="grid gap-6">
-                  {todayCells.filter(c => c.is_included).map(cell => {
-                    const status = DELIVERY_STATUS_LABEL[cell.delivery_status] ?? { label: cell.delivery_status, color: 't-text-muted', progress: 20 };
-                    const isOtpCell = cell.delivery_status === 'out_for_delivery' && cell.id === otpCellId;
-                    const isRatable = cell.delivery_status === 'delivered' && pendingRating?.cellId !== cell.id;
-                    const isRating = pendingRating?.cellId === cell.id;
-                    return (
-                      <div key={cell.id} className="surface-glass p-3 sm:p-4 space-y-3 group hover:bg-bg-subtle transition-all duration-700 rounded-xl sm:rounded-2xl border-white/5 ring-1 ring-white/5">
-                        <div className="flex items-center gap-3 sm:gap-4">
-                          <div className="text-xl w-10 h-10 flex items-center justify-center rounded-lg bg-bg-primary/40 group-hover:scale-110 transition-all duration-700 shrink-0">
-                            {MEAL_ICON[cell.meal_type]}
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <p className="text-h3 !text-sm capitalize font-black">{cell.meal_type}</p>
-                            {cell.item_name && <p className="text-[10px] truncate opacity-50 font-bold tracking-tight">{cell.item_name}</p>}
-                          </div>
-                          <div className="text-right space-y-1.5 min-w-[80px]">
-                            <span className={`text-[8.5px] font-black uppercase tracking-widest block ${status.color}`}>
-                              {status.label}
-                            </span>
-                            <div className="w-full h-0.5 bg-bg-primary/30 rounded-full overflow-hidden">
-                              <div
-                                className={`h-full bg-current transition-all duration-1000 rounded-full ${status.color} shadow-glow-subtle`}
-                                style={{ width: `${status.progress}%` }}
-                              />
-                            </div>
-                          </div>
-                        </div>
+               {todayCells.length > 0 ? (
+                 <div className="space-y-10">
+                   <ChronosStatusOrb 
+                     meals={todayCells.map(c => ({
+                       meal_type: c.meal_type as any,
+                       status: c.delivery_status,
+                       progress: DELIVERY_STATUS_LABEL[c.delivery_status]?.progress ?? 0,
+                       label: DELIVERY_STATUS_LABEL[c.delivery_status]?.label ?? c.delivery_status,
+                       color: DELIVERY_STATUS_LABEL[c.delivery_status]?.color ?? 'text-accent'
+                     }))}
+                     activeMealIndex={
+                       todayCells.findIndex(c => ['preparing', 'out_for_delivery'].includes(c.delivery_status)) >= 0 
+                         ? todayCells.findIndex(c => ['preparing', 'out_for_delivery'].includes(c.delivery_status))
+                         : 0
+                     }
+                   />
+                   
+                   {/* Compact Carousel of Details */}
+                   <div className="flex gap-4 overflow-x-auto pb-4 scrollbar-none snap-x px-1">
+                      {todayCells.filter(c => c.is_included).map(cell => (
+                        <motion.div 
+                          key={cell.id} 
+                          whileHover={{ y: -5 }}
+                          className="surface-glass p-5 rounded-2xl min-w-[200px] snap-center border-white/5 ring-1 ring-white/5 shadow-inner space-y-4 overflow-hidden relative"
+                        >
+                           {cell.delivery_status === 'delivered' && cell.proof_image_url && (
+                             <div className="absolute inset-0 opacity-10 blur-xl scale-150">
+                                <img src={cell.proof_image_url} className="w-full h-full object-cover" alt="Background Proof" />
+                             </div>
+                           )}
+                           
+                           <div className="flex items-center justify-between gap-3 relative z-10">
+                              <span className="text-2xl">{MEAL_ICON[cell.meal_type]}</span>
+                              <span className={`text-[9px] font-black uppercase tracking-widest ${DELIVERY_STATUS_LABEL[cell.delivery_status]?.color}`}>
+                                {DELIVERY_STATUS_LABEL[cell.delivery_status]?.label}
+                              </span>
+                           </div>
+                           <div className="space-y-0.5 relative z-10">
+                              <p className="text-h3 !text-sm capitalize font-black">{cell.meal_type}</p>
+                              <p className="text-[10px] opacity-40 font-bold truncate uppercase">{cell.item_name}</p>
+                              {cell.delivery_status === 'failed' && cell.fail_reason && (
+                                <p className="text-[9px] text-red-500/80 font-black italic mt-1">Culprit: {cell.fail_reason}</p>
+                              )}
+                           </div>
+                           
+                           {cell.delivery_status === 'delivered' && cell.proof_image_url && (
+                             <button 
+                               className="relative z-10 w-full h-20 rounded-xl overflow-hidden group/proof ring-1 ring-white/10"
+                             >
+                                <img src={cell.proof_image_url} className="w-full h-full object-cover group-hover/proof:scale-110 transition-transform duration-700" alt="Arrival Proof" />
+                                <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover/proof:opacity-100 transition-opacity">
+                                   <span className="text-[8px] font-black uppercase tracking-tighter">View Arrival Spotlight</span>
+                                </div>
+                             </button>
+                           )}
 
-                        {/* Delivery OTP — shown when out_for_delivery and feature enabled */}
-                        {isOtpCell && isOtpEnabled && otpData && (
-                          <div className="flex items-center justify-between bg-yellow-500/10 border border-yellow-500/20 rounded-xl px-4 py-3">
-                            <div className="space-y-0.5">
-                              <p className="text-[9px] font-black uppercase tracking-widest text-yellow-600">Show to delivery person</p>
-                              <p className="text-3xl font-black tracking-[0.3em] text-yellow-500">{otpData.otp}</p>
-                            </div>
-                            <div className="text-3xl">🔐</div>
-                          </div>
-                        )}
-
-                        {/* Rate meal — shown after delivery, before rated */}
-                        {isRatable && !cell.wallet_credited && (
-                          <button
-                            onClick={() => { setPendingRating({ cellId: cell.id, mealType: cell.meal_type }); setRatingValue(0); }}
-                            className="w-full text-[9px] font-black uppercase tracking-widest text-accent/70 hover:text-accent transition-colors py-1"
-                          >
-                            Rate this meal →
-                          </button>
-                        )}
-
-                        {/* Star rating inline */}
-                        {isRating && (
-                          <div className="flex items-center gap-3 pt-1">
-                            <div className="flex gap-1">
-                              {[1,2,3,4,5].map(star => (
-                                <button
-                                  key={star}
-                                  onClick={() => setRatingValue(star)}
-                                  className={`text-xl transition-all ${star <= ratingValue ? 'text-yellow-400' : 'text-white/20 hover:text-yellow-400/50'}`}
-                                >★</button>
-                              ))}
-                            </div>
-                            <button
-                              disabled={ratingValue === 0 || submitRating.isPending}
-                              onClick={() => submitRating.mutate({ cellId: cell.id, rating: ratingValue })}
-                              className="ml-auto text-[9px] font-black uppercase tracking-widest text-accent disabled:opacity-30 hover:opacity-80 transition-opacity"
-                            >
-                              {submitRating.isPending ? '...' : 'Submit'}
-                            </button>
-                            <button
-                              onClick={() => setPendingRating(null)}
-                              className="text-[9px] font-black uppercase tracking-widest opacity-30 hover:opacity-60"
-                            >✕</button>
-                          </div>
-                        )}
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
+                           {cell.delivery_status === 'out_for_delivery' && otpData && !cell.proof_image_url && (
+                             <div className="pt-2 border-t border-white/5 flex items-center justify-between relative z-10">
+                                <span className="text-[8px] opacity-40 uppercase font-black">Gate Key</span>
+                                <span className="text-lg font-black tracking-widest text-yellow-500">{otpData.otp}</span>
+                             </div>
+                           )}
+                        </motion.div>
+                      ))}
+                   </div>
+                 </div>
+               ) : (
+                 <div className="text-center py-20 opacity-20 border-dashed border-2 border-border/10 rounded-[2.5rem]">
+                   <p className="text-h3 !text-lg italic">The kitchen is silent today.</p>
+                   <p className="text-[10px] font-black tracking-widest uppercase mt-4">Next meal arrives tomorrow</p>
+                 </div>
+               )}
             </section>
           ) : (
             <section className="surface-liquid p-10 text-center space-y-8 rounded-2xl sm:rounded-[2rem] shadow-elite border-white/5 ring-1 ring-white/10">
@@ -251,33 +265,78 @@ export default function DashboardPage() {
               </div>
               <Link
                 to="/subscribe"
-                className="btn-primary !px-8 !py-3 rounded-xl shadow-elite text-[10px]"
+                className="btn-primary !px-12 !py-5 rounded-2xl shadow-elite text-xs font-black tracking-[0.3em] uppercase hover:scale-105 active:scale-95 transition-all"
               >
-                Start Subscription
+                Inaugurate Journey →
               </Link>
             </section>
           )}
         </div>
 
-        {/* Stats Row (Nav-Elite) */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 pt-1">
-          <Link to="/wallet" className="surface-glass p-4 sm:p-5 space-y-3 hover:scale-[1.01] transition-all duration-700 group rounded-xl sm:rounded-2xl shadow-elite border-white/5 ring-1 ring-white/10 relative overflow-hidden">
-            <div className="absolute top-0 right-0 p-4 text-2xl opacity-10 group-hover:scale-110 transition-transform duration-1000 group-hover:rotate-12">💳</div>
-            <div className="space-y-0 relative z-10">
-              <p className="text-label-caps opacity-40">Wallet Balance</p>
-              <p className="text-h1 !text-2xl text-accent tracking-tighter">
+        {/* The Voucher Vault — Soul Swap Redemption (Zenith v4.3) */}
+        {vouchers.length > 0 && (
+          <section className="space-y-6">
+             <div className="flex items-center gap-4 px-1">
+                <h3 className="text-label-caps">Voucher Vault</h3>
+                <div className="h-px flex-1 bg-white/5" />
+             </div>
+             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
+                {vouchers.map((v: Voucher) => (
+                  <motion.div 
+                    key={v.id}
+                    whileHover={{ scale: 1.02, y: -5 }}
+                    className="surface-glass p-6 rounded-[2rem] border-teal-500/20 bg-teal-500/5 ring-1 ring-teal-500/10 flex flex-col justify-between gap-6 group relative overflow-hidden"
+                  >
+                     <div className="absolute -top-10 -right-10 w-32 h-32 bg-teal-500/10 blur-[60px] rounded-full group-hover:scale-150 transition-transform duration-1000" />
+                     
+                     <div className="space-y-1 relative z-10">
+                        <div className="flex items-center gap-2 mb-2">
+                           <span className="w-2 h-2 rounded-full bg-teal-400 animate-pulse shadow-[0_0_10px_rgba(45,212,191,0.6)]" />
+                           <p className="text-[9px] font-black uppercase text-teal-400 tracking-widest">Manifestable Asset</p>
+                        </div>
+                        <p className="text-h1 !text-2xl capitalize font-black tracking-tighter">{v.meal_type}</p>
+                        <p className="text-[10px] font-medium opacity-40 uppercase tracking-[0.2em]">{v.id.toString(16).toUpperCase().slice(-6)} // Diamond Sovereign</p>
+                     </div>
+
+                     <Link 
+                        to="/subscribe" 
+                        onClick={() => manifest()}
+                        className="btn-primary !bg-teal-600 !py-4 rounded-2xl text-[10px] font-black uppercase tracking-widest text-center shadow-glow-subtle relative z-10 hover:scale-[1.02] active:scale-95 transition-all"
+                     >
+                       Inaugurate Journey →
+                     </Link>
+                  </motion.div>
+                ))}
+             </div>
+          </section>
+        )}
+
+        {/* Stats Row (The Sovereignty Metrics) */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 pt-4">
+          <Link to="/wallet" className="surface-glass p-6 sm:p-7 space-y-4 hover:scale-[1.02] transition-all duration-700 group rounded-[2.5rem] shadow-elite border-white/5 ring-1 ring-white/10 relative overflow-hidden">
+            <div className="absolute top-0 right-0 p-6 text-3xl opacity-10 group-hover:scale-110 transition-transform duration-1000 group-hover:rotate-12">💳</div>
+            <div className="space-y-1 relative z-10">
+              <p className="text-label-caps !text-[10px] opacity-40 font-bold">Zenith Capital</p>
+              <p className="text-h1 !text-[32px] text-accent tracking-tighter font-black">
                 {walletData ? formatRupees(walletData.balance) : '—'}
               </p>
+              {vouchers.length > 0 && (
+                <div className="pt-2 flex items-center gap-2">
+                   <span className="w-2 h-2 rounded-full bg-teal-500" />
+                   <p className="text-[10px] font-black uppercase text-teal-500">{vouchers.length} Soul Swaps Available</p>
+                </div>
+              )}
             </div>
           </Link>
 
-          <div className="surface-glass p-4 sm:p-5 space-y-3 group rounded-xl sm:rounded-2xl shadow-elite border-white/5 ring-1 ring-white/10 relative overflow-hidden">
-            <div className="absolute top-0 right-0 p-4 text-2xl opacity-10 group-hover:scale-110 transition-transform duration-1000 group-hover:-rotate-12">🔥</div>
-            <div className="space-y-0 relative z-10">
-              <p className="text-label-caps opacity-40">Current Streak</p>
-              <p className={`text-h1 !text-2xl tracking-tighter ${bestStreak > 0 ? 'text-orange-500' : 'text-text-muted/20'}`}>
-                {bestStreak > 0 ? `${bestStreak} Days` : '0 Days'}
+          <div className="surface-glass p-6 sm:p-7 space-y-4 group rounded-[2.5rem] shadow-elite border-white/5 ring-1 ring-white/10 relative overflow-hidden">
+            <div className="absolute top-0 right-0 p-6 text-3xl opacity-10 group-hover:scale-110 transition-transform duration-1000 group-hover:-rotate-12">🔥</div>
+            <div className="space-y-1 relative z-10">
+              <p className="text-label-caps !text-[10px] opacity-40 font-bold">Covenant Momentum</p>
+              <p className={`text-h1 !text-[32px] tracking-tighter font-black ${bestStreak > 0 ? 'text-orange-500' : 'text-text-muted/10'}`}>
+                {bestStreak > 0 ? `${bestStreak} Cycles` : 'Fresh Start'}
               </p>
+              <p className="text-[10px] font-black uppercase opacity-20 tracking-widest">Planetary Resonance 0.8%</p>
             </div>
           </div>
         </div>
@@ -297,9 +356,9 @@ export default function DashboardPage() {
                 </div>
                 <Link
                   to="/subscribe"
-                  className="btn-primary !bg-orange-500 !py-2 !px-4 rounded-lg shadow-elite text-[9px]"
+                  className="btn-primary !bg-orange-600 !py-3 !px-6 rounded-2xl shadow-elite text-[10px] font-black tracking-widest uppercase"
                 >
-                  Renew
+                  Renew Now →
                 </Link>
               </div>
             );

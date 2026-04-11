@@ -1,8 +1,9 @@
 import { Router } from 'express';
-import { z } from 'zod';
 import { db } from '../config/db';
+import { z } from 'zod';
 import { requireUser } from '../middleware/auth';
 import { validate } from '../middleware/validate';
+import { nowIST, todayIST, tomorrowIST, addDays, parseDateIST, formatDateIST } from '../lib/time';
 import { calculateQuote, buildDateRange } from '../services/pricingEngine';
 import { canAccessMonthlyPlan, canTransitionTo } from '../services/policyEngine';
 import { getWalletBalance, debitWalletAtCheckout, creditFullSubscriptionRefund } from '../services/ledgerService';
@@ -19,6 +20,7 @@ const daySelectionSchema = z.object({
 
 const createSchema = z.object({
   person_id: z.number().int().positive(),
+  delivery_address_id: z.number().int().positive(),
   plan_days: z.union([z.literal(1), z.literal(7), z.literal(14), z.literal(30)]),
   week_pattern: z.enum(['full', 'no_sun', 'weekdays']),
   start_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
@@ -37,6 +39,25 @@ router.get('/', requireUser, async (req, res) => {
     .whereNotIn('state', ['draft'])
     .orderBy('created_at', 'desc');
   res.json(subs);
+});
+
+// GET /api/subscriptions/shadow-draft — Recover the visceral shadow state
+router.get('/shadow-draft', requireUser, async (req, res) => {
+  const draft = await db('shadow_drafts').where({ user_id: req.userId }).first();
+  res.json(draft || { draft_data: null });
+});
+
+// POST /api/subscriptions/shadow-draft — Upsert the world-class shadow state
+router.post('/shadow-draft', requireUser, async (req, res) => {
+  const { draft_data } = req.body;
+  if (!draft_data) return res.status(422).json({ error: 'Draft data required' });
+
+  await db('shadow_drafts')
+    .insert({ user_id: req.userId, draft_data, updated_at: db.fn.now() })
+    .onConflict('user_id')
+    .merge();
+
+  res.json({ success: true });
 });
 
 // GET /api/subscriptions/:id — with meal cells
@@ -89,7 +110,7 @@ router.post('/price-quote', requireUser, async (req, res) => {
   // Monthly plan access check
   if (plan_days === 30) {
     const canAccess = await canAccessMonthlyPlan(req.userId!);
-    if (!canAccess) return res.status(403).json({ error: '30-day plan requires completing a plan first' });
+    if (!canAccess) return res.status(403).json({ error_key: 'ERR_LOYALTY_WALL', error: '30-day plan requires completing a plan first' });
   }
 
   // Calculate base total first (needed for percent promos)
@@ -116,7 +137,7 @@ router.post('/', requireUser, validate(createSchema), async (req, res) => {
   // Monthly plan check
   if (body.plan_days === 30) {
     const canAccess = await canAccessMonthlyPlan(req.userId!);
-    if (!canAccess) return res.status(403).json({ error: '30-day plan requires completing a plan first' });
+    if (!canAccess) return res.status(403).json({ error_key: 'ERR_LOYALTY_WALL', error: '30-day plan requires completing a plan first' });
   }
 
   // Verify person belongs to user
@@ -138,6 +159,7 @@ router.post('/', requireUser, validate(createSchema), async (req, res) => {
   
   if (overlapping) {
     return res.status(409).json({ 
+      error_key: 'ERR_OVERLAP_SHIELD',
       error: `Subscription Overlap: ${person.name} already has an active plan (${overlapping.start_date} to ${overlapping.end_date}) that overlaps with these dates.` 
     });
   }
@@ -159,12 +181,14 @@ router.post('/', requireUser, validate(createSchema), async (req, res) => {
     apply_wallet: body.apply_wallet,
   });
 
-  // Geofence Check
-  const geoUser = await db('users').where({ id: req.userId }).first();
-  if (geoUser?.delivery_address) {
-    const geoStatus = await isPincodeServiceable(geoUser.delivery_address);
-    if (!geoStatus.is_serviceable) return res.status(422).json({ error: geoStatus.message });
-  }
+  // Geofence Check (Using Selected Vault Address)
+  const selectedAddress = await db('user_addresses')
+    .where({ id: body.delivery_address_id, user_id: req.userId })
+    .first();
+  if (!selectedAddress) return res.status(422).json({ error_key: 'ERR_ADDRESS_MISSING', error: 'Delivery address not found in your vault' });
+
+  const geoStatus = await isPincodeServiceable(selectedAddress.address);
+  if (!geoStatus.is_serviceable) return res.status(422).json({ error_key: 'ERR_GEOFENCE_OUT', error: geoStatus.message });
 
   // Capacity Check (Operational Boundary)
   const settings = await db('app_settings').where({ id: 1 }).first();
@@ -185,6 +209,7 @@ router.post('/', requireUser, validate(createSchema), async (req, res) => {
       for (const meal of day.meals) {
         if (nowHour >= cutoffs[meal]) {
           return res.status(422).json({ 
+            error_key: 'ERR_CUTOFF_EXCEEDED',
             error: `Cutoff Reached: Today's ${meal.toUpperCase()} orders closed at ${cutoffs[meal]}:00 IST. Please remove this meal from your selection or choose a starting date of tomorrow.` 
           });
         }
@@ -200,6 +225,7 @@ router.post('/', requireUser, validate(createSchema), async (req, res) => {
       const count = parseInt((currentCount as any)?.cnt ?? '0', 10);
       if (count >= maxMeals) {
         return res.status(422).json({ 
+          error_key: 'ERR_CAPACITY_FULL',
           error: `Sold Out: Kitchen has reached maximum capacity for ${meal.toUpperCase()} on ${day.date}. Please choose another date or plan.` 
         });
       }
@@ -213,6 +239,7 @@ router.post('/', requireUser, validate(createSchema), async (req, res) => {
   const [sub] = await db('subscriptions').insert({
     user_id: req.userId,
     person_id: body.person_id,
+    delivery_address_id: body.delivery_address_id,
     plan_days: body.plan_days,
     week_pattern: body.week_pattern,
     start_date: body.start_date,
@@ -250,6 +277,7 @@ router.post('/', requireUser, validate(createSchema), async (req, res) => {
         is_included,
         item_id,
         delivery_status: is_included ? 'scheduled' : 'skipped',
+        spice_level_snapshot: person.spice_level || 'medium', // Captured for kitchen
       });
     }
   }
@@ -349,19 +377,114 @@ router.post('/:id/resume', requireUser, async (req, res) => {
     return res.status(409).json({ error: `Cannot resume from state: ${sub.state}` });
   }
 
-  const [updated] = await db('subscriptions')
-    .where({ id: sub.id })
-    .update({ state: 'active', paused_at: null, pause_reason: null, updated_at: db.fn.now() })
-    .returning('*');
+  const { shift_dates } = req.body; // Liquid Time opt-in
 
-  // Sync meals: Restore paused meals to 'scheduled' status
-  await db('meal_cells')
-    .where({ subscription_id: sub.id, delivery_status: 'paused' })
-    .where('date', '>=', db.raw('CURRENT_DATE'))
-    .update({ delivery_status: 'scheduled', updated_at: db.fn.now() });
+  await db.transaction(async (trx) => {
+    const [updated] = await trx('subscriptions')
+      .where({ id: sub.id })
+      .update({ state: 'active', paused_at: null, pause_reason: null, updated_at: db.fn.now() })
+      .returning('*');
 
-  res.json(updated);
+    if (shift_dates) {
+      // Liquid Time: Shift all paused/scheduled future meals forward
+      await shiftRemainingCells(sub.id, trx);
+    } else {
+      // Standard: Just restore status
+      await trx('meal_cells')
+        .where({ subscription_id: sub.id, delivery_status: 'paused' })
+        .where('date', '>=', db.raw('CURRENT_DATE'))
+        .update({ delivery_status: 'scheduled', updated_at: db.fn.now() });
+    }
+
+    res.json(updated);
+  });
 });
+
+/**
+ * Liquid Time: Shifts all remaining meals horizontally across the calendar,
+ * respecting the week_pattern and ensuring plan days are preserved.
+ */
+async function shiftRemainingCells(subId: number, trx: any) {
+  const sub = await trx('subscriptions').where({ id: subId }).first();
+  const today = todayIST();
+
+  // 1. Get all cells that were paused or are scheduled in the future
+  const cells = await trx('meal_cells')
+    .where({ subscription_id: subId })
+    .where((qb: any) => {
+      qb.where({ delivery_status: 'paused' })
+          .orWhere((qb2: any) => {
+            qb2.where({ delivery_status: 'scheduled' }).andWhere('date', '>=', today);
+          });
+    })
+    .orderBy(['date', 'meal_type']);
+
+  if (cells.length === 0) return;
+
+  // 2. Identify distinct dates needing replacement
+  const uniqueDates = Array.from(new Set(cells.map((c: any) => c.date))).sort();
+  
+  // 3. Generate new date range starting from Tomorrow
+  const startDate = tomorrowIST(); // Build manifest from tomorrow to ensure kitchen lead time
+  const newDates = buildDateRange(startDate, uniqueDates.length, sub.week_pattern);
+
+  // 4. Map old dates to new dates
+  const dateMap: Record<string, string> = {};
+  uniqueDates.forEach((oldDate: any, idx) => {
+    dateMap[oldDate as string] = newDates[idx];
+  });
+
+  // 5. Bulk update cell dates and status
+  for (const cell of cells) {
+    await trx('meal_cells')
+      .where({ id: cell.id })
+      .update({
+        date: dateMap[cell.date],
+        delivery_status: 'scheduled',
+        updated_at: db.fn.now()
+      });
+  }
+
+  // 6. Update subscription end_date
+  await trx('subscriptions')
+    .where({ id: subId })
+    .update({ 
+      end_date: newDates[newDates.length - 1],
+      updated_at: db.fn.now() 
+    });
+}
+
+/**
+ * Liquid Time Holiday Engine (Ω.3)
+ * Declares a holiday for a specific date, skips all active manifests,
+ * and shifts all future deliveries forward (extending the plan).
+ */
+export async function liquidShiftForHoliday(date: string) {
+  await db.transaction(async (trx) => {
+    // 1. Mark all affected cells as skipped_holiday
+    const affectedCells = await trx('meal_cells')
+      .where({ date, is_included: true })
+      .whereIn('delivery_status', ['scheduled', 'preparing']);
+
+    if (affectedCells.length === 0) return;
+
+    await trx('meal_cells')
+      .where({ date, is_included: true })
+      .whereIn('delivery_status', ['scheduled', 'preparing'])
+      .update({
+        delivery_status: 'skipped', // we use 'skipped' for now, but fail_reason can be holiday
+        updated_at: db.fn.now()
+      });
+
+    // 2. Identify all affected subscriptions
+    const subIds = Array.from(new Set(affectedCells.map(c => c.subscription_id)));
+
+    // 3. Orchestrate the 'Liquid Time' shift for each subscription
+    for (const subId of subIds) {
+      await shiftRemainingCells(subId as number, trx);
+    }
+  });
+}
 
 // POST /api/subscriptions/validate-promo — check a promo code before checkout
 router.post('/validate-promo', requireUser, async (req, res) => {
@@ -376,7 +499,7 @@ router.post('/validate-promo', requireUser, async (req, res) => {
 
   if (!promo) return res.status(404).json({ error: 'Invalid or expired promo code' });
   if (promo.usage_limit && promo.used_count >= promo.usage_limit) {
-    return res.status(409).json({ error: 'Promo code has reached its usage limit' });
+    return res.status(409).json({ error_key: 'ERR_PROMO_EXHAUSTED', error: 'Promo code has reached its usage limit' });
   }
 
   res.json({

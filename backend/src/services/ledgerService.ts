@@ -59,6 +59,21 @@ export async function postLedgerEntry(entry: {
     }
 
     const [row] = await trx('ledger_entries').insert(entry).returning('*');
+
+    // Ω.8: Manifest the financial movement in the Operation Pulse
+    await trx('audit_logs').insert({
+      admin_id: entry.created_by === 'admin' ? entry.metadata?.admin_id : null,
+      action: `ledger.${entry.entry_type}`,
+      target_type: 'wallet',
+      target_id: entry.user_id,
+      after_value: JSON.stringify({ 
+        direction: entry.direction, 
+        amount: entry.amount, 
+        description: entry.description,
+        user_id: entry.user_id 
+      }),
+    });
+
     return row;
   });
 }
@@ -216,6 +231,29 @@ export async function creditFullSubscriptionRefund(
     amount,
     description: `Full refund for cancellation of plan #${subscription_id} (pre-start). ${formatRupees(amount)} added to wallet.`,
     metadata: { subscription_id, refund_type: 'full_cancellation' },
+    idempotency_key: key,
+    created_by: 'system',
+  });
+}
+
+/**
+ * Credit wallet for partial subscription cancellation refund.
+ */
+export async function creditPartialSubscriptionRefund(
+  user_id: number,
+  subscription_id: number,
+  amount: number,
+  remaining_meals: number
+): Promise<void> {
+  const key = `refund_partial_sub_${subscription_id}_${Date.now()}`;
+  await postLedgerEntry({
+    user_id,
+    subscription_id,
+    direction: 'credit',
+    entry_type: 'other',
+    amount,
+    description: `Refund for ${remaining_meals} skipped meals after plan #${subscription_id} cancellation. ${formatRupees(amount)} added to wallet.`,
+    metadata: { subscription_id, refund_type: 'partial_cancellation', remaining_meals },
     idempotency_key: key,
     created_by: 'system',
   });

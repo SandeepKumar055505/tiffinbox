@@ -152,9 +152,17 @@ export async function startJobWorkers(): Promise<void> {
         }
       } catch (err: any) {
         console.error(`[bg] Streak update failed for person ${row.person_id}:`, err.message);
-        // Continue to next person
       }
     }
+
+    console.log(`[streak] Completed audit for ${persons.length} households on ${dateStr}`);
+    
+    // Ω.10: Manifest the outcome in the pulse
+    await db('audit_logs').insert({
+      action: 'system.ritual.streak_audit',
+      target_type: 'automation',
+      after_value: JSON.stringify({ houses_audited: persons.length, date: dateStr }),
+    });
   });
 
   // ── Delivery failed → wallet credit ────────────────────────────────────────
@@ -162,6 +170,27 @@ export async function startJobWorkers(): Promise<void> {
     const data = job.data;
     const mealPrice = await getMealPrice(data.meal_type, data.subscription_id, data.date);
     await creditDeliveryFailure(data.user_id, data.meal_cell_id, data.subscription_id, data.meal_type, data.date, mealPrice);
+
+    // Ω.14: Sentience Intercept — Hold automatic alert if user is bleeding
+    const recentFailures = await db('meal_cells as mc')
+      .join('subscriptions as s', 's.id', 'mc.subscription_id')
+      .where('s.user_id', data.user_id)
+      .where('mc.delivery_status', 'failed')
+      .where('mc.date', '>=', db.raw("CURRENT_DATE - INTERVAL '3 days'"))
+      .count('mc.id as cnt')
+      .first();
+
+    if (parseInt((recentFailures as any)?.cnt ?? '0', 10) > 2) {
+       await db('audit_logs').insert({
+         admin_id: null,
+         action: 'notification.intercepted',
+         target_type: 'user',
+         target_id: data.user_id,
+         after_value: JSON.stringify({ reason: 'proactive_sentience_high_friction', suppressed: 'DELIVERY_FAILED' })
+       });
+       return; // Hold notification for Admin Artisanal Apology
+    }
+
     await sendNotification(data.user_id,
       NotificationType.SYSTEM,
       'Delivery missed — wallet credited',
@@ -225,6 +254,19 @@ export async function startJobWorkers(): Promise<void> {
           await db('referrals').where({ id: referral.id }).update({
             status: 'completed',
             rewarded_at: db.fn.now(),
+          });
+
+          // Ω.11: Manifest the Viral Growth in the pulse
+          await db('audit_logs').insert({
+            admin_id: null,
+            action: 'referral.payout',
+            target_type: 'referral',
+            target_id: referral.id,
+            after_value: JSON.stringify({ 
+              referrer_id: referral.referrer_id, 
+              referee_id: user_id, 
+              amount: rewardPaise 
+            }),
           });
           // Notify referrer
           await sendNotification(
@@ -332,6 +374,21 @@ export async function startJobWorkers(): Promise<void> {
         idempotency_key: `streak_reward_${streak_days}_${user_id}_${person_id}`,
         created_by: 'system',
       });
+
+      // Ω.11: Manifest the Incentive Achievement in the pulse
+      const { db } = await import('../config/db');
+      await db('audit_logs').insert({
+        admin_id: null,
+        action: 'streak.milestone_reward',
+        target_type: 'person',
+        target_id: person_id,
+        after_value: JSON.stringify({ 
+          user_id, 
+          streak_days, 
+          reward_type: reward.reward_type, 
+          amount: walletAmount 
+        }),
+      });
     }
     await sendNotification(user_id, NotificationType.STREAK, `${streak_days}-day streak reward!`, msg);
     const user = await db('users').where({ id: user_id }).select('email', 'name').first();
@@ -408,12 +465,16 @@ export async function startJobWorkers(): Promise<void> {
       .where({ state: 'draft' })
       .whereRaw("created_at < NOW() - INTERVAL '60 minutes'");
     
-    if (oldDrafts.length > 0) {
-      await db('subscriptions').whereIn('id', oldDrafts.map(d => d.id)).delete();
-    }
-    
-    // 3. Delete expired delivery OTPs
-    await db('delivery_otps').where('expires_at', '<', db.fn.now()).delete();
+    // Ω.10: Manifest reclaimed intent in the pulse
+    await db('audit_logs').insert({
+      action: 'system.ritual.housekeeping',
+      target_type: 'automation',
+      after_value: JSON.stringify({ 
+        drafts_pruned: oldDrafts.length, 
+        abandonment_alerts: candidates.length, 
+        ts: new Date().toISOString() 
+      }),
+    });
     
     console.log(`[cleanup] Pruned ${oldDrafts.length} draft subscriptions and expired OTPs.`);
 
@@ -459,15 +520,15 @@ export async function startJobWorkers(): Promise<void> {
 
     const settings = await db('app_settings').where({ id: 1 }).first();
     const { getWeekNumberIST } = await import('../lib/time');
-    const updates: { id: number; item_id: number }[] = [];
+    const updates: { id: number; item_id: number; spice: string }[] = [];
 
     for (const cell of cells) {
-      const dow = new Date(cell.date).getDay();
+      const d = new Date(cell.date + 'T00:00:00Z');
+      const dow = (d.getUTCDay() + 6) % 7; 
       const weekNum = getWeekNumberIST(cell.date);
-      // Variety logic: different rotation indexes for different weeks
-      const baseRotation = settings?.menu_rotation_index ?? 0;
-      const weekRotation = weekNum % 4; // Cycles through 4 weekly variations
       
+      const baseRotation = settings?.menu_rotation_index ?? 0;
+      const weekRotation = weekNum % 4;
       const effectiveDow = (dow + baseRotation + weekRotation) % 7;
       
       const defaultRow = defaultMenu.find(m => m.weekday === effectiveDow && m.meal_type === cell.meal_type);
@@ -480,32 +541,44 @@ export async function startJobWorkers(): Promise<void> {
       ];
       const items = allItems.filter(i => possibleIds.includes(i.id));
 
-      // Pick best fit
+      // Pick best fit based on dynamic 'dietary_tag'
+      const targetTag = person.dietary_tag?.toLowerCase();
       let bestId = defaultRow.item_id;
-      if (person.is_vegan) {
-        bestId = items.find(i => i.tags?.includes('vegan'))?.id || bestId;
-      } else if (person.is_vegetarian) {
-        bestId = items.find(i => (i.tags?.includes('veg') || i.tags?.includes('vegan')))?.id || bestId;
+
+      // Logic: Find item with the exact dietary tag
+      const taggedItem = items.find(i => i.tags?.some((t: string) => t.toLowerCase() === targetTag));
+      
+      if (taggedItem) {
+        bestId = taggedItem.id;
       } else {
-        // Non-veg person: preferred default or meat item
-        bestId = items.find(i => !i.tags?.includes('veg') && !i.tags?.includes('vegan'))?.id || defaultRow.item_id;
+        // Fallback: If Vegan not found, try Veg. If Jain not found, try Veg.
+        if (targetTag === 'vegan' || targetTag === 'jain') {
+           bestId = items.find(i => i.tags?.some((t: string) => t.toLowerCase() === 'veg'))?.id || defaultRow.item_id;
+        }
       }
 
-      // Batch update logic
-      if (bestId !== cell.item_id) {
-        updates.push({ id: cell.id, item_id: bestId });
-      }
+      // Prepare update batch (also update spice snapshot for kitchen)
+      updates.push({ 
+        id: cell.id, 
+        item_id: bestId,
+        spice: person.spice_level || 'medium'
+      });
     }
 
     if (updates.length > 0) {
-      // Use efficient batch update (one transaction)
       await db.transaction(async trx => {
         for (const update of updates) {
-          await trx('meal_cells').where({ id: update.id }).update({ item_id: update.item_id, updated_at: db.fn.now() });
+          await trx('meal_cells')
+            .where({ id: update.id })
+            .update({ 
+               item_id: update.item_id, 
+               spice_level_snapshot: update.spice,
+               updated_at: db.fn.now() 
+            });
         }
       });
     }
-    console.log(`[sync] Re-mapped ${cells.length} meals for person ${person_id}`);
+    console.log(`[sync] Palette Sync complete: Re-mapped ${updates.length}/${cells.length} meals for ${person.name}`);
   });
 
   console.log('All job workers registered');

@@ -1,24 +1,48 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { auth } from '../../services/api';
 import { usePublicConfig } from '../../hooks/usePublicConfig';
+import { useToast } from '../../context/ToastContext';
 import { formatRupees } from '../../utils/pricing';
 
 declare global {
   interface Window { google?: any; }
 }
 
+const APPETITE_PHRASES = [
+  "Simmering your session...",
+  "Waking up the chefs...",
+  "Plating your preferences...",
+  "Kneading your data...",
+  "Seasoning your dashboard..."
+];
+
 export default function LoginPage() {
-  const { user, login } = useAuth();
+  const { user, login, referrerName } = useAuth();
+  const { showToast } = useToast();
   const navigate = useNavigate();
   const btnRef = useRef<HTMLDivElement>(null);
   const initializedRef = useRef(false);
   const { mealPrices } = usePublicConfig();
+  const [loading, setLoading] = useState(false);
+  const [loadingPhrase, setLoadingPhrase] = useState(APPETITE_PHRASES[0]);
 
   useEffect(() => {
     if (user) navigate('/', { replace: true });
   }, [user]);
+
+  useEffect(() => {
+    let phraseIdx = 0;
+    let interval: any;
+    if (loading) {
+      interval = setInterval(() => {
+        phraseIdx = (phraseIdx + 1) % APPETITE_PHRASES.length;
+        setLoadingPhrase(APPETITE_PHRASES[phraseIdx]);
+      }, 1500);
+    }
+    return () => clearInterval(interval);
+  }, [loading]);
 
   useEffect(() => {
     const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
@@ -31,15 +55,18 @@ export default function LoginPage() {
       window.google.accounts.id.initialize({
         client_id: clientId,
         callback: async (response: any) => {
+          setLoading(true);
           try {
-            // Pick up any referral code stored by InvitePage
             const referralCode = localStorage.getItem('tb_referral_code') ?? undefined;
             const res = await auth.googleLogin(response.credential, referralCode);
             if (referralCode) localStorage.removeItem('tb_referral_code');
-            await login(res.data.token);
+            
+            await login(res.data.token, res.data.referrer_name);
+            showToast('Welcome to TiffinBox!', 'success');
             navigate('/', { replace: true });
-          } catch {
-            alert('Login failed. Please try again.');
+          } catch (err: any) {
+            setLoading(false);
+            showToast('Login failed. Please try again.', 'error');
           }
         },
       });
@@ -50,10 +77,8 @@ export default function LoginPage() {
       );
     }
 
-    // If Google SDK already loaded, init immediately
     if (window.google) { initGoogle(); return; }
 
-    // Otherwise poll until it loads (script is async in index.html)
     const interval = setInterval(() => {
       if (window.google) { clearInterval(interval); initGoogle(); }
     }, 200);
@@ -66,9 +91,31 @@ export default function LoginPage() {
       <div className="absolute top-[-10%] -left-20 w-[40rem] h-[40rem] bg-orange-500/15 blur-[160px] rounded-full animate-mesh" />
       <div className="absolute bottom-[-10%] -right-20 w-[45rem] h-[45rem] bg-accent/25 blur-[180px] rounded-full animate-mesh" style={{ animationDelay: '5s' }} />
 
+      {/* Loading Overlay */}
+      {loading && (
+        <div className="fixed inset-0 z-[1000] bg-bg-primary/80 backdrop-blur-xl flex items-center justify-center animate-fade-in">
+          <div className="flex flex-col items-center gap-6">
+            <div className="w-16 h-16 border-4 border-accent/20 border-t-accent rounded-full animate-spin shadow-glow-subtle" />
+            <div className="space-y-1 text-center">
+              <p className="text-xl font-black tracking-tight animate-pulse">{loadingPhrase}</p>
+              <p className="text-[10px] font-black uppercase tracking-widest opacity-30">Almost ready to plate</p>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="relative surface-liquid p-12 md:p-16 max-w-md w-full text-center space-y-12 animate-glass transition-all duration-1000 rounded-[3rem] shadow-elite ring-glass">
         <div className="space-y-6">
           <div className="text-8xl mb-8 drop-shadow-[0_20px_50px_rgba(0,0,0,0.2)] animate-bounce cursor-default" style={{ animationDuration: '4s' }}>🍱</div>
+          
+          {/* Diamond Standard: Red Carpet Badge */}
+          {referrerName && (
+            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-accent/10 border border-accent/20 animate-bounce-subtle">
+              <span className="text-sm">🎁</span>
+              <span className="text-[10px] font-black uppercase tracking-widest text-accent">Join {referrerName}'s Circle</span>
+            </div>
+          )}
+
           <div className="space-y-4">
             <h1 className="text-h1">TiffinBox</h1>
             <p className="text-label-caps !text-accent !text-xs opacity-100">Fresh Home-Style Daily Meals</p>
@@ -80,8 +127,10 @@ export default function LoginPage() {
 
         <div className="space-y-10">
           <div className="space-y-3">
-            <h2 className="text-h2 !text-2xl">Welcome back</h2>
-            <p className="text-label-caps !text-[11px] opacity-60">Securely sign in with your Google account</p>
+            <h2 className="text-h2 !text-2xl">{referrerName ? 'Claim your gift' : 'Welcome back'}</h2>
+            <p className="text-label-caps !text-[11px] opacity-60">
+              {referrerName ? `Get ₹120 wallet credit after first tiffin` : 'Securely sign in with your Google account'}
+            </p>
           </div>
 
           <div className="flex flex-col items-center gap-6">

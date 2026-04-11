@@ -55,6 +55,7 @@ router.get('/public', async (_req, res) => {
     features: {
       delivery_otp_enabled: settings?.delivery_otp_enabled ?? true,
       ratings_enabled: settings?.ratings_enabled ?? true,
+      pause_enabled: settings?.user_pause_enabled ?? true,
     },
     streak_rewards: streakRewards.map((r: any) => ({
       streak_days: r.streak_days,
@@ -65,6 +66,11 @@ router.get('/public', async (_req, res) => {
       signup_bonus: settings?.signup_wallet_credit ?? 12000,
       referral_reward: settings?.referral_reward_amount ?? 5000,
     },
+    dietary_tags: settings?.available_dietary_tags ?? ['Veg', 'Vegan', 'Non-Veg', 'Jain'],
+    integrity: {
+      referral_shield_active: true,
+      paise_sovereignty_active: true,
+    }
   });
 });
 

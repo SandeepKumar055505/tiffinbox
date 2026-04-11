@@ -5,9 +5,14 @@ export interface AuthUser {
   name: string;
   email: string;
   avatar_url: string | null;
+  phone: string | null;
+  phone_verified: boolean;
   monthly_plan_unlocked: boolean;
   wallet_auto_apply: boolean;
   delivery_address: string | null;
+  referral_code: string | null;
+  last_referrer_name: string | null;
+  last_fingerprint: string | null;
   created_at: string;
 }
 
@@ -27,8 +32,7 @@ export interface Person {
   id: number;
   user_id: number;
   name: string;
-  is_vegetarian: boolean;
-  is_vegan: boolean;
+  dietary_tag: 'Veg' | 'Vegan' | 'Non-Veg' | 'Jain' | string;
   allergies: string[];
   spice_level: 'mild' | 'medium' | 'hot';
   notes: string | null;

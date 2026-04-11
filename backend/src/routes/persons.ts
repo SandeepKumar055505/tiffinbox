@@ -9,8 +9,7 @@ const router = Router();
 
 const personSchema = z.object({
   name: z.string().min(1).max(100),
-  is_vegetarian: z.boolean().optional().default(false),
-  is_vegan: z.boolean().optional().default(false),
+  dietary_tag: z.string().min(1).max(50), // Managed by Admin list
   allergies: z.array(z.string()).optional().default([]),
   spice_level: z.enum(['mild', 'medium', 'hot']).optional().default('medium'),
   notes: z.string().max(500).optional(),

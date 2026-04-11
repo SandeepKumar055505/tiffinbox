@@ -1,246 +1,73 @@
-import React, { useState } from 'react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { adminLedger } from '../../services/adminApi';
+import React from 'react';
+import { useQuery } from '@tanstack/react-query';
+import api from '../../services/api';
 import { formatRupees } from '../../utils/pricing';
 
-const ENTRY_TYPE_LABELS: Record<string, string> = {
-  skip_credit: 'Skip Credit',
-  delivery_failure_credit: 'Delivery Failure',
-  checkout_debit: 'Checkout',
-  signup_bonus: 'Signup Bonus',
-  referral_credit: 'Referral',
-  streak_reward: 'Streak Reward',
-  admin_credit: 'Admin Credit',
-  admin_debit: 'Admin Debit',
-  other: 'Other',
-};
-
 export default function AdminLedgerPage() {
-  const qc = useQueryClient();
-  const [userId, setUserId] = useState('');
-  const [entryType, setEntryType] = useState('');
-  const [offset, setOffset] = useState(0);
-  const limit = 50;
-
-  const [creditForm, setCreditForm] = useState({ user_id: '', amount: '', description: '' });
-  const [debitForm, setDebitForm] = useState({ user_id: '', amount: '', description: '' });
-  const [activeTab, setActiveTab] = useState<'list' | 'credit' | 'debit'>('list');
-
-  const { data, isLoading } = useQuery<{ entries: any[]; total: number }>({
-    queryKey: ['admin-ledger', userId, entryType, offset],
-    queryFn: () => adminLedger.list({
-      user_id: userId ? parseInt(userId) : undefined,
-      entry_type: entryType || undefined,
-      limit,
-      offset,
-    }).then(r => r.data),
+  const { data: entries = [] } = useQuery({
+    queryKey: ['admin-ledger'],
+    queryFn: () => api.get('/admin/ledger').then(r => r.data),
   });
-
-  const credit = useMutation({
-    mutationFn: () => adminLedger.credit({
-      user_id: parseInt(creditForm.user_id),
-      amount: parseInt(creditForm.amount),
-      description: creditForm.description,
-    }),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['admin-ledger'] });
-      setCreditForm({ user_id: '', amount: '', description: '' });
-      setActiveTab('list');
-    },
-  });
-
-  const debit = useMutation({
-    mutationFn: () => adminLedger.debit({
-      user_id: parseInt(debitForm.user_id),
-      amount: parseInt(debitForm.amount),
-      description: debitForm.description,
-    }),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['admin-ledger'] });
-      setDebitForm({ user_id: '', amount: '', description: '' });
-      setActiveTab('list');
-    },
-  });
-
-  const entries: any[] = data?.entries ?? [];
-  const total: number = data?.total ?? 0;
 
   return (
-    <div className="p-6 space-y-6 max-w-4xl">
+    <div className="p-6 space-y-8 animate-in fade-in duration-700">
       <div className="flex items-center justify-between">
-        <h1 className="text-xl font-bold t-text">Ledger</h1>
+        <div className="space-y-1">
+          <h1 className="text-2xl font-black t-text tracking-tight">Financial Exchequer</h1>
+          <p className="text-xs t-text-muted">Total Visibility into the Platform's Fiscal Heartbeat</p>
+        </div>
         <div className="flex gap-2">
-          <button
-            onClick={() => setActiveTab('credit')}
-            className="bg-teal-500/20 hover:bg-teal-500/30 text-teal-400 text-xs px-4 py-2 rounded-lg transition-colors"
-          >
-            + Manual Credit
-          </button>
-          <button
-            onClick={() => setActiveTab('debit')}
-            className="bg-red-500/20 hover:bg-red-500/30 text-red-400 text-xs px-4 py-2 rounded-lg transition-colors"
-          >
-            − Manual Debit
-          </button>
+           <div className="px-4 py-2 bg-green-500/10 text-green-400 rounded-full text-[10px] font-black uppercase tracking-widest border border-green-500/10">Reconciled</div>
         </div>
       </div>
 
-      {/* Manual credit form */}
-      {activeTab === 'credit' && (
-        <div className="glass p-5 space-y-4 border border-teal-500/20">
-          <p className="text-sm font-semibold text-teal-400">Manual Wallet Credit</p>
-          <div className="grid grid-cols-3 gap-3">
-            <div className="space-y-1">
-              <p className="text-xs t-text-muted">User ID</p>
-              <input type="number" value={creditForm.user_id} onChange={e => setCreditForm(f => ({ ...f, user_id: e.target.value }))}
-                className="w-full glass border-transparent rounded px-2 py-1.5 t-text text-sm outline-none focus:border-teal-500" />
-            </div>
-            <div className="space-y-1">
-              <p className="text-xs t-text-muted">Amount (₹)</p>
-              <input type="number" min={1} value={creditForm.amount} onChange={e => setCreditForm(f => ({ ...f, amount: e.target.value }))}
-                className="w-full glass border-transparent rounded px-2 py-1.5 t-text text-sm outline-none focus:border-teal-500" />
-            </div>
-            <div className="space-y-1 col-span-3">
-              <p className="text-xs t-text-muted">Description</p>
-              <input type="text" value={creditForm.description} onChange={e => setCreditForm(f => ({ ...f, description: e.target.value }))}
-                placeholder="Reason for credit..."
-                className="w-full glass border-transparent rounded px-2 py-1.5 t-text text-sm outline-none focus:border-teal-500" />
-            </div>
-          </div>
-          <div className="flex gap-3">
-            <button
-              onClick={() => credit.mutate()}
-              disabled={!creditForm.user_id || !creditForm.amount || !creditForm.description || credit.isPending}
-              className="bg-teal-500 hover:bg-teal-400 disabled:opacity-50 text-white text-sm px-4 py-2 rounded-lg"
-            >
-              {credit.isPending ? 'Crediting…' : 'Credit Wallet'}
-            </button>
-            <button onClick={() => setActiveTab('list')} className="text-sm t-text-muted hover:t-text px-4 py-2">Cancel</button>
-          </div>
-          {credit.isError && <p className="text-xs text-red-400">{(credit.error as any)?.response?.data?.error}</p>}
-        </div>
-      )}
-
-      {/* Manual debit form */}
-      {activeTab === 'debit' && (
-        <div className="glass p-5 space-y-4 border border-red-500/20">
-          <p className="text-sm font-semibold text-red-400">Manual Wallet Debit</p>
-          <div className="grid grid-cols-3 gap-3">
-            <div className="space-y-1">
-              <p className="text-xs t-text-muted">User ID</p>
-              <input type="number" value={debitForm.user_id} onChange={e => setDebitForm(f => ({ ...f, user_id: e.target.value }))}
-                className="w-full glass border-transparent rounded px-2 py-1.5 t-text text-sm outline-none focus:border-teal-500" />
-            </div>
-            <div className="space-y-1">
-              <p className="text-xs t-text-muted">Amount (₹)</p>
-              <input type="number" min={1} value={debitForm.amount} onChange={e => setDebitForm(f => ({ ...f, amount: e.target.value }))}
-                className="w-full glass border-transparent rounded px-2 py-1.5 t-text text-sm outline-none focus:border-teal-500" />
-            </div>
-            <div className="space-y-1 col-span-3">
-              <p className="text-xs t-text-muted">Description</p>
-              <input type="text" value={debitForm.description} onChange={e => setDebitForm(f => ({ ...f, description: e.target.value }))}
-                placeholder="Reason for debit..."
-                className="w-full glass border-transparent rounded px-2 py-1.5 t-text text-sm outline-none focus:border-teal-500" />
-            </div>
-          </div>
-          <div className="flex gap-3">
-            <button
-              onClick={() => debit.mutate()}
-              disabled={!debitForm.user_id || !debitForm.amount || !debitForm.description || debit.isPending}
-              className="bg-red-500 hover:bg-red-400 disabled:opacity-50 text-white text-sm px-4 py-2 rounded-lg"
-            >
-              {debit.isPending ? 'Debiting…' : 'Debit Wallet'}
-            </button>
-            <button onClick={() => setActiveTab('list')} className="text-sm t-text-muted hover:t-text px-4 py-2">Cancel</button>
-          </div>
-          {debit.isError && <p className="text-xs text-red-400">{(debit.error as any)?.response?.data?.error}</p>}
-        </div>
-      )}
-
-      {/* Filters */}
-      <div className="flex flex-wrap gap-3 items-end">
-        <div className="space-y-1">
-          <p className="text-xs t-text-muted">Filter by User ID</p>
-          <input type="number" value={userId} onChange={e => { setUserId(e.target.value); setOffset(0); }}
-            placeholder="All users"
-            className="w-32 glass border-transparent rounded px-2 py-1.5 t-text text-sm outline-none focus:border-teal-500" />
-        </div>
-        <div className="space-y-1">
-          <p className="text-xs t-text-muted">Entry type</p>
-          <select value={entryType} onChange={e => { setEntryType(e.target.value); setOffset(0); }}
-            className="glass border-transparent rounded px-2 py-1.5 t-text text-sm outline-none">
-            <option value="">All types</option>
-            {Object.entries(ENTRY_TYPE_LABELS).map(([val, label]) => (
-              <option key={val} value={val}>{label}</option>
-            ))}
-          </select>
-        </div>
-        <p className="text-xs t-text-faint ml-auto self-end">{total} entries</p>
-      </div>
-
-      {/* Entries table */}
-      <div className="glass overflow-hidden rounded-xl">
+      <div className="glass overflow-hidden" style={{ borderRadius: '2.5rem' }}>
         <table className="w-full text-sm">
           <thead>
-            <tr className="border-b border-border/10 t-text-secondary">
-              <th className="text-left p-3 font-medium text-xs">Date</th>
-              <th className="text-left p-3 font-medium text-xs">User</th>
-              <th className="text-left p-3 font-medium text-xs">Type</th>
-              <th className="text-left p-3 font-medium text-xs">Description</th>
-              <th className="text-right p-3 font-medium text-xs">Amount</th>
+            <tr className="border-b border-white/5 bg-white/[0.02]">
+              <th className="p-6 text-left t-text-muted text-[10px] uppercase font-black tracking-widest">Temporal</th>
+              <th className="p-6 text-left t-text-muted text-[10px] uppercase font-black tracking-widest">User Manifest</th>
+              <th className="p-6 text-left t-text-muted text-[10px] uppercase font-black tracking-widest">Classification</th>
+              <th className="p-6 text-left t-text-muted text-[10px] uppercase font-black tracking-widest">Narrative</th>
+              <th className="p-6 text-right t-text-muted text-[10px] uppercase font-black tracking-widest">Quantum</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-border/10">
-            {isLoading && (
-              <tr><td colSpan={5} className="p-4 text-center text-xs t-text-faint">Loading…</td></tr>
-            )}
-            {!isLoading && entries.length === 0 && (
-              <tr><td colSpan={5} className="p-4 text-center text-xs t-text-faint">No entries</td></tr>
-            )}
-            {entries.map((e: any) => (
-              <tr key={e.id} className="hover:bg-bg-secondary/40 transition-colors">
-                <td className="p-3 text-xs t-text-muted whitespace-nowrap">
-                  {new Date(e.created_at).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' })}
+          <tbody className="divide-y divide-white/5">
+            {entries.map((entry: any) => (
+              <tr key={entry.id} className="group hover:bg-white/[0.02] transition-colors">
+                <td className="p-6">
+                   <p className="text-xs font-bold t-text">{new Date(entry.created_at).toLocaleDateString()}</p>
+                   <p className="text-[10px] t-text-muted">{new Date(entry.created_at).toLocaleTimeString()}</p>
                 </td>
-                <td className="p-3 text-xs">
-                  <p className="font-medium t-text truncate max-w-[120px]">{e.user_name}</p>
-                  <p className="t-text-faint text-[10px]">#{e.user_id}</p>
+                <td className="p-6">
+                   <p className="text-xs font-black t-text">{entry.user_name || `User #${entry.user_id}`}</p>
+                   <p className="text-[10px] t-text-muted">Lifecycle Anchor</p>
                 </td>
-                <td className="p-3">
-                  <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${e.direction === 'credit' ? 'bg-teal-500/10 text-teal-400' : 'bg-red-500/10 text-red-400'}`}>
-                    {ENTRY_TYPE_LABELS[e.entry_type] ?? e.entry_type}
-                  </span>
+                <td className="p-6">
+                   <div className="inline-flex px-3 py-1 bg-white/5 rounded-full text-[10px] font-black uppercase tracking-widest t-text-secondary">
+                      {entry.entry_type.replace('_', ' ')}
+                   </div>
                 </td>
-                <td className="p-3 text-xs t-text-secondary truncate max-w-[200px]">{e.description}</td>
-                <td className={`p-3 text-right font-bold text-sm ${e.direction === 'credit' ? 'text-teal-400' : 'text-red-400'}`}>
-                  {e.direction === 'credit' ? '+' : '−'}{formatRupees(e.amount)}
+                <td className="p-6">
+                   <p className="text-xs t-text-secondary">{entry.description}</p>
+                </td>
+                <td className="p-6 text-right">
+                   <p className={`text-sm font-black ${entry.direction === 'credit' ? 'text-green-400' : 'text-red-400'}`}>
+                      {entry.direction === 'credit' ? '+' : '-'}{formatRupees(entry.amount)}
+                   </p>
                 </td>
               </tr>
             ))}
           </tbody>
         </table>
-      </div>
 
-      {/* Pagination */}
-      {total > limit && (
-        <div className="flex justify-between items-center">
-          <button
-            onClick={() => setOffset(Math.max(0, offset - limit))}
-            disabled={offset === 0}
-            className="text-sm t-text-muted disabled:opacity-30 hover:t-text transition-colors"
-          >
-            ← Previous
-          </button>
-          <p className="text-xs t-text-faint">{offset + 1}–{Math.min(offset + limit, total)} of {total}</p>
-          <button
-            onClick={() => setOffset(offset + limit)}
-            disabled={offset + limit >= total}
-            className="text-sm t-text-muted disabled:opacity-30 hover:t-text transition-colors"
-          >
-            Next →
-          </button>
-        </div>
-      )}
+        {entries.length === 0 && (
+          <div className="p-24 text-center space-y-2 opacity-20">
+             <p className="text-6xl">💰</p>
+             <p className="text-sm font-bold tracking-widest uppercase">No Financial Signals Manifested Yet</p>
+          </div>
+        )}
+      </div>
     </div>
   );
 }

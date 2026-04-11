@@ -1,5 +1,6 @@
 import React from 'react';
 import { NavLink, Outlet, useNavigate } from 'react-router-dom';
+import OracleCommandBar from '../../components/admin/OracleCommandBar';
 import { useAdminAuth } from '../../context/AdminAuthContext';
 import ThemeToggle from '../../components/shared/ThemeToggle';
 
@@ -8,11 +9,13 @@ const NAV = [
   { to: '/admin/delivery', label: 'Delivery', icon: '🚚' },
   { to: '/admin/subscriptions', label: 'Subscriptions', icon: '📋' },
   { to: '/admin/skip', label: 'Skip Requests', icon: '⏭️' },
+  { to: '/admin/areas', label: 'Sovereign Zones', icon: '🗺️' },
   { to: '/admin/menu', label: 'Menu', icon: '🍱' },
   { to: '/admin/support', label: 'Support', icon: '💬' },
   { to: '/admin/holidays', label: 'Holidays', icon: '🎉' },
   { to: '/admin/ledger', label: 'Ledger', icon: '📒' },
   { to: '/admin/referrals', label: 'Referrals', icon: '🎁' },
+  { to: '/admin/notifications', label: 'Oracle', icon: '📣' },
   { to: '/admin/settings', label: 'Settings', icon: '⚙️' },
 ];
 
@@ -27,6 +30,7 @@ export default function AdminLayout() {
 
   return (
     <div className="min-h-screen flex">
+      <OracleCommandBar />
       {/* Sidebar */}
       <aside className="w-64 shrink-0 glass rounded-none border-r border-border/10 flex flex-col m-4 mr-0 rounded-l-2xl">
         <div className="p-6 border-b border-border/10 flex items-center justify-between">

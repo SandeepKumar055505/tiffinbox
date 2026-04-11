@@ -27,19 +27,34 @@ router.post('/google', validate(z.object({
 
     let user = await db('users').where({ google_id: payload.sub }).first();
     const isNewUser = !user;
+    let referrer_name: string | null = null;
+    let referred_by_id: number | null = null;
+
+    // Diamond Standard: Fetch Referrer details for personalized welcome
+    const settings = await db('app_settings').where({ id: 1 }).first();
+    const skipReferralCheck = settings?.onboarding_skip_referral_check ?? false;
+
+    if (req.body.referral_code && !skipReferralCheck) {
+      const referrer = await db('users')
+        .where({ referral_code: req.body.referral_code })
+        .select('id', 'name')
+        .first();
+      
+      if (referrer) {
+        referred_by_id = referrer.id;
+        // Safe Mode: "Rahul Sharma" -> "Rahul S."
+        const names = referrer.name.trim().split(/\s+/);
+        referrer_name = names.length > 1 
+          ? `${names[0]} ${names[names.length - 1][0]}.`
+          : names[0];
+      }
+    }
 
     if (!user) {
-      // Resolve referrer if a valid referral code was provided
-      let referred_by: number | null = null;
-      if (req.body.referral_code) {
-        const referrer = await db('users')
-          .where({ referral_code: req.body.referral_code })
-          .select('id')
-          .first();
-        if (referrer) referred_by = referrer.id;
-      }
-
       const referral_code = generateReferralCode();
+      const signup_ip = req.ip || '0.0.0.0';
+      const fingerprint = req.body.fingerprint || null;
+
       [user] = await db('users')
         .insert({
           google_id: payload.sub,
@@ -47,18 +62,34 @@ router.post('/google', validate(z.object({
           email: payload.email!,
           avatar_url: payload.picture || null,
           referral_code,
-          referred_by,
+          referred_by: referred_by_id,
+          signup_ip,
+          last_fingerprint: fingerprint,
+          last_referrer_name: referrer_name,
         })
         .returning('*');
 
       // Fire-and-forget: signup bonus, referral record, streak row seed
-      onNewUserCreated(user.id, referred_by, req.ip || '0.0.0.0').catch(err =>
+      onNewUserCreated(user.id, referred_by_id, signup_ip, fingerprint, referrer_name).catch(err =>
         console.error('[bg] onNewUserCreated failed:', err?.message)
       );
+    } else {
+      // Update device fingerprint on returning login
+      if (req.body.fingerprint) {
+        await db('users').where({ id: user.id }).update({ 
+          last_fingerprint: req.body.fingerprint,
+          updated_at: db.fn.now()
+        });
+      }
     }
 
     const token = signUserToken(user.id);
-    res.json({ token, user: safeUser(user), is_new_user: isNewUser });
+    res.json({ 
+      token, 
+      user: safeUser(user), 
+      is_new_user: isNewUser,
+      referrer_name: user?.last_referrer_name || referrer_name
+    });
   } catch (err: any) {
     res.status(400).json({ error: 'Google authentication failed' });
   }
@@ -168,28 +199,36 @@ router.delete('/me', requireUser, async (req, res) => {
 // POST /api/auth/phone/verify — store verified phone number (Firebase verifies, we store)
 router.post('/phone/verify', requireUser, async (req, res) => {
   let { phone } = req.body;
-  if (!phone) return res.status(422).json({ error: 'phone is required' });
+  if (!phone) return res.status(422).json({ error: 'Phone number is required' });
 
-  // Normalization: strip whitespace and dashes
-  phone = phone.replace(/[\s-]/g, '');
+  // Diamond Standard: Hardened Normalization (strip all but digits)
+  phone = phone.replace(/\D/g, '');
 
   // If 10 digits and starts with 6-9, prepend +91
   if (/^[6-9]\d{9}$/.test(phone)) {
     phone = '+91' + phone;
+  } else if (phone.length === 12 && phone.startsWith('91')) {
+    phone = '+' + phone;
   }
 
-  // Final validation
+  // Strict Indian +91 validation
   if (!/^\+91[6-9]\d{9}$/.test(phone)) {
-    return res.status(422).json({ error: 'Must be a valid +91 Indian mobile number' });
+    return res.status(422).json({ error: 'Please enter a valid 10-digit Indian mobile number' });
   }
 
   const existing = await db('users').where({ phone }).whereNot({ id: req.userId }).first();
-  if (existing) return res.status(409).json({ error: 'Phone number already linked to another account' });
+  if (existing) {
+    return res.status(409).json({ 
+      error: 'This number is already linked to another gourmet account',
+      code: 'ERR_DUPLICATE_PHONE'
+    });
+  }
 
   const [user] = await db('users')
     .where({ id: req.userId })
     .update({ phone, phone_verified: true, updated_at: db.fn.now() })
     .returning('*');
+  
   res.json(safeUser(user));
 });
 
@@ -205,6 +244,7 @@ function safeUser(user: any) {
     phone: user.phone ?? null,
     phone_verified: user.phone_verified ?? false,
     referral_code: user.referral_code ?? null,
+    last_referrer_name: user.last_referrer_name ?? null,
     notification_mutes: user.notification_mutes ?? [],
     created_at: user.created_at,
   };
@@ -216,17 +256,49 @@ function generateReferralCode(): string {
   return Array.from({ length: 8 }, () => chars[Math.floor(Math.random() * chars.length)]).join('');
 }
 
-async function onNewUserCreated(user_id: number, referred_by: number | null, signup_ip: string): Promise<void> {
+async function onNewUserCreated(
+  user_id: number, 
+  referred_by: number | null, 
+  signup_ip: string, 
+  fingerprint: string | null = null,
+  referrer_name: string | null = null
+): Promise<void> {
   const settings = await db('app_settings').where({ id: 1 }).first();
 
-  // Credit signup wallet bonus (amount is in Paise)
+  // 1. Credit signup wallet bonus (amount is in normalized Paise)
   const bonusPaise = settings?.signup_wallet_credit ?? 12000;
   if (bonusPaise > 0) {
     await creditSignupBonus(user_id, bonusPaise);
   }
 
-  // Create referral record (reward fires when first payment completes)
+  // 2. Referral Shield: Fraud Detection Logic
   if (referred_by) {
+    // Check if referrer is from the same network/device (Auto-Block "culprit")
+    const referrer = await db('users').where({ id: referred_by }).first();
+    const isSameIp = referrer?.signup_ip === signup_ip;
+    const isSameDevice = fingerprint && referrer?.last_fingerprint === fingerprint;
+
+    if (isSameIp || isSameDevice) {
+      console.warn(`[Referral Shield] Blocking fraudulent attempt. User ${user_id} referred by ${referred_by} on same IP/Device.`);
+      
+      // Log for Admin Dashboard (Diamond Standard Security)
+      await db('fraud_alerts').insert({
+        user_id,
+        type: 'referral_fraud',
+        severity: 'critical',
+        details: JSON.stringify({
+          reason: isSameIp ? 'IP_MATCH' : 'DEVICE_MATCH',
+          ip: signup_ip,
+          fingerprint,
+          referrer_id: referred_by,
+          message: `Attempted self-referral from same ${isSameIp ? 'network' : 'device'}. Reward blocked.`
+        })
+      });
+
+      return; // ⛔ BLOCK: Do not create referral record
+    }
+
+    // Genuine Referral: Create record
     const referralUser = await db('users').where({ id: referred_by }).select('referral_code').first();
     if (referralUser) {
       await db('referrals').insert({
@@ -234,6 +306,7 @@ async function onNewUserCreated(user_id: number, referred_by: number | null, sig
         referred_id: user_id,
         referral_code: referralUser.referral_code,
         status: 'pending',
+        device_fingerprint: fingerprint,
         metadata: JSON.stringify({ signup_ip }),
       }).onConflict('referred_id').ignore();
     }

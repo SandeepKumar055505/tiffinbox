@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { subscriptions as subsApi } from '../../services/api';
+import { usePublicConfig } from '../../hooks/usePublicConfig';
+import ResumeConfirmModal from './ResumeConfirmModal';
 
 interface Props {
   subscriptionId: number;
@@ -13,8 +15,10 @@ type View = 'choice' | 'pause' | 'cancel-confirm';
 
 export default function SmartPauseModal({ subscriptionId, currentState, onDone, onClose }: Props) {
   const qc = useQueryClient();
+  const { config: publicConfig } = usePublicConfig();
   const isPaused = currentState === 'paused';
   const [view, setView] = useState<View>(isPaused ? 'cancel-confirm' : 'choice');
+  const [showResumeConfirm, setShowResumeConfirm] = useState(false);
   const [pauseReason, setPauseReason] = useState('');
   const [cancelReason, setCancelReason] = useState('');
 
@@ -29,8 +33,11 @@ export default function SmartPauseModal({ subscriptionId, currentState, onDone, 
   });
 
   const resume = useMutation({
-    mutationFn: () => subsApi.resume(subscriptionId),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ['subscriptions'] }); onDone(); },
+    mutationFn: (shiftDates: boolean) => subsApi.resume(subscriptionId, shiftDates),
+    onSuccess: () => { 
+      qc.invalidateQueries({ queryKey: ['subscriptions'] }); 
+      onDone(); 
+    },
   });
 
   return (
@@ -56,9 +63,10 @@ export default function SmartPauseModal({ subscriptionId, currentState, onDone, 
               <div className="space-y-4 pt-6">
                 <button
                   onClick={() => setView('pause')}
-                  className="btn-primary w-full !py-5 !rounded-2xl shadow-glow-subtle !text-base"
+                  disabled={publicConfig?.features?.pause_enabled === false}
+                  className="btn-primary w-full !py-5 !rounded-2xl shadow-glow-subtle !text-base disabled:opacity-20"
                 >
-                  Pause Subscription
+                  {publicConfig?.features?.pause_enabled === false ? 'Pause Disabled' : 'Pause Subscription'}
                 </button>
                 <button
                   onClick={() => setView('cancel-confirm')}
@@ -154,7 +162,7 @@ export default function SmartPauseModal({ subscriptionId, currentState, onDone, 
 
               {isPaused && (
                 <button
-                  onClick={() => resume.mutate()}
+                  onClick={() => setShowResumeConfirm(true)}
                   disabled={resume.isPending}
                   className="btn-primary w-full !py-5 shadow-glow-subtle rounded-[1.5rem] !text-base"
                 >
@@ -186,6 +194,14 @@ export default function SmartPauseModal({ subscriptionId, currentState, onDone, 
 
         </div>
       </div>
+      {showResumeConfirm && (
+        <ResumeConfirmModal
+          isOpen={showResumeConfirm}
+          onClose={() => setShowResumeConfirm(false)}
+          onConfirm={(shift) => resume.mutate(shift)}
+          isPending={resume.isPending}
+        />
+      )}
     </>
   );
 }
