@@ -294,7 +294,7 @@ router.post('/:id/cancel', requireUser, async (req, res) => {
       const amountToRefund = sub.wallet_applied || 0;
       if (amountToRefund > 0) {
         const { creditFullSubscriptionRefund } = await import('../services/ledgerService');
-        await creditFullSubscriptionRefund(req.userId, sub.id, amountToRefund);
+        await creditFullSubscriptionRefund(req.userId!, sub.id, amountToRefund);
       }
       return res.json({ message: 'Subscription cancelled with full refund (plan not yet started)', status: 'refunded' });
     }

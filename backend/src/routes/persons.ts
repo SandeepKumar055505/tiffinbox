@@ -46,7 +46,7 @@ router.patch('/:id', requireUser, validate(personSchema.partial()), async (req, 
     .update(req.body)
     .returning('*');
 
-  const { emitEvent, DomainEvent } = await import('../../jobs/events');
+  const { emitEvent, DomainEvent } = await import('../jobs/events');
   await emitEvent(DomainEvent.PERSON_UPDATED, { person_id: updated.id });
 
   res.json(updated);

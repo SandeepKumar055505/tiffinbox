@@ -147,7 +147,7 @@ router.patch('/delivery/cells/:id', requireAdmin, async (req, res) => {
 
   if (status === 'failed' && !cell.wallet_credited) {
     await db('meal_cells').where({ id: req.params.id }).update({ delivery_status: status, updated_at: db.fn.now() });
-    const { boss } = await import('../../jobs/index');
+    const { boss } = await import('../../jobs/client');
     const { DomainEvent } = await import('../../jobs/events');
     await boss.send(DomainEvent.DELIVERY_FAILED, {
       meal_cell_id: cell.id,
@@ -158,7 +158,7 @@ router.patch('/delivery/cells/:id', requireAdmin, async (req, res) => {
     });
   } else if (status === 'delivered') {
     await db('meal_cells').where({ id: req.params.id }).update({ delivery_status: status, updated_at: db.fn.now() });
-    const { boss } = await import('../../jobs/index');
+    const { boss } = await import('../../jobs/client');
     const { DomainEvent } = await import('../../jobs/events');
     await boss.send(DomainEvent.DELIVERY_COMPLETED, {
       meal_cell_id: cell.id,
@@ -219,7 +219,7 @@ router.post('/delivery/bulk-deliver', requireAdmin, async (req, res) => {
   await db('meal_cells').whereIn('id', cellIds).update({ delivery_status: 'delivered', updated_at: db.fn.now() });
 
   // Emit DELIVERY_COMPLETED for each cell
-  const { boss } = await import('../../jobs/index');
+  const { boss } = await import('../../jobs/client');
   const { DomainEvent } = await import('../../jobs/events');
   for (const cell of cells) {
     await boss.send(DomainEvent.DELIVERY_COMPLETED, {
@@ -272,7 +272,7 @@ router.post('/delivery/holiday-skip', requireAdmin, async (req, res) => {
   });
 
   // Emit MEAL_SKIPPED for each cell
-  const { boss } = await import('../../jobs/index');
+  const { boss } = await import('../../jobs/client');
   const { DomainEvent } = await import('../../jobs/events');
   for (const cell of cells) {
     await boss.send(DomainEvent.MEAL_SKIPPED, {

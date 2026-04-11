@@ -62,6 +62,7 @@ router.post('/:id/approve', requireAdmin, async (req, res) => {
 router.post('/:id/deny', requireAdmin, async (req, res) => {
   const request = await db('skip_requests').where({ id: req.params.id, status: 'pending' }).first();
   if (!request) return res.status(404).json({ error: 'Skip request not found or already processed' });
+  const sub = await db('subscriptions').where({ id: request.subscription_id }).first();
 
   await db('skip_requests').where({ id: request.id }).update({
     status: 'denied',
