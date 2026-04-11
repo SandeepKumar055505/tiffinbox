@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { subscriptions as subsApi, skip as skipApi } from '../../services/api';
+import api from '../../services/api';
 import { formatRupees } from '../../utils/pricing';
 import SmartPauseModal from '../../components/shared/SmartPauseModal';
 

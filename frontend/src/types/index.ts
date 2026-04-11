@@ -13,6 +13,7 @@ export interface AuthUser {
   phone: string | null;
   phone_verified: boolean;
   referral_code: string | null;
+  notification_mutes?: string[];
   created_at: string;
 }
 

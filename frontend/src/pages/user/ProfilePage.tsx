@@ -61,7 +61,7 @@ export default function ProfilePage() {
   const toggleMute = (type: string) => {
     const current = user?.notification_mutes || [];
     const updated = current.includes(type)
-      ? current.filter(t => t !== type)
+      ? current.filter((t: string) => t !== type)
       : [...current, type];
     updateProfile.mutate({ notification_mutes: updated });
   };
