@@ -87,7 +87,7 @@ router.post(
     price: z.number().int().min(0).optional().default(0),
     is_available: z.boolean().optional().default(true),
     is_extra: z.boolean().optional().default(false),
-    tags: z.array(z.string()).optional().default([]),
+    tags: z.array(z.enum(['veg', 'vegan', 'nut-free', 'dairy-free', 'spicy', 'egg', 'meat', 'fish'])).optional().default([]),
   })),
   async (req, res) => {
     const [item] = await db('meal_items').insert(req.body).returning('*');
@@ -97,6 +97,17 @@ router.post(
 
 // PATCH /api/admin/menu/items/:id
 router.patch('/items/:itemId', requireAdmin, async (req, res) => {
+  // Integrity Check: Do not allow disabling an item used in the default menu
+  if (req.body.is_available === false) {
+    const isDefault = await db('default_menu').where({ item_id: req.params.itemId }).first();
+    const isAlt = await db('default_menu_alternatives').where({ item_id: req.params.itemId }).first();
+    if (isDefault || isAlt) {
+      return res.status(409).json({ 
+        error: 'Cannot disable item. It is currently a Default or Alternative meal in the weekly menu. Remove it from the menu first.' 
+      });
+    }
+  }
+
   const [updated] = await db('meal_items')
     .where({ id: req.params.itemId })
     .update({ ...req.body, updated_at: db.fn.now() })

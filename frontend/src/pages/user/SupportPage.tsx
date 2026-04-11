@@ -9,6 +9,7 @@ interface Message {
   sender: 'user' | 'admin';
   message: string;
   created_at: string;
+  attachment_url?: string;
 }
 
 export default function SupportPage() {
@@ -17,6 +18,9 @@ export default function SupportPage() {
   const [message, setMessage] = useState('');
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [reply, setReply] = useState('');
+  const [attachment, setAttachment] = useState<string | null>(null);
+  const [isUploading, setIsUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const threadEnd = useRef<HTMLDivElement>(null);
 
   const { data: tickets = [] } = useQuery<SupportTicket[]>({
@@ -40,13 +44,29 @@ export default function SupportPage() {
   });
 
   const sendReply = useMutation({
-    mutationFn: () => supportApi.sendMessage(selectedId!, reply),
+    mutationFn: () => supportApi.sendMessage(selectedId!, reply, attachment || undefined),
     onSuccess: () => {
       setReply('');
+      setAttachment(null);
       qc.invalidateQueries({ queryKey: ['support-thread', selectedId] });
       qc.invalidateQueries({ queryKey: ['support-tickets'] });
     },
   });
+
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    try {
+      setIsUploading(true);
+      const { upload } = await import('../../services/api');
+      const res = await upload.image(file);
+      setAttachment(res.data.url);
+    } catch (err) {
+      alert('Failed to upload image. Please try again.');
+    } finally {
+      setIsUploading(false);
+    }
+  };
 
   useEffect(() => {
     threadEnd.current?.scrollIntoView({ behavior: 'smooth' });
@@ -81,6 +101,11 @@ export default function SupportPage() {
                     : 'surface-glass bg-white/5 ring-white/5'
                 }`}>
                   <p className="text-body-sm !text-base leading-relaxed font-medium">{m.message}</p>
+                  {m.attachment_url && (
+                    <div className="mt-4 rounded-xl overflow-hidden shadow-inner ring-1 ring-white/10">
+                      <img src={m.attachment_url} alt="Attachment" className="w-full h-auto max-h-64 object-cover" />
+                    </div>
+                  )}
                   <p className="text-label-caps !text-[9px] opacity-30 mt-4 font-bold flex items-center gap-2 justify-end">
                     <span>{m.sender === 'admin' ? 'Support' : 'You'}</span>
                     <span className="w-1 h-1 rounded-full bg-current opacity-30" />
@@ -93,21 +118,38 @@ export default function SupportPage() {
           </div>
 
           {thread.ticket.status !== 'resolved' && (
-            <div className="py-8 border-t border-border/10 flex gap-5 bg-bg-primary/40 backdrop-blur-xl sticky bottom-0 z-20 rounded-t-[3rem]">
-              <input
-                className="flex-1 input-field !text-base !py-5 !px-8 !rounded-2xl shadow-inner border-white/5 ring-1 ring-white/5"
-                placeholder="Type your message here..."
-                value={reply}
-                onChange={e => setReply(e.target.value)}
-                onKeyDown={e => e.key === 'Enter' && !e.shiftKey && reply.trim() && sendReply.mutate()}
-              />
-              <button
-                onClick={() => sendReply.mutate()}
-                disabled={!reply.trim() || sendReply.isPending}
-                className="btn-primary !py-4 px-10 shrink-0 !rounded-2xl shadow-glow-subtle flex items-center justify-center transition-all active:scale-95"
-              >
-                {sendReply.isPending ? '…' : <span className="font-bold">Send</span>}
-              </button>
+            <div className="py-8 border-t border-border/10 space-y-4 bg-bg-primary/40 backdrop-blur-xl sticky bottom-0 z-20 rounded-t-[3rem]">
+              {attachment && (
+                <div className="px-8 animate-glass">
+                  <div className="relative inline-block group">
+                    <img src={attachment} className="w-20 h-20 rounded-xl object-cover ring-2 ring-accent shadow-lg" alt="Preview"/>
+                    <button onClick={() => setAttachment(null)} className="absolute -top-2 -right-2 w-6 h-6 rounded-full bg-red-500 text-white text-xs flex items-center justify-center shadow-lg border-2 border-bg-primary group-hover:scale-110 transition-transform">×</button>
+                  </div>
+                </div>
+              )}
+              <div className="flex gap-3 px-6">
+                <input type="file" ref={fileInputRef} className="hidden" accept="image/*" onChange={handleFileUpload} />
+                <button 
+                  onClick={() => fileInputRef.current?.click()}
+                  className="w-14 h-14 rounded-2xl surface-glass flex-shrink-0 flex items-center justify-center text-text-muted hover:text-accent transition-all active:scale-95 group"
+                >
+                  <span className={`text-2xl ${isUploading ? 'animate-spin' : 'group-hover:rotate-12 transition-transform'}`}>📎</span>
+                </button>
+                <input
+                  className="flex-1 input-field !text-base !py-4 !px-6 !rounded-2xl shadow-inner border-white/5 ring-1 ring-white/5"
+                  placeholder="Type your message here..."
+                  value={reply}
+                  onChange={e => setReply(e.target.value)}
+                  onKeyDown={e => e.key === 'Enter' && !e.shiftKey && (reply.trim() || attachment) && sendReply.mutate()}
+                />
+                <button
+                  onClick={() => sendReply.mutate()}
+                  disabled={(!reply.trim() && !attachment) || sendReply.isPending || isUploading}
+                  className="btn-primary !py-4 px-8 shrink-0 !rounded-2xl shadow-glow-subtle flex items-center justify-center transition-all active:scale-95"
+                >
+                  {sendReply.isPending ? '…' : <span className="font-bold">Send</span>}
+                </button>
+              </div>
             </div>
           )}
           {thread.ticket.status === 'resolved' && (

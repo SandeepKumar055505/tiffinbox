@@ -40,8 +40,9 @@ export const auth = {
   googleLogin: (id_token: string, referral_code?: string) =>
     api.post('/auth/google', { id_token, ...(referral_code ? { referral_code } : {}) }),
   me: () => api.get('/auth/me'),
-  updateProfile: (data: { wallet_auto_apply?: boolean; delivery_address?: string }) =>
+  updateProfile: (data: { wallet_auto_apply?: boolean; delivery_address?: string; notification_mutes?: string[] }) =>
     api.patch('/auth/me', data),
+  deleteAccount: () => api.delete('/auth/me'),
   verifyPhone: (phone: string) => api.post('/auth/phone/verify', { phone }),
 };
 
@@ -99,9 +100,22 @@ export const notifications = {
 // ── Support ───────────────────────────────────────────────────────────────────
 export const support = {
   listTickets: () => api.get('/support/tickets'),
-  createTicket: (data: any) => api.post('/support/tickets', data),
+  createTicket: (data: { subject: string; message: string; attachment_url?: string }) => 
+    api.post('/support/tickets', data),
   getMessages: (id: number) => api.get(`/support/tickets/${id}/messages`),
-  sendMessage: (id: number, message: string) => api.post(`/support/tickets/${id}/messages`, { message }),
+  sendMessage: (id: number, message: string, attachment_url?: string) => 
+    api.post(`/support/tickets/${id}/messages`, { message, attachment_url }),
+};
+
+// ── Upload ────────────────────────────────────────────────────────────────────
+export const upload = {
+  image: (file: File) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    return api.post('/upload', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+  },
 };
 
 // ── Delivery OTP ──────────────────────────────────────────────────────────────

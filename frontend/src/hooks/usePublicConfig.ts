@@ -27,6 +27,10 @@ export interface PublicConfig {
     reward_type: string;
     wallet_amount: number;
   }>;
+  rewards: {
+    signup_bonus: number;    // in rupees
+    referral_reward: number; // in rupees
+  };
 }
 
 /**

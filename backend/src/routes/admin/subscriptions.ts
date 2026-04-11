@@ -63,6 +63,16 @@ router.post('/:id/cancel', requireAdmin, async (req, res) => {
     .update({ state: 'cancelled', cancel_reason: req.body.reason || null, updated_at: db.fn.now() })
     .returning('*');
 
+  // Cancel all future meal cells for this subscription
+  await db('meal_cells')
+    .where({ subscription_id: sub.id })
+    .whereIn('delivery_status', ['scheduled', 'preparing', 'out_for_delivery']) // Cancel even if out for delivery (admin decision)
+    .update({
+      delivery_status: 'cancelled',
+      is_included: false,
+      updated_at: db.fn.now(),
+    });
+
   await db('audit_logs').insert({
     admin_id: req.adminId,
     action: 'subscription.cancel',

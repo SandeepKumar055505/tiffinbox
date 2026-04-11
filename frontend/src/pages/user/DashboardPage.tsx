@@ -7,10 +7,12 @@ import { Subscription, MealCell, Person, PersonStreak } from '../../types';
 import { formatRupees } from '../../utils/pricing';
 import NotificationPanel from '../../components/shared/NotificationPanel';
 import ThemeToggle from '../../components/shared/ThemeToggle';
+import { usePublicConfig } from '../../hooks/usePublicConfig';
 import api from '../../services/api';
 
 export default function DashboardPage() {
   const { user, logout } = useAuth();
+  const { config: publicConfig } = usePublicConfig();
   const qc = useQueryClient();
   const today = new Date().toISOString().split('T')[0];
   const [pendingRating, setPendingRating] = useState<{ cellId: number; mealType: string } | null>(null);
@@ -63,12 +65,14 @@ export default function DashboardPage() {
     },
   });
 
-  // Fetch OTP for a specific cell (only when out_for_delivery)
+  // Fetch OTP for a specific cell (only when out_for_delivery AND feature enabled)
   const otpCellId = todayCells.find(c => c.delivery_status === 'out_for_delivery')?.id;
+  const isOtpEnabled = publicConfig?.features.delivery_otp_enabled ?? true;
+
   const { data: otpData } = useQuery({
     queryKey: ['delivery-otp', otpCellId],
     queryFn: () => delivery.getOtp(otpCellId!).then(r => r.data),
-    enabled: !!otpCellId,
+    enabled: !!otpCellId && isOtpEnabled,
     refetchInterval: 30_000,
   });
 
@@ -186,8 +190,8 @@ export default function DashboardPage() {
                           </div>
                         </div>
 
-                        {/* Delivery OTP — shown when out_for_delivery */}
-                        {isOtpCell && otpData && (
+                        {/* Delivery OTP — shown when out_for_delivery and feature enabled */}
+                        {isOtpCell && isOtpEnabled && otpData && (
                           <div className="flex items-center justify-between bg-yellow-500/10 border border-yellow-500/20 rounded-xl px-4 py-3">
                             <div className="space-y-0.5">
                               <p className="text-[9px] font-black uppercase tracking-widest text-yellow-600">Show to delivery person</p>

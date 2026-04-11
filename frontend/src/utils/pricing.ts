@@ -66,9 +66,13 @@ export function calculatePriceSnapshot(
   };
 }
 
-/** Format ₹ amount */
-export function formatRupees(amount: number): string {
-  return `₹${amount.toLocaleString('en-IN')}`;
+/** Format ₹ amount (amount is in PAISE) */
+export function formatRupees(amountPaise: number): string {
+  const rupees = amountPaise / 100;
+  return `₹${rupees.toLocaleString('en-IN', {
+    minimumFractionDigits: rupees % 1 === 0 ? 0 : 2,
+    maximumFractionDigits: 2,
+  })}`;
 }
 
 /** Build delivery dates for a plan */

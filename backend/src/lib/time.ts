@@ -204,3 +204,19 @@ export function isPastIST(dateStr: string): boolean {
 export function isFutureIST(dateStr: string): boolean {
   return dateStr > todayIST();
 }
+
+/**
+ * Get the ISO week number for a given date string.
+ * Used for multi-week menu rotations.
+ */
+export function getWeekNumberIST(dateStr: string): number {
+  const d = parseDateIST(dateStr);
+  const date = new Date(d.getTime());
+  date.setUTCHours(0, 0, 0, 0);
+  // Thursday in current week decides the year.
+  date.setUTCDate(date.getUTCDate() + 3 - (date.getUTCDay() + 6) % 7);
+  // January 4 is always in week 1.
+  const week1 = new Date(Date.UTC(date.getUTCFullYear(), 0, 4));
+  // Adjust to Thursday in week 1 and count number of weeks from date to week1.
+  return 1 + Math.round(((date.getTime() - week1.getTime()) / 86400000 - 3 + (week1.getUTCDay() + 6) % 7) / 7);
+}

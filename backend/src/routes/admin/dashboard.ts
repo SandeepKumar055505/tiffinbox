@@ -11,19 +11,94 @@ router.get('/', requireAdmin, async (_req, res) => {
   const weekStartStr = weekStartIST(today);
 
   const [stats] = await db.raw(`
-    SELECT
-      (SELECT COUNT(*) FROM subscriptions WHERE state IN ('active','partially_skipped')) AS active_subscriptions,
-      (SELECT COUNT(*) FROM meal_cells WHERE date = ? AND is_included = true AND delivery_status NOT IN ('skipped','cancelled')) AS meals_today,
-      (SELECT COUNT(*) FROM meal_cells WHERE date = ? AND delivery_status = 'delivered') AS delivered_today,
-      (SELECT COUNT(*) FROM meal_cells WHERE date = ? AND delivery_status = 'failed') AS failed_today,
-      (SELECT COALESCE(SUM(amount), 0) / 100 FROM payments WHERE status = 'paid' AND DATE(created_at) = ?) AS revenue_today,
-      (SELECT COALESCE(SUM(amount), 0) / 100 FROM payments WHERE status = 'paid' AND DATE(created_at) >= ?) AS revenue_this_week,
-      (SELECT COUNT(*) FROM skip_requests WHERE status = 'pending') AS pending_skips,
-      (SELECT COUNT(*) FROM support_tickets WHERE status IN ('open','pending')) AS open_tickets,
-      (SELECT COUNT(*) FROM users WHERE DATE(created_at) = ?) AS new_users_today
-  `, [today, today, today, today, weekStartStr, today]);
+      (SELECT COUNT(*) FROM users WHERE DATE(created_at) = ?) AS new_users_today,
+      (SELECT COALESCE(AVG(rating), 0) FROM meal_ratings) AS avg_rating
+  `, [today, today, today, today, today, weekStartStr, today]);
 
-  res.json(stats.rows[0]);
+  // Prep list breakdown
+  const prepList = await db('meal_cells as mc')
+    .join('meal_items as mi', 'mi.id', 'mc.item_id')
+    .where({ 'mc.date': today, 'mc.is_included': true })
+    .whereNotIn('mc.delivery_status', ['skipped', 'cancelled'])
+    .select('mi.name', 'mc.meal_type')
+    .count('mc.id as count')
+    .groupBy('mi.name', 'mc.meal_type')
+    .orderBy('mc.meal_type');
+
+  // Job health info (from audit logs or job records)
+  const health = await db('audit_logs')
+    .whereIn('action', ['jobs.streak_update', 'system.cleanup'])
+    .orderBy('created_at', 'desc')
+    .limit(2);
+
+  // Advanced Job Health: count actionable failed pgboss jobs (last 24 hours)
+  const failedJobsCount = await db('pgboss.job')
+    .where('state', 'failed')
+    .where('createdat', '>', db.raw("NOW() - INTERVAL '24 hours'"))
+    .count('id as cnt')
+    .first();
+
+  // Operational Hotspots (Friction)
+  const hotspots = await db('meal_cells as mc')
+    .join('subscriptions as s', 's.id', 'mc.subscription_id')
+    .join('users as u', 'u.id', 's.user_id')
+    .where('mc.delivery_status', 'failed')
+    .where('mc.date', '>=', db.raw("CURRENT_DATE - INTERVAL '3 days'"))
+    .select('u.delivery_address')
+    .count('mc.id as failures')
+    .groupBy('u.delivery_address')
+    .having(db.raw('COUNT(mc.id) > 1'))
+    .orderBy('failures', 'desc')
+    .limit(5);
+
+  // VIPs / Bulk Subscribers (>5 family members)
+  const bulkSubscribersCount = await db('persons')
+    .select('user_id')
+    .count('id as cnt')
+    .groupBy('user_id')
+    .having(db.raw('COUNT(id) > 5'))
+    .then(rows => rows.length);
+
+  // Quality Watch: Average rating per item in last 7 days (those < 3.0)
+  const lowRatings = await db('meal_ratings as mr')
+    .join('meal_items as mi', 'mi.id', 'mr.meal_item_id')
+    .where('mr.created_at', '>=', db.raw("CURRENT_DATE - INTERVAL '7 days'"))
+    .select('mi.name')
+    .avg('mr.rating as avg_rating')
+    .count('mr.id as total_ratings')
+    .groupBy('mi.name')
+    .having(db.raw('AVG(mr.rating) < 3.0'))
+    .orderBy('avg_rating', 'asc');
+
+  // Stale Meals: Count of meals in non-final status for > 4 hours
+  const staleCount = await db('meal_cells')
+    .whereIn('delivery_status', ['preparing', 'out_for_delivery'])
+    .where('last_status_change_at', '<', db.raw("NOW() - INTERVAL '4 hours'"))
+    .count('id as cnt')
+    .first();
+
+  res.json({ 
+    ...stats.rows[0], 
+    prep_list: prepList, 
+    system_health: health.map(h => ({ action: h.action, last_run: h.created_at })),
+    failed_jobs: parseInt((failedJobsCount as any)?.cnt ?? '0', 10),
+    bulk_subscribers: bulkSubscribersCount,
+    low_ratings: lowRatings,
+    stale_meals_count: parseInt((staleCount as any)?.cnt ?? '0', 10),
+    hotspots
+  });
+});
+
+// GET /api/admin/dashboard/stale-meals — detailed list of meals stuck in progress
+router.get('/stale-meals', requireAdmin, async (req, res) => {
+  const stale = await db('meal_cells as mc')
+    .join('subscriptions as s', 's.id', 'mc.subscription_id')
+    .join('users as u', 'u.id', 's.user_id')
+    .whereIn('mc.delivery_status', ['preparing', 'out_for_delivery'])
+    .where('mc.last_status_change_at', '<', db.raw("NOW() - INTERVAL '4 hours'"))
+    .select('mc.*', 'u.name as user_name', 'u.delivery_address')
+    .orderBy('mc.last_status_change_at', 'asc');
+  res.json(stale);
 });
 
 // GET /api/admin/delivery/today — daily delivery schedule
@@ -57,7 +132,10 @@ router.get('/delivery/today', requireAdmin, async (req, res) => {
 // PATCH /api/admin/delivery/cells/:id — mark delivery status
 router.patch('/delivery/cells/:id', requireAdmin, async (req, res) => {
   const { status, note } = req.body;
-  const validStatuses = ['preparing', 'out_for_delivery', 'delivered', 'failed', 'cancelled'];
+  const validStatuses = [
+    'scheduled', 'preparing', 'out_for_delivery', 'delivered', 'failed', 'cancelled',
+    'skipped', 'skipped_by_admin', 'skipped_holiday'
+  ];
   if (!validStatuses.includes(status)) {
     return res.status(422).json({ error: 'Invalid status' });
   }
@@ -175,11 +253,12 @@ router.post('/delivery/holiday-skip', requireAdmin, async (req, res) => {
   const holiday = await db('holidays').where({ date, is_active: true }).first();
   if (!holiday) return res.status(409).json({ error: 'No active holiday registered for this date. Add it in Holidays first.' });
 
-  // Select only cells still scheduled (don't re-skip already-processed cells)
+  // Select cells still scheduled OR already skipped by user (upgrade user-skip to holiday-skip)
   const cells = await db('meal_cells as mc')
     .join('subscriptions as s', 's.id', 'mc.subscription_id')
-    .where({ 'mc.date': date, 'mc.is_included': true, 'mc.delivery_status': 'scheduled' })
-    .select('mc.id', 'mc.meal_type', 'mc.date', 'mc.subscription_id', 's.user_id');
+    .where({ 'mc.date': date, 'mc.is_included': true })
+    .whereIn('mc.delivery_status', ['scheduled', 'skipped', 'preparing'])
+    .select('mc.id', 'mc.meal_type', 'mc.date', 'mc.subscription_id', 's.user_id', 'mc.delivery_status');
 
   if (cells.length === 0) {
     return res.json({ skipped: 0, date, holiday: holiday.name });
@@ -192,7 +271,7 @@ router.post('/delivery/holiday-skip', requireAdmin, async (req, res) => {
     updated_at: db.fn.now(),
   });
 
-  // Emit MEAL_SKIPPED with is_holiday_skip=true for each cell
+  // Emit MEAL_SKIPPED for each cell
   const { boss } = await import('../../jobs/index');
   const { DomainEvent } = await import('../../jobs/events');
   for (const cell of cells) {
@@ -203,7 +282,7 @@ router.post('/delivery/holiday-skip', requireAdmin, async (req, res) => {
       meal_type: cell.meal_type,
       date: cell.date,
       is_grace_skip: false,
-      is_holiday_skip: true,
+      is_holiday_skip: true, // This ensures skip_credit is applied regardless of weekly limit
     });
   }
 
@@ -216,6 +295,29 @@ router.post('/delivery/holiday-skip', requireAdmin, async (req, res) => {
   });
 
   res.json({ skipped: cells.length, date, holiday: holiday.name });
+});
+
+// POST /api/admin/delivery/cells/:id/refresh-otp — regenerate 4-digit OTP
+router.post('/delivery/cells/:id/refresh-otp', requireAdmin, async (req, res) => {
+  const cell = await db('meal_cells').where({ id: req.params.id }).first();
+  if (!cell) return res.status(404).json({ error: 'Meal cell not found' });
+
+  const otp = String(Math.floor(1000 + Math.random() * 9000));
+  const expiresAt = new Date(Date.now() + 120 * 60 * 1000); // 2 hours
+
+  await db('delivery_otps')
+    .insert({ meal_cell_id: cell.id, otp, expires_at: expiresAt })
+    .onConflict('meal_cell_id').merge({ otp, attempts: 0, verified: false, expires_at: expiresAt });
+
+  await db('audit_logs').insert({
+    admin_id: req.adminId,
+    action: 'delivery.otp_refreshed',
+    target_type: 'meal_cell',
+    target_id: cell.id,
+    after_value: JSON.stringify({ otp_preview: otp.slice(0, 2) + '**' }),
+  });
+
+  res.json({ message: 'OTP refreshed', expires_at: expiresAt });
 });
 
 export default router;

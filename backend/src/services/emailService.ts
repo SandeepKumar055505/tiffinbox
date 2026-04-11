@@ -123,3 +123,24 @@ export async function sendStreakMilestone(opts: {
   `);
   await send(opts.to, `🔥 ${opts.streak_days}-day streak reward!`, html);
 }
+
+export async function sendSupportReplyEmail(opts: {
+  to: string;
+  name: string;
+  subject: string;
+  message: string;
+}): Promise<void> {
+  const html = wrap(`
+    <h2 style="color:#0d9488;margin-top:0">New support reply 💬</h2>
+    <p>Hi ${opts.name},</p>
+    <p>An administrator has replied to your ticket: <strong>"${opts.subject}"</strong></p>
+    <div style="background:#1e293b;border-radius:8px;padding:16px;margin:16px 0;font-style:italic;color:#cbd5e1">
+      "${opts.message.length > 200 ? opts.message.substring(0, 200) + '...' : opts.message}"
+    </div>
+    <a href="${env.FRONTEND_URL}/support"
+       style="display:inline-block;background:#0d9488;color:#fff;padding:12px 24px;border-radius:8px;text-decoration:none;font-weight:bold;margin-top:8px">
+      View full conversation →
+    </a>
+  `);
+  await send(opts.to, `Support Reply: ${opts.subject}`, html);
+}

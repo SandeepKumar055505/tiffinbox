@@ -61,6 +61,10 @@ router.get('/public', async (_req, res) => {
       reward_type: r.reward_type,
       wallet_amount: r.wallet_amount,
     })),
+    rewards: {
+      signup_bonus: settings ? Math.round(settings.signup_wallet_credit / 100) : 120,
+      referral_reward: settings ? Math.round(settings.referral_reward_amount / 100) : 50,
+    },
   });
 });
 

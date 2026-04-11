@@ -7,6 +7,7 @@ import { env } from '../config/env';
 import { signUserToken, signAdminToken, requireUser, requireAdmin } from '../middleware/auth';
 import { validate } from '../middleware/validate';
 import { creditSignupBonus, creditReferralReward } from '../services/ledgerService';
+import { isPincodeServiceable } from '../lib/geo';
 
 const router = Router();
 const googleClient = new OAuth2Client(env.GOOGLE_CLIENT_ID);
@@ -51,7 +52,7 @@ router.post('/google', validate(z.object({
         .returning('*');
 
       // Fire-and-forget: signup bonus, referral record, streak row seed
-      onNewUserCreated(user.id, referred_by).catch(err =>
+      onNewUserCreated(user.id, referred_by, req.ip || '0.0.0.0').catch(err =>
         console.error('[bg] onNewUserCreated failed:', err?.message)
       );
     }
@@ -75,6 +76,25 @@ router.post(
     if (!valid) return res.status(401).json({ error: 'Invalid credentials' });
 
     const token = signAdminToken(admin.id);
+    
+    // Security Audit: Check for new IP/Device
+    const lastSession = await db('admin_sessions').where({ admin_id: admin.id }).orderBy('created_at', 'desc').first();
+    const isNewDevice = lastSession && (lastSession.ip_address !== req.ip || lastSession.user_agent !== req.headers['user-agent']);
+    
+    await db('admin_sessions').insert({
+      admin_id: admin.id,
+      ip_address: req.ip || '0.0.0.0',
+      user_agent: req.headers['user-agent'] || 'unknown',
+    });
+
+    await db('audit_logs').insert({
+      admin_id: admin.id,
+      action: 'admin.login',
+      target_type: 'admin',
+      target_id: admin.id,
+      metadata: JSON.stringify({ ip: req.ip, is_new_device: !!isNewDevice })
+    });
+
     res.json({ token, user: { id: admin.id, name: admin.name, email: admin.email, role: 'admin' } });
   }
 );
@@ -109,7 +129,12 @@ router.patch('/me', requireUser, validate(z.object({
 })), async (req, res) => {
   const updates: Record<string, any> = {};
   if (req.body.wallet_auto_apply !== undefined) updates.wallet_auto_apply = req.body.wallet_auto_apply;
-  if (req.body.delivery_address !== undefined) updates.delivery_address = req.body.delivery_address;
+  if (req.body.delivery_address !== undefined) {
+    const geo = await isPincodeServiceable(req.body.delivery_address);
+    if (!geo.is_serviceable) return res.status(422).json({ error: geo.message });
+    updates.delivery_address = req.body.delivery_address;
+  }
+  if (req.body.notification_mutes !== undefined) updates.notification_mutes = req.body.notification_mutes;
 
   if (Object.keys(updates).length === 0) return res.status(400).json({ error: 'Nothing to update' });
 
@@ -118,18 +143,52 @@ router.patch('/me', requireUser, validate(z.object({
   res.json(safeUser(user));
 });
 
+// DELETE /api/auth/me — Close account
+router.delete('/me', requireUser, async (req, res) => {
+  const user = await db('users').where({ id: req.userId }).first();
+  if (!user) return res.status(404).json({ error: 'User not found' });
+
+  // 1. Cancel all active subscriptions
+  await db('subscriptions').where({ user_id: req.userId, state: 'active' }).update({ state: 'cancelled', updated_at: db.fn.now() });
+  
+  // 2. Anonymize user data (GDPR/Compliance)
+  await db('users').where({ id: req.userId }).update({
+    name: 'Deleted User',
+    email: `deleted_${req.userId}_${Date.now()}@tiffinbox.com`,
+    google_id: `deleted_${user.google_id}`,
+    phone: null,
+    avatar_url: null,
+    delivery_address: null,
+    updated_at: db.fn.now()
+  });
+
+  res.status(204).send();
+});
+
 // POST /api/auth/phone/verify — store verified phone number (Firebase verifies, we store)
-router.post('/phone/verify', requireUser, validate(z.object({
-  phone: z.string().regex(/^\+91[6-9]\d{9}$/, 'Must be a valid +91 Indian mobile number'),
-})), async (req, res) => {
-  // Firebase handles actual OTP verification client-side.
-  // This endpoint is called after Firebase confirms the OTP — we just store the result.
-  const existing = await db('users').where({ phone: req.body.phone }).whereNot({ id: req.userId }).first();
+router.post('/phone/verify', requireUser, async (req, res) => {
+  let { phone } = req.body;
+  if (!phone) return res.status(422).json({ error: 'phone is required' });
+
+  // Normalization: strip whitespace and dashes
+  phone = phone.replace(/[\s-]/g, '');
+
+  // If 10 digits and starts with 6-9, prepend +91
+  if (/^[6-9]\d{9}$/.test(phone)) {
+    phone = '+91' + phone;
+  }
+
+  // Final validation
+  if (!/^\+91[6-9]\d{9}$/.test(phone)) {
+    return res.status(422).json({ error: 'Must be a valid +91 Indian mobile number' });
+  }
+
+  const existing = await db('users').where({ phone }).whereNot({ id: req.userId }).first();
   if (existing) return res.status(409).json({ error: 'Phone number already linked to another account' });
 
   const [user] = await db('users')
     .where({ id: req.userId })
-    .update({ phone: req.body.phone, phone_verified: true, updated_at: db.fn.now() })
+    .update({ phone, phone_verified: true, updated_at: db.fn.now() })
     .returning('*');
   res.json(safeUser(user));
 });
@@ -146,6 +205,7 @@ function safeUser(user: any) {
     phone: user.phone ?? null,
     phone_verified: user.phone_verified ?? false,
     referral_code: user.referral_code ?? null,
+    notification_mutes: user.notification_mutes ?? [],
     created_at: user.created_at,
   };
 }
@@ -156,14 +216,13 @@ function generateReferralCode(): string {
   return Array.from({ length: 8 }, () => chars[Math.floor(Math.random() * chars.length)]).join('');
 }
 
-async function onNewUserCreated(user_id: number, referred_by: number | null): Promise<void> {
+async function onNewUserCreated(user_id: number, referred_by: number | null, signup_ip: string): Promise<void> {
   const settings = await db('app_settings').where({ id: 1 }).first();
 
-  // Credit signup wallet bonus
+  // Credit signup wallet bonus (amount is in Paise)
   const bonusPaise = settings?.signup_wallet_credit ?? 12000;
-  const bonusRupees = Math.round(bonusPaise / 100);
-  if (bonusRupees > 0) {
-    await creditSignupBonus(user_id, bonusRupees);
+  if (bonusPaise > 0) {
+    await creditSignupBonus(user_id, bonusPaise);
   }
 
   // Create referral record (reward fires when first payment completes)
@@ -175,6 +234,7 @@ async function onNewUserCreated(user_id: number, referred_by: number | null): Pr
         referred_id: user_id,
         referral_code: referralUser.referral_code,
         status: 'pending',
+        metadata: JSON.stringify({ signup_ip }),
       }).onConflict('referred_id').ignore();
     }
   }

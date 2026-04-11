@@ -16,16 +16,29 @@ router.get('/tickets', requireUser, async (req, res) => {
 router.post(
   '/tickets',
   requireUser,
-  validate(z.object({ subject: z.string().min(3).max(255), message: z.string().min(5) })),
+  validate(z.object({
+    subject: z.string().min(3).max(255),
+    message: z.string().min(5),
+    ticket_type: z.enum(['delivery', 'food_quality', 'payment', 'account', 'other']).default('other'),
+    priority: z.enum(['low', 'normal', 'high', 'critical']).default('normal'),
+    attachment_url: z.string().url().optional(),
+  })),
   async (req, res) => {
+    const { subject, message, ticket_type, priority } = req.body;
     const [ticket] = await db('support_tickets')
-      .insert({ user_id: req.userId, subject: req.body.subject })
+      .insert({
+        user_id: req.userId,
+        subject,
+        ticket_type,
+        priority,
+      })
       .returning('*');
 
     await db('support_messages').insert({
       ticket_id: ticket.id,
       author_role: 'user',
-      message: req.body.message,
+      message,
+      attachment_url: req.body.attachment_url || null,
     });
 
     res.status(201).json(ticket);
@@ -47,18 +60,23 @@ router.get('/tickets/:id/messages', requireUser, async (req, res) => {
 router.post(
   '/tickets/:id/messages',
   requireUser,
-  validate(z.object({ message: z.string().min(1) })),
+  validate(z.object({ 
+    message: z.string().min(1),
+    attachment_url: z.string().url().optional(),
+  })),
   async (req, res) => {
     const ticket = await db('support_tickets')
       .where({ id: req.params.id, user_id: req.userId })
       .first();
     if (!ticket) return res.status(404).json({ error: 'Ticket not found' });
-    if (ticket.status === 'resolved') {
-      return res.status(409).json({ error: 'Cannot reply to a resolved ticket' });
-    }
-
+    // Allow replying to resolved tickets (auto-reopens them)
     const [msg] = await db('support_messages')
-      .insert({ ticket_id: ticket.id, author_role: 'user', message: req.body.message })
+      .insert({ 
+        ticket_id: ticket.id, 
+        author_role: 'user', 
+        message: req.body.message,
+        attachment_url: req.body.attachment_url || null
+      })
       .returning('*');
 
     await db('support_tickets')

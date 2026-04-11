@@ -1,4 +1,4 @@
-import { boss } from './index';
+import { boss } from './client';
 
 export enum DomainEvent {
   SUBSCRIPTION_CREATED = 'subscription.created',
@@ -10,6 +10,7 @@ export enum DomainEvent {
   PLAN_EXPIRING        = 'plan.expiring',
   SKIP_REQUEST_CREATED = 'skip_request.created',
   STREAK_MILESTONE     = 'streak.milestone',
+  PERSON_UPDATED       = 'person.updated',
 }
 
 export async function emitEvent(event: DomainEvent, payload: object): Promise<void> {

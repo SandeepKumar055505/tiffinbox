@@ -3,6 +3,8 @@ import { z } from 'zod';
 import { db } from '../../config/db';
 import { requireAdmin } from '../../middleware/auth';
 import { validate } from '../../middleware/validate';
+import { sendNotification, NotificationType } from '../../services/notificationService';
+import { sendSupportReplyEmail } from '../../services/emailService';
 
 const router = Router();
 
@@ -46,13 +48,30 @@ router.post(
 
     await db('support_tickets').where({ id: ticket.id }).update({ status: 'pending', updated_at: db.fn.now() });
 
-    // Notify user
-    await db('notifications').insert({
-      user_id: ticket.user_id,
-      title: 'Support reply received',
-      message: `Admin replied to your ticket: "${ticket.subject}"`,
-      type: 'info',
+    // Audit Log
+    await db('audit_logs').insert({
+      admin_id: req.adminId,
+      action: 'support.reply',
+      target_type: 'support_ticket',
+      target_id: ticket.id,
+      after_value: JSON.stringify({ message: req.body.message }),
     });
+
+    // Notify user
+    await sendNotification(
+      ticket.user_id,
+      NotificationType.SUPPORT,
+      'Support reply received',
+      `Admin replied to your ticket: "${ticket.subject}"`
+    );
+
+    // Email notify (async)
+    sendSupportReplyEmail({
+      to: ticket.email,
+      name: ticket.user_name,
+      subject: ticket.subject,
+      message: req.body.message
+    }).catch(err => console.error('[bg] Support email failed:', err?.message));
 
     res.status(201).json(msg);
   }
@@ -64,10 +83,29 @@ router.patch(
   requireAdmin,
   validate(z.object({ status: z.enum(['open', 'pending', 'resolved']) })),
   async (req, res) => {
+    const { status } = req.body;
+    const updates: any = { status, updated_at: db.fn.now() };
+
+    if (status === 'resolved') {
+      updates.resolved_by = req.adminId;
+      updates.resolved_at = db.fn.now();
+    }
+
+    const before = await db('support_tickets').where({ id: req.params.id }).first();
     const [updated] = await db('support_tickets')
       .where({ id: req.params.id })
-      .update({ status: req.body.status, updated_at: db.fn.now() })
+      .update(updates)
       .returning('*');
+
+    await db('audit_logs').insert({
+      admin_id: req.adminId,
+      action: 'support.status_change',
+      target_type: 'support_ticket',
+      target_id: parseInt(req.params.id),
+      before_value: JSON.stringify(before),
+      after_value: JSON.stringify({ status }),
+    });
+
     res.json(updated);
   }
 );

@@ -37,6 +37,17 @@ export default function SubscriptionDetailPage() {
     onError: (err: any) => setSkipError(err.response?.data?.error || 'Could not skip meal'),
   });
 
+  const swapMeal = useMutation({
+    mutationFn: ({ cellId, itemId }: { cellId: number; itemId: number }) => 
+      api.patch(`/subscriptions/${id}/cells/${cellId}/swap`, { item_id: itemId }),
+    onSuccess: () => {
+      setSkipSuccess('Meal swapped successfully!');
+      refetch();
+      setTimeout(() => setSkipSuccess(null), 5000);
+    },
+    onError: (err: any) => setSkipError(err.response?.data?.error || 'Could not swap meal'),
+  });
+
   if (isLoading) return (
     <div className="min-h-screen flex items-center justify-center">
       <div className="text-xl animate-spin">🌀</div>
@@ -231,16 +242,59 @@ export default function SubscriptionDetailPage() {
                                  cell.delivery_status}
                               </p>
                             </div>
+
+                            {cell.delivery_image_url && (
+                              <div className="mt-2 group/proof relative">
+                                <span className="text-[10px] font-bold text-teal-500 bg-teal-500/10 px-2 py-0.5 rounded cursor-pointer border border-teal-500/20">
+                                  Proof Attached 📎
+                                </span>
+                                <div className="absolute left-0 top-full mt-2 w-48 hidden group-hover/proof:block z-40 animate-glass shadow-2xl">
+                                  <img 
+                                    src={cell.delivery_image_url} 
+                                    className="w-full h-auto rounded-xl border-2 border-accent/20" 
+                                    alt="Delivery Proof" 
+                                  />
+                                  {cell.delivery_notes && (
+                                    <div className="bg-bg-primary/95 p-3 border border-white/10 rounded-b-xl border-t-0 -mt-2">
+                                      <p className="text-[10px] italic leading-tight opacity-80">"{cell.delivery_notes}"</p>
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                            )}
                           </div>
                         </div>
                         {isSkippable && !pendingSkipCells.has(cell.id) && (
-                          <button
-                            onClick={() => skipMeal.mutate(cell.id)}
-                            disabled={skipMeal.isPending}
-                            className="shrink-0 text-[10px] font-bold text-orange-500 hover:text-white uppercase tracking-widest px-3 py-1.5 rounded disabled:opacity-50 transition-colors bg-orange-500/10 hover:bg-orange-500"
-                          >
-                            Skip
-                          </button>
+                          <div className="flex gap-2 shrink-0">
+                            {cell.alternatives && cell.alternatives.length > 0 && (
+                              <div className="relative group/swap">
+                                <button className="text-[10px] font-bold text-accent hover:text-white uppercase tracking-widest px-3 py-1.5 rounded transition-all bg-accent/10 hover:bg-accent flex items-center gap-1">
+                                  Swap ▾
+                                </button>
+                                <div className="absolute right-0 top-full mt-1 w-48 surface-elevated rounded-xl shadow-2xl border border-white/10 hidden group-hover/swap:block z-30 overflow-hidden animate-glass">
+                                   <div className="p-2 space-y-1">
+                                      <p className="px-2 py-1 text-[8px] font-black uppercase tracking-widest opacity-40">Choose Alternative</p>
+                                      {cell.alternatives.map((alt: any) => (
+                                        <button 
+                                          key={alt.id}
+                                          onClick={() => swapMeal.mutate({ cellId: cell.id, itemId: alt.id })}
+                                          className="w-full text-left px-3 py-2 rounded-lg text-xs font-bold hover:bg-white/5 transition-colors t-text"
+                                        >
+                                          {alt.name}
+                                        </button>
+                                      ))}
+                                   </div>
+                                </div>
+                              </div>
+                            )}
+                            <button
+                              onClick={() => skipMeal.mutate(cell.id)}
+                              disabled={skipMeal.isPending}
+                              className="text-[10px] font-bold text-orange-500 hover:text-white uppercase tracking-widest px-3 py-1.5 rounded disabled:opacity-50 transition-colors bg-orange-500/10 hover:bg-orange-500"
+                            >
+                              Skip
+                            </button>
+                          </div>
                         )}
                         {isSkippable && pendingSkipCells.has(cell.id) && (
                           <span className="shrink-0 text-[9px] font-bold text-yellow-500 uppercase tracking-widest px-2 py-1 rounded bg-yellow-500/10 border border-yellow-500/20 animate-pulse">

@@ -5,9 +5,10 @@ import { requireUser } from '../middleware/auth';
 import { validate } from '../middleware/validate';
 import { calculateQuote, buildDateRange } from '../services/pricingEngine';
 import { canAccessMonthlyPlan, canTransitionTo } from '../services/policyEngine';
-import { getWalletBalance, debitWalletAtCheckout } from '../services/ledgerService';
+import { getWalletBalance, debitWalletAtCheckout, creditFullSubscriptionRefund } from '../services/ledgerService';
 import { emitEvent, DomainEvent } from '../jobs/events';
-import { boss } from '../jobs/index';
+import { boss } from '../jobs/client';
+import { isPincodeServiceable } from '../lib/geo';
 
 const router = Router();
 
@@ -51,12 +52,32 @@ router.get('/:id', requireUser, async (req, res) => {
     .orderBy(['mc.date', 'mc.meal_type'])
     .select('mc.*', 'mi.name as item_name', 'mi.image_url', 'mi.description as item_description');
 
+  // Fetch alternatives for each cell's slot
+  const enriched = await Promise.all(cells.map(async (c: any) => {
+    const dow = new Date(c.date).getDay();
+    const defaultRow = await db('default_menu').where({ weekday: dow, meal_type: c.meal_type }).first();
+    if (!defaultRow) return { ...c, alternatives: [] };
+    
+    const alts = await db('default_menu_alternatives as dma')
+      .join('meal_items as mi', 'mi.id', 'dma.item_id')
+      .where({ default_menu_id: defaultRow.id })
+      .select('mi.id', 'mi.name');
+
+    // Also include default itself in alternatives for easy swapping back
+    const defaultItem = await db('meal_items').where({ id: defaultRow.item_id }).select('id', 'name').first();
+    
+    return { 
+      ...c, 
+      alternatives: [defaultItem, ...alts].filter(a => a.id !== c.item_id)
+    };
+  }));
+
   const extras = await db('day_extras as de')
     .join('meal_items as mi', 'mi.id', 'de.item_id')
     .where({ 'de.subscription_id': sub.id })
     .select('de.*', 'mi.name as item_name', 'mi.price as item_price');
 
-  res.json({ ...sub, meal_cells: cells, day_extras: extras });
+  res.json({ ...sub, meal_cells: enriched, day_extras: extras });
 });
 
 // POST /api/price-quote — calculate price before creating subscription
@@ -102,6 +123,25 @@ router.post('/', requireUser, validate(createSchema), async (req, res) => {
   const person = await db('persons').where({ id: body.person_id, user_id: req.userId }).first();
   if (!person) return res.status(404).json({ error: 'Person not found' });
 
+  // Overlap Check (Logic Guard)
+  const overlapping = await db('subscriptions')
+    .where({ person_id: body.person_id })
+    .whereIn('state', ['active', 'paused'])
+    .where(function() {
+      this.whereBetween('start_date', [body.start_date, body.days[body.days.length-1].date])
+          .orWhereBetween('end_date', [body.start_date, body.days[body.days.length-1].date])
+          .orWhere(function() {
+            this.where('start_date', '<=', body.start_date).andWhere('end_date', '>=', body.days[body.days.length-1].date);
+          });
+    })
+    .first();
+  
+  if (overlapping) {
+    return res.status(409).json({ 
+      error: `Subscription Overlap: ${person.name} already has an active plan (${overlapping.start_date} to ${overlapping.end_date}) that overlaps with these dates.` 
+    });
+  }
+
   // Calculate base total first (needed for percent promos)
   const baseSnap = await calculateQuote({ plan_days: body.plan_days, days: body.days });
   let promo_discount = 0;
@@ -118,6 +158,53 @@ router.post('/', requireUser, validate(createSchema), async (req, res) => {
     wallet_balance,
     apply_wallet: body.apply_wallet,
   });
+
+  // Geofence Check
+  const geoUser = await db('users').where({ id: req.userId }).first();
+  if (geoUser?.delivery_address) {
+    const geoStatus = await isPincodeServiceable(geoUser.delivery_address);
+    if (!geoStatus.is_serviceable) return res.status(422).json({ error: geoStatus.message });
+  }
+
+  // Capacity Check (Operational Boundary)
+  const settings = await db('app_settings').where({ id: 1 }).first();
+  const maxMeals = settings?.max_meals_per_slot ?? 200;
+  
+  const { currentHourIST, isTodayIST } = await import('../lib/time');
+  const nowHour = currentHourIST();
+
+  for (const day of body.days) {
+    // Same-day cutoff check
+    if (isTodayIST(day.date)) {
+      const cutoffs: Record<string, number> = {
+        breakfast: settings?.breakfast_cutoff_hour ?? 12, // default if not set
+        lunch: settings?.lunch_cutoff_hour ?? 10,
+        dinner: settings?.dinner_cutoff_hour ?? 18
+      };
+      
+      for (const meal of day.meals) {
+        if (nowHour >= cutoffs[meal]) {
+          return res.status(422).json({ 
+            error: `Cutoff Reached: Today's ${meal.toUpperCase()} orders closed at ${cutoffs[meal]}:00 IST. Please remove this meal from your selection or choose a starting date of tomorrow.` 
+          });
+        }
+      }
+    }
+
+    for (const meal of day.meals) {
+      const currentCount = await db('meal_cells')
+        .where({ date: day.date, meal_type: meal })
+        .count('id as cnt')
+        .first();
+      
+      const count = parseInt((currentCount as any)?.cnt ?? '0', 10);
+      if (count >= maxMeals) {
+        return res.status(422).json({ 
+          error: `Sold Out: Kitchen has reached maximum capacity for ${meal.toUpperCase()} on ${day.date}. Please choose another date or plan.` 
+        });
+      }
+    }
+  }
 
   // Calculate end date
   const dates = body.days.map((d: any) => d.date).sort();
@@ -189,17 +276,46 @@ router.post('/', requireUser, validate(createSchema), async (req, res) => {
 
 // POST /api/subscriptions/:id/cancel
 router.post('/:id/cancel', requireUser, async (req, res) => {
-  const sub = await db('subscriptions').where({ id: req.params.id, user_id: req.userId }).first();
-  if (!sub) return res.status(404).json({ error: 'Subscription not found' });
-  if (!canTransitionTo(sub.state, 'cancelled')) {
-    return res.status(409).json({ error: `Cannot cancel from state: ${sub.state}` });
-  }
+  await db.transaction(async trx => {
+    const sub = await trx('subscriptions')
+      .where({ id: req.params.id, user_id: req.userId })
+      .forUpdate()
+      .first();
 
-  const [updated] = await db('subscriptions')
-    .where({ id: sub.id })
-    .update({ state: 'cancelled', cancel_reason: req.body.reason || null, updated_at: db.fn.now() })
-    .returning('*');
-  res.json(updated);
+    if (!sub) return res.status(404).json({ error: 'Subscription not found' });
+    if (!canTransitionTo(sub.state, 'cancelled')) {
+      return res.status(409).json({ error: `Cannot cancel from state: ${sub.state}` });
+    }
+
+    const today = new Date().toISOString().split('T')[0];
+    if (sub.start_date > today) {
+      // Full Refund Window (Automated)
+      await trx('subscriptions').where({ id: sub.id }).update({ state: 'cancelled', updated_at: db.fn.now() });
+      const amountToRefund = sub.wallet_applied || 0;
+      if (amountToRefund > 0) {
+        const { creditFullSubscriptionRefund } = await import('../services/ledgerService');
+        await creditFullSubscriptionRefund(req.userId, sub.id, amountToRefund);
+      }
+      return res.json({ message: 'Subscription cancelled with full refund (plan not yet started)', status: 'refunded' });
+    }
+
+    const [updated] = await trx('subscriptions')
+      .where({ id: sub.id })
+      .update({ state: 'cancelled', cancel_reason: req.body.reason || null, updated_at: db.fn.now() })
+      .returning('*');
+
+    // Cancel all future meal cells for this subscription
+    await trx('meal_cells')
+      .where({ subscription_id: sub.id })
+      .whereIn('delivery_status', ['scheduled', 'preparing', 'out_for_delivery'])
+      .update({
+        delivery_status: 'cancelled',
+        is_included: false,
+        updated_at: db.fn.now(),
+      });
+
+    res.json(updated);
+  });
 });
 
 // POST /api/subscriptions/:id/pause
@@ -214,6 +330,13 @@ router.post('/:id/pause', requireUser, async (req, res) => {
     .where({ id: sub.id })
     .update({ state: 'paused', paused_at: db.fn.now(), pause_reason: req.body.reason || null, updated_at: db.fn.now() })
     .returning('*');
+
+  // Sync meals: Mark all future scheduled meals as 'paused' to remove from prep lists
+  await db('meal_cells')
+    .where({ subscription_id: sub.id, delivery_status: 'scheduled' })
+    .where('date', '>=', db.raw('CURRENT_DATE'))
+    .update({ delivery_status: 'paused', updated_at: db.fn.now() });
+
   res.json(updated);
 });
 
@@ -229,6 +352,13 @@ router.post('/:id/resume', requireUser, async (req, res) => {
     .where({ id: sub.id })
     .update({ state: 'active', paused_at: null, pause_reason: null, updated_at: db.fn.now() })
     .returning('*');
+
+  // Sync meals: Restore paused meals to 'scheduled' status
+  await db('meal_cells')
+    .where({ subscription_id: sub.id, delivery_status: 'paused' })
+    .where('date', '>=', db.raw('CURRENT_DATE'))
+    .update({ delivery_status: 'scheduled', updated_at: db.fn.now() });
+
   res.json(updated);
 });
 
@@ -273,5 +403,40 @@ async function validatePromoCode(code: string, user_id: number, base_total?: num
   }
   return { discount: 0 };
 }
+
+// PATCH /api/subscriptions/:id/cells/:cellId/swap — Change meal item for a scheduled cell
+router.patch('/:id/cells/:cellId/swap', requireUser, validate(z.object({
+  item_id: z.number().int().positive()
+})), async (req, res) => {
+  const cell = await db('meal_cells as mc')
+    .join('subscriptions as s', 's.id', 'mc.subscription_id')
+    .where({ 'mc.id': req.params.cellId, 's.user_id': req.userId, 's.id': req.params.id })
+    .select('mc.*', 's.person_id')
+    .first();
+
+  if (!cell) return res.status(404).json({ error: 'Meal cell not found' });
+  if (cell.delivery_status !== 'scheduled') {
+    return res.status(409).json({ error: 'Cannot swap a meal that is already in preparation or completed' });
+  }
+
+  // Integrity Check: Is the new item a valid choice for this slot?
+  const dow = new Date(cell.date).getDay();
+  const defaultRow = await db('default_menu').where({ weekday: dow, meal_type: cell.meal_type }).first();
+  if (!defaultRow) return res.status(422).json({ error: 'Menu slot not found' });
+
+  const alternatives = await db('default_menu_alternatives').where({ default_menu_id: defaultRow.id }).select('item_id');
+  const validIds = [defaultRow.item_id, ...alternatives.map(a => a.item_id)];
+  
+  if (!validIds.includes(req.body.item_id)) {
+    return res.status(422).json({ error: 'Invalid meal item for this slot' });
+  }
+
+  const [updated] = await db('meal_cells')
+    .where({ id: cell.id })
+    .update({ item_id: req.body.item_id, updated_at: db.fn.now() })
+    .returning('*');
+
+  res.json(updated);
+});
 
 export default router;

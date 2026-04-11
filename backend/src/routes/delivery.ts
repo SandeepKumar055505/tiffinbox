@@ -79,15 +79,24 @@ router.post(
     }
 
     // OTP correct — mark delivered
-    await db('delivery_otps').where({ id: record.id }).update({
-      verified: true,
-      verified_at: db.fn.now(),
-    });
+    await db('delivery_otps')
+      .where({ id: record.id, verified: false }) // atomicity check
+      .update({
+        verified: true,
+        verified_at: db.fn.now(),
+      });
 
-    await db('meal_cells').where({ id: meal_cell_id }).update({
-      delivery_status: 'delivered',
-      updated_at: db.fn.now(),
-    });
+    const updated = await db('meal_cells')
+      .where({ id: meal_cell_id, delivery_status: 'out_for_delivery' })
+      .update({
+        delivery_status: 'delivered',
+        updated_at: db.fn.now(),
+      });
+
+    if (updated === 0) {
+      // Already delivered by another request
+      return res.status(409).json({ error: 'Delivery already processed' });
+    }
 
     await emitEvent(DomainEvent.DELIVERY_COMPLETED, {
       meal_cell_id: cell.id,

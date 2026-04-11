@@ -46,6 +46,14 @@ export default function AdminDeliveryPage() {
       adminDashboard.bulkDeliver(date, meal_type === 'all' ? undefined : meal_type),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['admin-delivery', date] }),
   });
+  
+  const refreshOtp = useMutation({
+    mutationFn: (id: number) => adminDashboard.refreshOtp(id),
+    onSuccess: () => {
+      alert('OTP refreshed successfully');
+      qc.invalidateQueries({ queryKey: ['admin-delivery', date] });
+    },
+  });
 
   const allCells = data
     ? Object.values(data.by_meal as Record<string, any[]>).flat()
@@ -108,6 +116,16 @@ export default function AdminDeliveryPage() {
             <span className={`text-xs px-2 py-0.5 rounded-full ${STATUS_COLORS[cell.delivery_status] || 'glass t-text-secondary'}`}>
               {cell.delivery_status}
             </span>
+
+            {cell.delivery_status === 'out_for_delivery' && (
+              <button
+                onClick={() => refreshOtp.mutate(cell.cell_id)}
+                className="text-[10px] bg-yellow-500/10 text-yellow-500 border border-yellow-500/20 px-1.5 py-0.5 rounded hover:bg-yellow-500/20 transition-colors"
+                title="Refresh OTP"
+              >
+                ↻ OTP
+              </button>
+            )}
 
             {/* Action buttons */}
             <div className="flex gap-1.5 shrink-0">

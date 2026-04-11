@@ -26,7 +26,7 @@ export default function ProfilePage() {
   const [phoneSaved, setPhoneSaved] = useState(false);
 
   const updateProfile = useMutation({
-    mutationFn: (data: { wallet_auto_apply?: boolean; delivery_address?: string }) =>
+    mutationFn: (data: { wallet_auto_apply?: boolean; delivery_address?: string; notification_mutes?: string[] }) =>
       authApi.updateProfile(data),
     onSuccess: () => {
       refresh();
@@ -43,6 +43,29 @@ export default function ProfilePage() {
     },
   });
 
+  const deleteAccount = useMutation({
+    mutationFn: () => authApi.deleteAccount(),
+    onSuccess: () => {
+      alert('Your account has been deleted successfully.');
+      logout();
+    },
+  });
+
+  const NOTIFICATIONS = [
+    { id: 'delivery', label: 'Delivery Updates', icon: '🚚' },
+    { id: 'streak', label: 'Streak Alerts', icon: '🔥' },
+    { id: 'payments', label: 'Payment & Billing', icon: '💳' },
+    { id: 'promo', label: 'Promos & Offers', icon: '🎁' },
+  ];
+
+  const toggleMute = (type: string) => {
+    const current = user?.notification_mutes || [];
+    const updated = current.includes(type)
+      ? current.filter(t => t !== type)
+      : [...current, type];
+    updateProfile.mutate({ notification_mutes: updated });
+  };
+
   const { data: myReferrals = [] } = useQuery<Referral[]>({
     queryKey: ['my-referrals'],
     queryFn: () => api.get('/referrals').then(r => r.data).catch(() => []),
@@ -51,6 +74,11 @@ export default function ProfilePage() {
   const { data: persons = [] } = useQuery<Person[]>({
     queryKey: ['persons'],
     queryFn: () => personsApi.list().then(r => r.data),
+  });
+
+  const { data: walletData } = useQuery({
+    queryKey: ['wallet-balance'],
+    queryFn: () => api.get('/wallet/balance').then(r => r.data),
   });
 
   const create = useMutation({
@@ -86,18 +114,40 @@ export default function ProfilePage() {
         </header>
 
         {/* User Profile (Apple Music / iOS Style) */}
-        <section className="flex items-center gap-5 py-4 px-2 mb-8 animate-glass">
-          {user?.avatar_url ? (
-            <img src={user.avatar_url} className="w-20 h-20 rounded-full object-cover shadow-lg" alt="" />
-          ) : (
-            <div className="w-20 h-20 rounded-full bg-accent/10 flex items-center justify-center text-accent font-black text-3xl shadow-glow-subtle">
-              {user?.name?.[0]?.toUpperCase()}
+        <section className="animate-glass">
+          <div className="flex items-center gap-5 py-4 px-2 mb-4">
+            {user?.avatar_url ? (
+              <img src={user.avatar_url} className="w-20 h-20 rounded-full object-cover shadow-lg" alt="" />
+            ) : (
+              <div className="w-20 h-20 rounded-full bg-accent/10 flex items-center justify-center text-accent font-black text-3xl shadow-glow-subtle">
+                {user?.name?.[0]?.toUpperCase()}
+              </div>
+            )}
+            <div className="flex-1 min-w-0">
+              <p className="text-2xl font-black truncate tracking-tight">{user?.name}</p>
+              <p className="text-sm opacity-50 font-medium truncate mt-0.5">{user?.email}</p>
             </div>
-          )}
-          <div className="flex-1 min-w-0">
-            <p className="text-2xl font-black truncate tracking-tight">{user?.name}</p>
-            <p className="text-sm opacity-50 font-medium truncate mt-0.5">{user?.email}</p>
           </div>
+
+          {/* Wallet Balance Integration */}
+          <Link to="/wallet" className="surface-glass p-5 rounded-2xl border border-white/5 flex items-center justify-between group hover:bg-bg-secondary/40 transition-all duration-300 mx-1 mb-8">
+            <div className="flex items-center gap-4">
+              <div className="w-12 h-12 rounded-xl bg-teal-500/10 flex items-center justify-center text-2xl group-hover:scale-110 transition-transform">
+                💳
+              </div>
+              <div>
+                <p className="text-[10px] uppercase font-black tracking-widest opacity-40">Wallet Balance</p>
+                <div className="flex items-baseline gap-1">
+                  <span className="text-2xl font-black text-teal-500">
+                    ₹{((walletData?.balance || 0) / 100).toLocaleString('en-IN', { minimumFractionDigits: 0 })}
+                  </span>
+                </div>
+              </div>
+            </div>
+            <div className="text-teal-500 opacity-0 group-hover:opacity-100 transition-opacity translate-x-1">
+              →
+            </div>
+          </Link>
         </section>
 
         {/* Persons */}
@@ -358,6 +408,45 @@ export default function ProfilePage() {
                 <div className={`w-6 h-6 bg-white rounded-full shadow-md transition-transform duration-300 ${user?.wallet_auto_apply ? 'translate-x-6' : 'translate-x-0'}`} />
               </div>
             </button>
+          </div>
+        </section>
+
+        {/* Notifications */}
+        <section className="space-y-2 animate-glass" style={{ animationDelay: '0.35s' }}>
+          <h3 className="text-label-caps !text-[12px] !opacity-50 font-bold uppercase tracking-widest pl-4 pb-1">Notifications</h3>
+          <div className="surface-glass rounded-2xl border border-white/5 overflow-hidden divide-y divide-white/5">
+            {NOTIFICATIONS.map(n => {
+              const muted = user?.notification_mutes?.includes(n.id);
+              return (
+                <button
+                  key={n.id}
+                  onClick={() => toggleMute(n.id)}
+                  className="w-full p-4 flex items-center justify-between text-left hover:bg-bg-secondary/40 transition-colors"
+                >
+                  <div className="flex items-center gap-4">
+                    <span className="text-xl">{n.icon}</span>
+                    <span className="text-sm font-bold">{n.label}</span>
+                  </div>
+                  <div className={`w-12 h-6 rounded-full transition-all duration-300 flex items-center px-1 shrink-0 ${!muted ? 'bg-teal-500' : 'bg-bg-secondary border border-white/10'}`}>
+                    <div className={`w-4 h-4 bg-white rounded-full shadow-md transition-transform duration-300 ${!muted ? 'translate-x-6' : 'translate-x-0'}`} />
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+        </section>
+
+        {/* Danger zone */}
+        <section className="pt-8 pb-12 animate-glass" style={{ animationDelay: '0.4s' }}>
+          <div className="px-4 space-y-4">
+             <button 
+               onClick={() => { if(confirm('Are you absolutely sure? This will cancel all subscriptions and delete your personal data. This cannot be undone.')) deleteAccount.mutate(); }}
+               disabled={deleteAccount.isPending}
+               className="w-full py-4 text-[11px] font-black uppercase tracking-[0.2em] text-red-500/40 hover:text-red-500 transition-colors border border-dashed border-red-500/10 hover:border-red-500/30 rounded-2xl"
+             >
+               {deleteAccount.isPending ? 'Processing...' : 'Delete Account'}
+             </button>
+             <p className="text-[9px] text-center opacity-20 font-bold uppercase tracking-widest">TiffinBox v1.0.4 — Build 2026.04.11</p>
           </div>
         </section>
       </div>

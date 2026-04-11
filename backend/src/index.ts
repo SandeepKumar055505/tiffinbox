@@ -47,6 +47,9 @@ import adminSupportRoutes from './routes/admin/support';
 import adminSettingsRoutes from './routes/admin/settings';
 import adminHolidaysRoutes from './routes/admin/holidays';
 import adminLedgerRoutes from './routes/admin/ledger';
+import adminRatingsRoutes from './routes/admin/ratings';
+import adminReferralRoutes from './routes/admin/referrals';
+import adminUserRoutes from './routes/admin/users';
 
 const app = express();
 
@@ -76,11 +79,24 @@ app.options('*', cors(corsOptions));
 
 // Raw body for Razorpay webhook signature verification
 app.use('/api/payments/webhook', express.raw({ type: 'application/json' }));
-app.use(express.json());
+app.use(express.json({ limit: '1mb' }));
+app.use(express.urlencoded({ extended: true, limit: '1mb' }));
+
+// Maintenance Mode middleware
+app.use((_req, res, next) => {
+  if (process.env.MAINTENANCE_MODE === 'true') {
+    return res.status(503).json({ 
+      error: 'Service Temporarily Unavailable', 
+      message: 'TiffinBox is undergoing scheduled maintenance. Please check back in a few minutes.' 
+    });
+  }
+  next();
+});
 
 // Rate limiting
-const limiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 200, standardHeaders: true });
-const authLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 20, standardHeaders: true });
+app.use('/api/', rateLimit({ windowMs: 15 * 60 * 1000, max: 200, standardHeaders: true }));
+app.use('/api/auth/', rateLimit({ windowMs: 15 * 60 * 1000, max: 20, standardHeaders: true }));
+app.use('/api/admin/login', rateLimit({ windowMs: 60 * 60 * 1000, max: 5, standardHeaders: true })); // Extreme limit for admin
 // ── Routes ────────────────────────────────────────────────────────────────────
 app.get('/api/health', (_req, res) => res.json({ status: 'ok', ts: new Date().toISOString() }));
 app.get('/', (_req, res) => res.json({ status: 'TiffinBox API Live', website: env.FRONTEND_URL }));
@@ -110,6 +126,9 @@ app.use('/api/admin/support', adminSupportRoutes);
 app.use('/api/admin/settings', adminSettingsRoutes);
 app.use('/api/admin/holidays', adminHolidaysRoutes);
 app.use('/api/admin/ledger', adminLedgerRoutes);
+app.use('/api/admin/ratings', adminRatingsRoutes);
+app.use('/api/admin/referrals', adminReferralRoutes);
+app.use('/api/admin/users', adminUserRoutes);
 
 // ── Error handler ─────────────────────────────────────────────────────────────
 if (env.SENTRY_DSN) {
@@ -125,9 +144,12 @@ async function main() {
   app.listen(env.PORT, '0.0.0.0', () => {
     console.log(`TiffinBox backend running on port ${env.PORT} (bound to 0.0.0.0)`);
   });
-  // Start pg-boss in background — don't block HTTP server
+  // Start pg-boss in background — don't block HTTP server startup.
+  // If the DB is temporarily unreachable (e.g. Neon cold start, DNS blip),
+  // the HTTP server stays alive and background jobs will be unavailable.
   startJobWorkers().catch(err => {
-    console.error('pg-boss failed to start:', err.message);
+    console.error('[pg-boss] Failed to start background workers:', err.message);
+    console.warn('[pg-boss] HTTP server is still running. Background jobs are DISABLED until restart.');
   });
 }
 
@@ -140,8 +162,10 @@ main().catch(err => {
 async function shutdown(signal: string) {
   console.log(`${signal} received — shutting down`);
   try {
-    const { boss } = await import('./jobs/index');
+    const { boss } = await import('./jobs/client');
+    const { db } = await import('./config/db');
     await boss.stop();
+    await db.destroy();
   } catch {}
   process.exit(0);
 }

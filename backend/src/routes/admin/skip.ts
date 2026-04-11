@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { db } from '../../config/db';
 import { requireAdmin } from '../../middleware/auth';
 import { emitEvent, DomainEvent } from '../../jobs/events';
+import { sendNotification, NotificationType } from '../../services/notificationService';
 
 const router = Router();
 
@@ -67,16 +68,13 @@ router.post('/:id/deny', requireAdmin, async (req, res) => {
     admin_note: req.body.note || null,
   });
 
-  // Notify user
-  const sub = await db('subscriptions').where({ id: request.subscription_id }).first();
-  if (sub) {
-    await db('notifications').insert({
-      user_id: sub.user_id,
-      title: 'Skip request denied',
-      message: `Your skip request for ${request.meal_type} on ${request.date} was denied.${req.body.note ? ' Reason: ' + req.body.note : ''}`,
-      type: 'info',
-    });
-  }
+    // Notify user
+    await sendNotification(
+      sub.user_id,
+      NotificationType.PAYMENTS,
+      'Skip request denied',
+      `Your skip request for ${request.meal_type} on ${request.date} was denied.${req.body.note ? ' Reason: ' + req.body.note : ''}`
+    );
 
   await db('audit_logs').insert({
     admin_id: req.adminId,

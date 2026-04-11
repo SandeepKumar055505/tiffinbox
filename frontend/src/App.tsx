@@ -35,6 +35,7 @@ const AdminSupportPage = React.lazy(() => import('./pages/admin/AdminSupportPage
 const AdminSettingsPage = React.lazy(() => import('./pages/admin/AdminSettingsPage'));
 const AdminHolidaysPage = React.lazy(() => import('./pages/admin/AdminHolidaysPage'));
 const AdminLedgerPage = React.lazy(() => import('./pages/admin/AdminLedgerPage'));
+const AdminReferralPage = React.lazy(() => import('./pages/admin/AdminReferralPage'));
 
 import GlassLayout from './components/shared/GlassLayout';
 import UserLayout from './components/user/UserLayout';
@@ -100,6 +101,7 @@ export default function App() {
               <Route path="settings" element={<AdminSettingsPage />} />
               <Route path="holidays" element={<AdminHolidaysPage />} />
               <Route path="ledger" element={<AdminLedgerPage />} />
+              <Route path="referrals" element={<AdminReferralPage />} />
             </Route>
 
             <Route path="*" element={<NotFoundPage />} />

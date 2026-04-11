@@ -11,6 +11,8 @@ export const adminDashboard = {
     api.patch(`/admin/delivery/cells/${id}`, { status, note }),
   bulkDeliver: (date: string, meal_type?: string) =>
     api.post('/admin/delivery/bulk-deliver', { date, meal_type }),
+  refreshOtp: (id: number) =>
+    api.post(`/admin/delivery/cells/${id}/refresh-otp`),
 };
 
 export const adminSubscriptions = {

@@ -45,6 +45,10 @@ router.patch('/:id', requireUser, validate(personSchema.partial()), async (req, 
     .where({ id: req.params.id })
     .update(req.body)
     .returning('*');
+
+  const { emitEvent, DomainEvent } = await import('../../jobs/events');
+  await emitEvent(DomainEvent.PERSON_UPDATED, { person_id: updated.id });
+
   res.json(updated);
 });
 
@@ -52,10 +56,15 @@ router.delete('/:id', requireUser, async (req, res) => {
   const person = await db('persons').where({ id: req.params.id, user_id: req.userId }).first();
   if (!person) return res.status(404).json({ error: 'Person not found' });
 
-  const activeSub = await db('subscriptions')
-    .where({ person_id: req.params.id, state: 'active' })
+  const inProgressSub = await db('subscriptions')
+    .where({ person_id: req.params.id })
+    .whereIn('state', ['draft', 'pending_payment', 'failed_payment', 'active'])
     .first();
-  if (activeSub) return res.status(409).json({ error: 'Cannot delete person with active subscription' });
+  if (inProgressSub) {
+    return res.status(409).json({
+      error: 'Cannot delete person with an active or in-progress subscription'
+    });
+  }
 
   await db('persons').where({ id: req.params.id }).delete();
   res.status(204).send();

@@ -3,22 +3,30 @@ import { PerDayPrice, PriceSnapshot } from '../types';
 
 type MealType = 'breakfast' | 'lunch' | 'dinner';
 
+let pricesCache: { data: Record<MealType, number>; expires: number } | null = null;
+
 /**
  * Get meal prices from app_settings (admin-controlled).
  * Prices are stored in paise, returned in whole rupees.
- * Cached per request — call once per quote, not per day.
  */
 export async function getMealPrices(): Promise<Record<MealType, number>> {
+  const now = Date.now();
+  if (pricesCache && pricesCache.expires > now) {
+    return pricesCache.data;
+  }
+
   const settings = await db('app_settings').where({ id: 1 }).first();
   if (!settings) {
     // Fallback defaults if settings somehow missing
     return { breakfast: 100, lunch: 120, dinner: 100 };
   }
-  return {
+  const data = {
     breakfast: Math.round(settings.breakfast_price / 100),
     lunch: Math.round(settings.lunch_price / 100),
     dinner: Math.round(settings.dinner_price / 100),
   };
+  pricesCache = { data, expires: now + 60000 };
+  return data;
 }
 
 export interface DaySelection {

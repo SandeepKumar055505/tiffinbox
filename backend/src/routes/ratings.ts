@@ -36,19 +36,26 @@ router.post(
       return res.status(503).json({ error: 'Ratings are currently disabled' });
     }
 
-    const existing = await db('meal_ratings').where({ meal_cell_id }).first();
-    if (existing) return res.status(409).json({ error: 'Already rated this meal' });
+    const row = await db.transaction(async trx => {
+      const existing = await trx('meal_ratings').where({ meal_cell_id }).first();
+      if (existing) throw new Error('Already rated');
 
-    const [row] = await db('meal_ratings').insert({
-      meal_cell_id,
-      user_id: req.userId,
-      subscription_id: cell.subscription_id,
-      meal_type: cell.meal_type,
-      date: cell.date,
-      rating,
-      note: note || null,
-    }).returning('*');
+      const [r] = await trx('meal_ratings').insert({
+        meal_cell_id,
+        user_id: req.userId,
+        subscription_id: cell.subscription_id,
+        meal_type: cell.meal_type,
+        date: cell.date,
+        rating,
+        note: note || null,
+      }).returning('*');
+      return r;
+    }).catch(err => {
+      if (err.message === 'Already rated') return 'ALREADY_RATED';
+      throw err;
+    });
 
+    if (row === 'ALREADY_RATED') return res.status(409).json({ error: 'Already rated this meal' });
     res.status(201).json(row);
   }
 );
