@@ -94,10 +94,14 @@ export function SensorialProvider({ children }: { children: ReactNode }) {
     };
     window.addEventListener('diamond-sensorial-error', handleGlobalError);
 
-    // Ω.6: Fetch Dynamic Narratives on bootstrap
-    api.get('/admin/narratives').then(res => {
-      if (res.data) setDynamicNarratives(res.data);
-    }).catch(() => {/* Fallback to hardcoded constants handled in GourmetTranslator */});
+    // Ω.6: Fetch Dynamic Narratives on bootstrap.
+    // Uses native fetch (not the axios instance) to bypass the 401 interceptor —
+    // this endpoint is public but was previously gated, causing a redirect loop on /admin/login.
+    const baseUrl = import.meta.env.VITE_API_URL || '/api';
+    fetch(`${baseUrl}/admin/narratives`)
+      .then(r => r.ok ? r.json() : null)
+      .then(data => { if (data) setDynamicNarratives(data); })
+      .catch(() => {/* Fallback to hardcoded GourmetTranslator constants */});
 
     return () => window.removeEventListener('diamond-sensorial-error', handleGlobalError);
   }, [showError]);

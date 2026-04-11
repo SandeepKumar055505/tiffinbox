@@ -11,8 +11,10 @@ const router = Router();
  * Admin control over the ecosystem's sensory voice.
  */
 
-// GET /api/admin/narratives — List all manifestations
-router.get('/', requireAdmin, async (_req, res) => {
+// GET /api/admin/narratives — Public: UI error strings only, no sensitive data.
+// Called by SensorialContext on every app load (including login page) to load
+// admin-customisable error messages. requireAdmin would cause a 401 loop on /admin/login.
+router.get('/', async (_req, res) => {
   const narratives = await db('gourmet_narratives').orderBy('error_key');
   res.json(narratives);
 });
