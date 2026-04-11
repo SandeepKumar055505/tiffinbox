@@ -8,7 +8,7 @@
 
 | Table | Purpose |
 |-------|---------|
-| `users` | Registered customers (Google OAuth) |
+| `users` | Registered customers (Google OAuth) — includes phone, referral_code, referred_by |
 | `admins` | Admin accounts (email/password) |
 | `persons` | Family members/profiles per user |
 | `meal_items` | All food items (meals + extras) |
@@ -20,15 +20,19 @@
 | `skip_requests` | Skip requests (pending/approved/denied) |
 | `notifications` | Admin-sent messages to users |
 | `offers` | Promo codes |
-| `support_tickets` | User support tickets |
+| `support_tickets` | User support tickets — includes ticket_type, priority, resolved_by |
 | `support_messages` | Thread messages within a ticket |
-| `app_settings` | Singleton: pricing, cutoffs, limits |
+| `app_settings` | Singleton: pricing, cutoffs, limits, feature flags, referral amounts |
 | `payments` | Razorpay payment records |
 | `payment_attempts` | All payment attempts including retries |
-| `ledger_entries` | Financial source of truth — every ₹ in/out |
+| `ledger_entries` | Financial source of truth — every ₹ in/out (includes entry_type) |
 | `streak_rewards` | Admin-configurable streak reward ladder |
 | `person_streaks` | Current + longest streak per person |
 | `audit_logs` | Immutable log of all sensitive admin actions |
+| `holidays` | Admin-managed holiday dates (used to auto-skip deliveries) |
+| `referrals` | Referrer → referred relationships + reward status |
+| `delivery_otps` | OTP per meal_cell for delivery verification |
+| `meal_ratings` | User star ratings (1-5) for delivered meals |
 
 ---
 
@@ -37,17 +41,23 @@
 ### users
 ```sql
 CREATE TABLE users (
-  id           SERIAL PRIMARY KEY,
-  google_id    VARCHAR(255) UNIQUE NOT NULL,
-  name         VARCHAR(255) NOT NULL,
-  email        VARCHAR(255) UNIQUE NOT NULL,
-  avatar_url   TEXT,
-  created_at   TIMESTAMPTZ DEFAULT NOW(),
-  updated_at   TIMESTAMPTZ DEFAULT NOW()
+  id              SERIAL PRIMARY KEY,
+  google_id       VARCHAR(255) UNIQUE NOT NULL,
+  name            VARCHAR(255) NOT NULL,
+  email           VARCHAR(255) UNIQUE NOT NULL,
+  avatar_url      TEXT,
+  phone           VARCHAR(15),                         -- migration 026
+  phone_verified  BOOLEAN NOT NULL DEFAULT false,      -- migration 026
+  referral_code   VARCHAR(10) UNIQUE,                  -- migration 029, generated at signup
+  referred_by     INTEGER REFERENCES users(id),        -- migration 029, FK to referrer
+  created_at      TIMESTAMPTZ DEFAULT NOW(),
+  updated_at      TIMESTAMPTZ DEFAULT NOW()
 );
 
 CREATE INDEX idx_users_google_id ON users(google_id);
 CREATE INDEX idx_users_email ON users(email);
+CREATE UNIQUE INDEX idx_users_phone ON users(phone) WHERE phone IS NOT NULL;
+CREATE INDEX idx_users_referral_code ON users(referral_code) WHERE referral_code IS NOT NULL;
 ```
 
 ### admins
@@ -180,6 +190,7 @@ CREATE INDEX idx_subscriptions_idempotency ON subscriptions(idempotency_key);
 ```sql
 -- One row per (subscription × date × meal_type)
 -- delivery_status 'failed' → triggers auto wallet credit via pg-boss job
+-- delivery_status 'out_for_delivery' → OTP generated in delivery_otps table
 CREATE TABLE meal_cells (
   id              SERIAL PRIMARY KEY,
   subscription_id INTEGER NOT NULL REFERENCES subscriptions(id) ON DELETE CASCADE,
@@ -189,7 +200,8 @@ CREATE TABLE meal_cells (
   item_id         INTEGER NOT NULL REFERENCES meal_items(id),
   delivery_status VARCHAR(30) NOT NULL DEFAULT 'scheduled'
                     CHECK (delivery_status IN ('scheduled','preparing','out_for_delivery',
-                                               'delivered','skipped','cancelled','failed')),
+                                               'delivered','skipped','cancelled','failed',
+                                               'skipped_by_admin','skipped_holiday')),  -- migration 025
   wallet_credited BOOLEAN NOT NULL DEFAULT false,  -- true after auto-credit on failure/skip
   UNIQUE(subscription_id, date, meal_type)
 );
@@ -272,13 +284,19 @@ CREATE INDEX idx_offers_is_active ON offers(is_active);
 ### support_tickets
 ```sql
 CREATE TABLE support_tickets (
-  id         SERIAL PRIMARY KEY,
-  user_id    INTEGER NOT NULL REFERENCES users(id),
-  subject    VARCHAR(255) NOT NULL,
-  status     VARCHAR(20) NOT NULL DEFAULT 'open'
-               CHECK (status IN ('open','pending','resolved')),
-  created_at TIMESTAMPTZ DEFAULT NOW(),
-  updated_at TIMESTAMPTZ DEFAULT NOW()
+  id           SERIAL PRIMARY KEY,
+  user_id      INTEGER NOT NULL REFERENCES users(id),
+  subject      VARCHAR(255) NOT NULL,
+  status       VARCHAR(20) NOT NULL DEFAULT 'open'
+                 CHECK (status IN ('open','pending','resolved')),
+  ticket_type  VARCHAR(30),                              -- migration 027: e.g. 'delivery','billing','other'
+  priority     VARCHAR(10) DEFAULT 'normal'
+                 CHECK (priority IN ('low','normal','high','urgent')),  -- migration 027
+  auto_tagged  BOOLEAN DEFAULT false,                   -- migration 027: flagged by keyword matching
+  resolved_by  INTEGER REFERENCES admins(id),           -- migration 027
+  resolved_at  TIMESTAMPTZ,                             -- migration 027
+  created_at   TIMESTAMPTZ DEFAULT NOW(),
+  updated_at   TIMESTAMPTZ DEFAULT NOW()
 );
 
 CREATE INDEX idx_support_tickets_user_id ON support_tickets(user_id);
@@ -302,16 +320,25 @@ CREATE INDEX idx_support_messages_ticket_id ON support_messages(ticket_id);
 ```sql
 -- Singleton row (always id=1)
 CREATE TABLE app_settings (
-  id                     INTEGER PRIMARY KEY DEFAULT 1 CHECK (id = 1),
-  breakfast_price        INTEGER NOT NULL DEFAULT 10000,  -- paise = ₹100
-  lunch_price            INTEGER NOT NULL DEFAULT 12000,  -- paise = ₹120
-  dinner_price           INTEGER NOT NULL DEFAULT 10000,  -- paise = ₹100
-  breakfast_cutoff_hour  SMALLINT NOT NULL DEFAULT 12,
-  lunch_cutoff_hour      SMALLINT NOT NULL DEFAULT 10,
-  dinner_cutoff_hour     SMALLINT NOT NULL DEFAULT 18,
-  max_skip_days_per_week SMALLINT NOT NULL DEFAULT 1,
-  max_persons_per_user   SMALLINT NOT NULL DEFAULT 10,
-  updated_at             TIMESTAMPTZ DEFAULT NOW()
+  id                          INTEGER PRIMARY KEY DEFAULT 1 CHECK (id = 1),
+  breakfast_price             INTEGER NOT NULL DEFAULT 10000,  -- paise = ₹100
+  lunch_price                 INTEGER NOT NULL DEFAULT 12000,  -- paise = ₹120
+  dinner_price                INTEGER NOT NULL DEFAULT 10000,  -- paise = ₹100
+  breakfast_cutoff_hour       SMALLINT NOT NULL DEFAULT 12,
+  lunch_cutoff_hour           SMALLINT NOT NULL DEFAULT 10,
+  dinner_cutoff_hour          SMALLINT NOT NULL DEFAULT 18,
+  max_skip_days_per_week      SMALLINT NOT NULL DEFAULT 1,
+  max_persons_per_user        SMALLINT NOT NULL DEFAULT 10,
+  -- migration 024 additions:
+  max_grace_skips_per_week    SMALLINT NOT NULL DEFAULT 2,     -- skips that get wallet credit
+  signup_wallet_credit        INTEGER NOT NULL DEFAULT 12000,  -- paise credited on new signup
+  referral_reward_amount      INTEGER NOT NULL DEFAULT 5000,   -- paise per referral (both sides)
+  breakfast_enabled           BOOLEAN NOT NULL DEFAULT true,   -- feature flag per meal type
+  lunch_enabled               BOOLEAN NOT NULL DEFAULT true,
+  dinner_enabled              BOOLEAN NOT NULL DEFAULT true,
+  delivery_otp_enabled        BOOLEAN NOT NULL DEFAULT true,   -- OTP verification flow on/off
+  ratings_enabled             BOOLEAN NOT NULL DEFAULT true,   -- meal rating feature on/off
+  updated_at                  TIMESTAMPTZ DEFAULT NOW()
 );
 
 INSERT INTO app_settings DEFAULT VALUES ON CONFLICT DO NOTHING;
@@ -375,6 +402,11 @@ CREATE TABLE ledger_entries (
   description         TEXT NOT NULL,                        -- human-readable always
   idempotency_key     VARCHAR(100) UNIQUE NOT NULL,
   created_by          VARCHAR(20) NOT NULL CHECK (created_by IN ('system','admin','user')),
+  -- migration 023: entry_type required, used for wallet history badges + filtering
+  entry_type          VARCHAR(30) NOT NULL DEFAULT 'other'
+                        CHECK (entry_type IN ('skip_credit','delivery_failure_credit',
+                                              'checkout_debit','signup_bonus','referral_credit',
+                                              'streak_reward','admin_credit','admin_debit','other')),
   created_at          TIMESTAMPTZ DEFAULT NOW()
 );
 
@@ -388,6 +420,8 @@ GROUP BY user_id;
 
 CREATE INDEX idx_ledger_entries_user_id ON ledger_entries(user_id);
 CREATE INDEX idx_ledger_entries_idempotency ON ledger_entries(idempotency_key);
+CREATE INDEX idx_ledger_entries_entry_type ON ledger_entries(entry_type);
+CREATE INDEX idx_ledger_entries_user_type ON ledger_entries(user_id, entry_type);
 ```
 
 ### streak_rewards
@@ -447,6 +481,73 @@ CREATE INDEX idx_audit_logs_action ON audit_logs(action);
 CREATE INDEX idx_audit_logs_created_at ON audit_logs(created_at);
 ```
 
+### holidays
+```sql
+-- Admin-managed holidays. Used to bulk-skip deliveries on a given date.
+CREATE TABLE holidays (
+  id         SERIAL PRIMARY KEY,
+  date       DATE UNIQUE NOT NULL,
+  name       VARCHAR(255) NOT NULL,
+  is_active  BOOLEAN NOT NULL DEFAULT true,
+  created_by INTEGER REFERENCES admins(id),
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX idx_holidays_date_active ON holidays(date) WHERE is_active = true;
+```
+
+### referrals
+```sql
+-- Tracks who referred whom. reward fires on referred user's first paid subscription.
+CREATE TABLE referrals (
+  id            SERIAL PRIMARY KEY,
+  referrer_id   INTEGER NOT NULL REFERENCES users(id),
+  referred_id   INTEGER NOT NULL REFERENCES users(id) UNIQUE,  -- one referrer per new user
+  referral_code VARCHAR(10) NOT NULL,
+  status        VARCHAR(20) NOT NULL DEFAULT 'pending'
+                  CHECK (status IN ('pending','completed','expired')),
+  rewarded_at   TIMESTAMPTZ,
+  created_at    TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX idx_referrals_referrer_id ON referrals(referrer_id);
+CREATE INDEX idx_referrals_status ON referrals(status);
+```
+
+### delivery_otps
+```sql
+-- One OTP per meal_cell, created when admin moves status to out_for_delivery.
+-- Delivery person verifies via unauthenticated POST /api/delivery/otp/verify.
+CREATE TABLE delivery_otps (
+  id           SERIAL PRIMARY KEY,
+  meal_cell_id INTEGER NOT NULL REFERENCES meal_cells(id) UNIQUE,
+  otp          VARCHAR(6) NOT NULL,
+  attempts     SMALLINT NOT NULL DEFAULT 0,       -- max 5
+  verified     BOOLEAN NOT NULL DEFAULT false,
+  expires_at   TIMESTAMPTZ NOT NULL,              -- 2 hours from creation
+  verified_at  TIMESTAMPTZ
+);
+```
+
+### meal_ratings
+```sql
+-- User rates a delivered meal (1–5 stars, optional note). One rating per meal_cell.
+CREATE TABLE meal_ratings (
+  id              SERIAL PRIMARY KEY,
+  meal_cell_id    INTEGER NOT NULL REFERENCES meal_cells(id) UNIQUE,
+  user_id         INTEGER NOT NULL REFERENCES users(id),
+  subscription_id INTEGER NOT NULL REFERENCES subscriptions(id),
+  meal_type       VARCHAR(20) NOT NULL,
+  date            DATE NOT NULL,
+  rating          SMALLINT NOT NULL CHECK (rating BETWEEN 1 AND 5),
+  note            TEXT,
+  created_at      TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX idx_meal_ratings_user_id ON meal_ratings(user_id);
+CREATE INDEX idx_meal_ratings_date ON meal_ratings(date);
+```
+
 ---
 
 ## Migration File Order
@@ -470,11 +571,19 @@ CREATE INDEX idx_audit_logs_created_at ON audit_logs(created_at);
 016_create_payment_attempts.sql
 017_create_ledger_entries.sql
 018_create_streak_rewards.sql
-019_create_person_streaks.sql
-020_create_audit_logs.sql
-021_seed_plan_discounts.sql
-022_seed_app_settings.sql
-023_seed_streak_rewards.sql
+019_create_audit_logs.sql
+020_seed_plan_discounts.sql
+021_seed_streak_rewards.sql
+022_add_user_delivery_address.sql
+023_add_entry_type_to_ledger.sql       ← entry_type column + backfill
+024_extend_app_settings.sql            ← grace skips, signup bonus, referral amount, feature flags
+025_extend_meal_cell_statuses.sql      ← adds skipped_by_admin, skipped_holiday
+026_add_phone_to_users.sql             ← phone + phone_verified
+027_extend_support_tickets.sql         ← ticket_type, priority, auto_tagged, resolved_by
+028_create_holidays.sql
+029_create_referrals.sql               ← also adds referral_code + referred_by to users
+030_create_delivery_otps.sql
+031_create_meal_ratings.sql
 ```
 
 ---

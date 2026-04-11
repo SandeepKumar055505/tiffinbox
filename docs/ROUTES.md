@@ -9,8 +9,14 @@
 ### Public / Auth Routes
 | Path | Component | Description |
 |------|-----------|-------------|
-| `/login` | `auth/Login` | Google OAuth login for users |
+| `/login` | `auth/LoginPage` | Google OAuth login for users |
+| `/invite/:code` | `auth/InvitePage` | Referral invite landing — stores code, redirects to login |
 | `/admin/login` | `auth/AdminLogin` | Email/password login for admin |
+| `/privacy` | `legal/PrivacyPolicy` | Privacy policy |
+| `/terms` | `legal/TermsOfService` | Terms of service |
+| `/refund` | `legal/RefundPolicy` | Refund policy |
+| `/shipping` | `legal/ShippingPolicy` | Shipping policy |
+| `/contact` | `legal/ContactUs` | Contact page |
 | `*` | `shared/NotFound` | 404 page |
 
 ### User Routes (requires user JWT)
@@ -36,24 +42,15 @@
 ### Admin Routes (requires admin JWT)
 | Path | Component | Description |
 |------|-----------|-------------|
-| `/admin` | redirect → `/admin/dashboard` | |
-| `/admin/dashboard` | `admin/Dashboard` | Stats overview + quick actions |
-| `/admin/subscriptions` | `admin/Subscriptions` | All subscriptions list |
-| `/admin/subscriptions/:id` | `admin/SubscriptionDetail` | Full subscription detail |
-| `/admin/deliveries` | `admin/Deliveries` | Daily delivery schedule |
-| `/admin/users` | `admin/Users` | User list |
-| `/admin/users/:id` | `admin/UserDetail` | User profile + subscriptions |
-| `/admin/skips` | `admin/Skips` | Pending skip requests |
-| `/admin/menu` | `admin/Menu` | Default menu grid editor |
-| `/admin/meals` | `admin/Meals` | Meal items list + CRUD |
-| `/admin/meals/new` | `admin/MealForm` | Add new meal item |
-| `/admin/meals/:id/edit` | `admin/MealForm` | Edit meal item |
-| `/admin/offers` | `admin/Offers` | Promo codes list + create |
-| `/admin/notifications` | `admin/Notifications` | Send notifications |
-| `/admin/support` | `admin/Support` | All tickets |
-| `/admin/support/:id` | `admin/SupportTicket` | Ticket thread + reply |
-| `/admin/settings` | `admin/Settings` | App settings (pricing, cutoffs, discounts) |
-| `/admin/analytics` | `admin/Analytics` | Revenue + trends charts |
+| `/admin` | `admin/AdminDashboardPage` | Stats overview + quick actions |
+| `/admin/delivery` | `admin/AdminDeliveryPage` | Daily delivery schedule + bulk actions |
+| `/admin/subscriptions` | `admin/AdminSubscriptionsPage` | All subscriptions list |
+| `/admin/skip` | `admin/AdminSkipPage` | Pending skip requests |
+| `/admin/menu` | `admin/AdminMenuPage` | Default menu grid editor |
+| `/admin/support` | `admin/AdminSupportPage` | All tickets |
+| `/admin/holidays` | `admin/AdminHolidaysPage` | Holiday list + skip meals on holiday |
+| `/admin/ledger` | `admin/AdminLedgerPage` | Paginated ledger + manual credit/debit |
+| `/admin/settings` | `admin/AdminSettingsPage` | Pricing, cutoffs, feature flags, referral amounts |
 
 ---
 
@@ -65,9 +62,8 @@
 - Protected: redirects to `/login` if no valid user token
 
 ### AdminLayout
-- Left sidebar (desktop) or top nav (mobile)
-- Sidebar links: Dashboard, Subscriptions, Deliveries, Users, Skips, Menu, Meals, Offers, Notifications, Support, Settings
-- Badge on Skips (pending count) and Support (open count)
+- Left sidebar with glassmorphism card styling
+- Sidebar links: Dashboard, Delivery, Subscriptions, Skip Requests, Menu, Support, Holidays, Ledger, Settings
 - Protected: redirects to `/admin/login` if no valid admin token
 
 ---

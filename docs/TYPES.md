@@ -86,7 +86,22 @@ export enum DeliveryStatus {
   DELIVERED = 'delivered',
   SKIPPED = 'skipped',
   CANCELLED = 'cancelled',
+  FAILED = 'failed',
+  SKIPPED_BY_ADMIN = 'skipped_by_admin',   // admin manually skipped
+  SKIPPED_HOLIDAY = 'skipped_holiday',     // holiday bulk-skip
 }
+
+// Ledger entry type — used for wallet history badges
+export type LedgerEntryType =
+  | 'skip_credit'
+  | 'delivery_failure_credit'
+  | 'checkout_debit'
+  | 'signup_bonus'
+  | 'referral_credit'
+  | 'streak_reward'
+  | 'admin_credit'
+  | 'admin_debit'
+  | 'other';
 ```
 
 ---
@@ -102,6 +117,9 @@ export interface AuthUser {
   role: UserRole;
   google_id?: string;
   avatar_url?: string;
+  phone?: string;              // +91XXXXXXXXXX format
+  phone_verified?: boolean;
+  referral_code?: string;      // 8-char alphanumeric, generated at signup
 }
 
 // Person (family member / profile)
@@ -257,17 +275,77 @@ export interface TicketMessage {
 
 // Admin settings (configurable)
 export interface AppSettings {
-  breakfast_price: number;          // default 100
-  lunch_price: number;              // default 120
-  dinner_price: number;             // default 100
+  breakfast_price: number;              // default ₹100
+  lunch_price: number;                  // default ₹120
+  dinner_price: number;                 // default ₹100
   discounts: PlanDiscount[];
   default_cutoffs: {
-    breakfast_hour: number;         // 12 (noon prev day)
-    lunch_hour: number;             // 10
-    dinner_hour: number;            // 18
+    breakfast_hour: number;             // 12 (noon prev day)
+    lunch_hour: number;                 // 10
+    dinner_hour: number;                // 18
   };
-  max_skip_days_per_week: number;   // 1
-  max_persons_per_user: number;     // 10
+  max_skip_days_per_week: number;       // 1
+  max_grace_skips_per_week: number;     // 2 — skips that earn wallet credit
+  max_persons_per_user: number;         // 10
+  signup_wallet_credit: number;         // paise credited on new user signup (default 12000 = ₹120)
+  referral_reward_amount: number;       // paise per referral reward each side (default 5000 = ₹50)
+  breakfast_enabled: boolean;
+  lunch_enabled: boolean;
+  dinner_enabled: boolean;
+  delivery_otp_enabled: boolean;        // OTP verification flow
+  ratings_enabled: boolean;             // meal star ratings
+}
+
+// Ledger entry (wallet transaction)
+export interface LedgerEntry {
+  id: number;
+  user_id: number;
+  direction: 'credit' | 'debit';
+  amount: number;                       // whole rupees
+  description: string;
+  entry_type: LedgerEntryType;
+  idempotency_key: string;
+  created_by: 'system' | 'admin' | 'user';
+  created_at: string;
+}
+
+// Meal rating
+export interface MealRating {
+  id: number;
+  meal_cell_id: number;
+  user_id: number;
+  meal_type: string;
+  date: string;
+  rating: 1 | 2 | 3 | 4 | 5;
+  note?: string;
+  created_at: string;
+}
+
+// Delivery OTP (user-facing)
+export interface DeliveryOtp {
+  otp: string;
+  expires_at: string;
+}
+
+// Referral record
+export interface Referral {
+  id: number;
+  referrer_id: number;
+  referred_id: number;
+  referred_name?: string;               // populated via JOIN
+  referral_code: string;
+  status: 'pending' | 'completed' | 'expired';
+  rewarded_at?: string;
+  created_at: string;
+}
+
+// Holiday
+export interface Holiday {
+  id: number;
+  date: string;                         // 'YYYY-MM-DD'
+  name: string;
+  is_active: boolean;
+  created_at: string;
 }
 
 // Analytics summary (admin dashboard)

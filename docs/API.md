@@ -19,11 +19,22 @@
 ## Auth Routes — `/api/auth`
 
 ### POST /api/auth/google
-Authenticate user via Google OAuth code.
+Authenticate user via Google OAuth ID token (credential from Google Sign-In button).
 ```
-Body: { code: string }
+Body: { credential: string, referral_code?: string }
 Response 200: { token: string, user: AuthUser }
+  // New users: signup_bonus credited, referral recorded if referral_code provided
 Response 400: { error: "Invalid Google token" }
+```
+
+### POST /api/auth/phone/verify
+Save verified phone number for the current user (user JWT required).
+```
+Headers: Authorization: Bearer <user-token>
+Body: { phone: string }   // must be +91XXXXXXXXXX format
+Response 200: { phone: string, phone_verified: true }
+Response 409: { error: "Phone number already in use" }
+Response 422: Validation error
 ```
 
 ### POST /api/auth/admin/login
@@ -39,6 +50,34 @@ Get current user from JWT. Works for both user and admin tokens.
 ```
 Headers: Authorization: Bearer <token>
 Response 200: AuthUser
+```
+
+---
+
+---
+
+## Public Config — `/api/config`
+No auth required.
+
+### GET /api/config
+Get public app configuration (prices, limits, feature flags). Cached by frontend.
+```
+Response 200: {
+  meals: {
+    breakfast: { price: number, enabled: boolean },
+    lunch:     { price: number, enabled: boolean },
+    dinner:    { price: number, enabled: boolean }
+  },
+  limits: {
+    max_skip_days_per_week: number,
+    max_grace_skips_per_week: number,
+    max_persons_per_user: number
+  },
+  features: {
+    delivery_otp_enabled: boolean,
+    ratings_enabled: boolean
+  }
+}
 ```
 
 ---
@@ -368,6 +407,59 @@ Response 201: TicketMessage
 
 ---
 
+---
+
+## Delivery OTP Routes — `/api/delivery`
+
+### GET /api/delivery/otp/:meal_cell_id
+User views their OTP for an out-for-delivery meal (user JWT required, must own the cell).
+```
+Response 200: { otp: string, expires_at: string }
+Response 400: { error: "Meal not out for delivery" }
+Response 403: if not owner
+```
+
+### POST /api/delivery/otp/verify
+Delivery person verifies OTP — no auth required.
+```
+Body: { meal_cell_id: number, otp: string }
+Response 200: { verified: true }
+Response 400: { error: "Invalid OTP" | "OTP expired" | "Already verified" | "Too many attempts" }
+  // On success: meal_cell.delivery_status → 'delivered', emits DELIVERY_COMPLETED event
+```
+
+---
+
+## Ratings Routes — `/api/ratings`
+> All require user JWT.
+
+### POST /api/ratings
+Submit a star rating for a delivered meal.
+```
+Body: { meal_cell_id: number, rating: number (1-5), note?: string }
+Response 201: MealRating
+Response 400: { error: "Meal not delivered" | "Ratings disabled" | "Already rated" }
+```
+
+### GET /api/ratings
+Get the current user's meal ratings.
+```
+Response 200: MealRating[]
+```
+
+---
+
+## Referrals Routes — `/api/referrals`
+> All require user JWT.
+
+### GET /api/referrals
+Get the current user's outbound referrals (where they are the referrer).
+```
+Response 200: Referral[]   // includes referred user name, status, rewarded_at
+```
+
+---
+
 ## Admin Routes — `/api/admin`
 > All require admin JWT.
 
@@ -562,9 +654,12 @@ Response 200: AppSettings
 ```
 
 ### PATCH /api/admin/settings
-Update app settings.
+Update app settings (all fields optional).
 ```
-Body: Partial<AppSettings>   // excluding discounts array
+Body: Partial<AppSettings>  // includes new fields: max_grace_skips_per_week,
+                            // signup_wallet_credit, referral_reward_amount,
+                            // breakfast/lunch/dinner_enabled,
+                            // delivery_otp_enabled, ratings_enabled
 Response 200: AppSettings
 ```
 
@@ -573,6 +668,75 @@ Replace discount table.
 ```
 Body: { discounts: Array<Omit<PlanDiscount, 'id'>> }
 Response 200: PlanDiscount[]
+```
+
+---
+
+## Admin Holidays — `/api/admin/holidays`
+> All require admin JWT.
+
+### GET /api/admin/holidays
+List holidays for a given year.
+```
+Query: ?year=2025 (defaults to current year)
+Response 200: Holiday[]
+```
+
+### POST /api/admin/holidays
+Create a holiday.
+```
+Body: { date: string (YYYY-MM-DD), name: string }
+Response 201: Holiday
+Response 409: { error: "Holiday already exists for this date" }
+```
+
+### PATCH /api/admin/holidays/:id
+Toggle active status or rename a holiday.
+```
+Body: { is_active?: boolean, name?: string }
+Response 200: Holiday
+```
+
+### DELETE /api/admin/holidays/:id
+Remove a holiday.
+```
+Response 204: (empty)
+```
+
+### POST /api/admin/delivery/holiday-skip
+Bulk-skip all scheduled meal cells on a holiday date.
+```
+Body: { date: string (YYYY-MM-DD) }
+Response 200: { skipped: number }
+  // Sets delivery_status='skipped_holiday', is_included=false for all scheduled cells on that date
+```
+
+---
+
+## Admin Ledger — `/api/admin/ledger`
+> All require admin JWT.
+
+### GET /api/admin/ledger
+Paginated ledger with optional filters.
+```
+Query: ?user_id=<id>&entry_type=<type>&limit=50&offset=0
+Response 200: { entries: LedgerEntry[], total: number }
+```
+
+### POST /api/admin/ledger/credit
+Manual wallet credit for a user.
+```
+Body: { user_id: number, amount: number (₹), description: string }
+Response 201: LedgerEntry
+  // entry_type='admin_credit', writes audit_log
+```
+
+### POST /api/admin/ledger/debit
+Manual wallet debit for a user.
+```
+Body: { user_id: number, amount: number (₹), description: string }
+Response 201: LedgerEntry
+  // entry_type='admin_debit', writes audit_log
 ```
 
 ---
