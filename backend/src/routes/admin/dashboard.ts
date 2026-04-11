@@ -1,172 +1,164 @@
 import { Router } from 'express';
 import { db } from '../../config/db';
 import { requireAdmin } from '../../middleware/auth';
+import { todayIST, dayRangeUTC, weekRangeUTC } from '../../lib/time';
+import { boss } from '../../jobs/client';
+import { DomainEvent } from '../../jobs/events';
 
 const router = Router();
 
 // GET /api/admin/dashboard
 router.get('/', requireAdmin, async (_req, res) => {
-  const { todayIST, dayRangeUTC, weekRangeUTC } = await import('../../lib/time');
   const today = todayIST();
   const day = dayRangeUTC(today);
   const week = weekRangeUTC(today);
 
-  // Core stats — Optimized SARGable queries using Real UTC ranges
-  const statsResult = await db.raw(`
-    SELECT
-      (SELECT COUNT(*) FROM users WHERE created_at >= ? AND created_at < ?) AS new_users_today,
-      (SELECT COUNT(*) FROM subscriptions WHERE state = 'active') AS active_subscriptions,
-      (SELECT COUNT(*) FROM meal_cells WHERE date = ? AND delivery_status = 'delivered') AS meals_delivered_today,
-      (SELECT COUNT(*) FROM meal_cells WHERE date = ? AND delivery_status = 'failed') AS meals_failed_today,
-      (SELECT COALESCE(SUM(amount), 0) FROM ledger_entries WHERE type = 'subscription_payment' AND created_at >= ? AND created_at < ?) AS revenue_today,
-      (SELECT COALESCE(SUM(amount), 0) FROM ledger_entries WHERE type = 'subscription_payment' AND created_at >= ?) AS revenue_this_week,
-      (SELECT COALESCE(AVG(rating), 0) FROM meal_ratings WHERE created_at >= ?) AS avg_rating
-  `, [
-    day.start, day.end, // new_users_today
-    today,              // meals_delivered_today
-    today,              // meals_failed_today
-    day.start, day.end, // revenue_today
-    week.start,         // revenue_this_week
-    week.start          // avg_rating (last 7 days approx using week start)
-  ]);
-  const stats = statsResult.rows[0];
+  // Parallel Analytics Engine — Execute all operational metrics in a single concurrent block
+  const [
+    statsResult,
+    prepList,
+    health,
+    failedJobsCount,
+    hotspots,
+    bulkSubscribersCount,
+    lowRatings,
+    staleMealsCount,
+    pulse,
+    opportunitiesData,
+    achievementQuanta
+  ] = await Promise.all([
+    // 1. Core stats (Optimized SARGable)
+    db.raw(`
+      SELECT
+        (SELECT COUNT(*) FROM users WHERE created_at >= ? AND created_at < ?) AS new_users_today,
+        (SELECT COUNT(*) FROM subscriptions WHERE state = 'active') AS active_subscriptions,
+        (SELECT COUNT(*) FROM meal_cells WHERE date = ? AND delivery_status = 'delivered') AS meals_delivered_today,
+        (SELECT COUNT(*) FROM meal_cells WHERE date = ? AND delivery_status = 'failed') AS meals_failed_today,
+        (SELECT COALESCE(SUM(amount), 0) FROM ledger_entries WHERE type = 'subscription_payment' AND created_at >= ? AND created_at < ?) AS revenue_today,
+        (SELECT COALESCE(SUM(amount), 0) FROM ledger_entries WHERE type = 'subscription_payment' AND created_at >= ?) AS revenue_this_week,
+        (SELECT COALESCE(AVG(rating), 0) FROM meal_ratings WHERE created_at >= ?) AS avg_rating
+    `, [day.start, day.end, today, today, day.start, day.end, week.start, week.start]).catch(() => ({ rows: [{}] })),
 
-  // Prep list breakdown
-  const prepList = await db('meal_cells as mc')
-    .join('meal_items as mi', 'mi.id', 'mc.item_id')
-    .where({ 'mc.date': today, 'mc.is_included': true })
-    .whereNotIn('mc.delivery_status', ['skipped', 'cancelled'])
-    .select('mi.name', 'mc.meal_type')
-    .count('mc.id as count')
-    .groupBy('mi.name', 'mc.meal_type')
-    .orderBy('mc.meal_type');
+    // 2. Prep list breakdown
+    db('meal_cells as mc')
+      .join('meal_items as mi', 'mi.id', 'mc.item_id')
+      .where({ 'mc.date': today, 'mc.is_included': true })
+      .whereNotIn('mc.delivery_status', ['skipped', 'cancelled'])
+      .select('mi.name', 'mc.meal_type')
+      .count('mc.id as count')
+      .groupBy('mi.name', 'mc.meal_type')
+      .orderBy('mc.meal_type').catch(() => []),
 
-  // Job health from audit logs
-  const health = await db('audit_logs')
-    .whereIn('action', ['jobs.streak_update', 'system.cleanup'])
-    .orderBy('created_at', 'desc')
-    .limit(2);
+    // 3. Job health
+    db('audit_logs')
+      .whereIn('action', ['jobs.streak_update', 'system.cleanup'])
+      .orderBy('created_at', 'desc')
+      .limit(2).catch(() => []),
 
-  // Failed pg-boss jobs — wrapped in try/catch since pgboss schema may not exist yet
-  let failedJobsCount = 0;
-  try {
-    const result = await db('pgboss.job')
+    // 4. Failed Jobs
+    db('pgboss.job')
       .where('state', 'failed')
       .where('createdat', '>', db.raw("NOW() - INTERVAL '24 hours'"))
+      .count('id as cnt').first()
+      .then(r => parseInt((r as any)?.cnt ?? '0', 10)).catch(() => 0),
+
+    // 5. Hotspots
+    db('meal_cells as mc')
+      .join('subscriptions as s', 's.id', 'mc.subscription_id')
+      .join('users as u', 'u.id', 's.user_id')
+      .where('mc.delivery_status', 'failed')
+      .where('mc.date', '>=', db.raw("CURRENT_DATE - INTERVAL '3 days'"))
+      .select('u.delivery_address')
+      .count('mc.id as failures')
+      .groupBy('u.delivery_address')
+      .having(db.raw('COUNT(mc.id) > 1'))
+      .orderBy('failures', 'desc')
+      .limit(5).catch(() => []),
+
+    // 6. Bulk Subscribers
+    db('persons')
+      .select('user_id')
       .count('id as cnt')
-      .first();
-    failedJobsCount = parseInt((result as any)?.cnt ?? '0', 10);
-  } catch {
-    // pg-boss schema not initialized — non-critical
-  }
+      .groupBy('user_id')
+      .having(db.raw('COUNT(id) > 5'))
+      .then(rows => rows.length).catch(() => 0),
 
-  // Operational Hotspots (Friction)
-  const hotspots = await db('meal_cells as mc')
-    .join('subscriptions as s', 's.id', 'mc.subscription_id')
-    .join('users as u', 'u.id', 's.user_id')
-    .where('mc.delivery_status', 'failed')
-    .where('mc.date', '>=', db.raw("CURRENT_DATE - INTERVAL '3 days'"))
-    .select('u.delivery_address')
-    .count('mc.id as failures')
-    .groupBy('u.delivery_address')
-    .having(db.raw('COUNT(mc.id) > 1'))
-    .orderBy('failures', 'desc')
-    .limit(5);
+    // 7. Quality Watch
+    db('meal_ratings as mr')
+      .join('meal_cells as mc', 'mc.id', 'mr.meal_cell_id')
+      .join('meal_items as mi', 'mi.id', 'mc.item_id')
+      .where('mr.created_at', '>=', db.raw("CURRENT_DATE - INTERVAL '7 days'"))
+      .select('mi.name')
+      .avg('mr.rating as avg_rating')
+      .count('mr.id as total_ratings')
+      .groupBy('mi.name')
+      .having(db.raw('AVG(mr.rating) < 3.0'))
+      .orderBy('avg_rating', 'asc').catch(() => []),
 
-  // VIPs / Bulk Subscribers (>5 family members)
-  const bulkSubscribersCount = await db('persons')
-    .select('user_id')
-    .count('id as cnt')
-    .groupBy('user_id')
-    .having(db.raw('COUNT(id) > 5'))
-    .then(rows => rows.length);
-
-  // Quality Watch: Average rating per item in last 7 days (those < 3.0)
-  const lowRatings = await db('meal_ratings as mr')
-    .join('meal_cells as mc', 'mc.id', 'mr.meal_cell_id')
-    .join('meal_items as mi', 'mi.id', 'mc.item_id')
-    .where('mr.created_at', '>=', db.raw("CURRENT_DATE - INTERVAL '7 days'"))
-    .select('mi.name')
-    .avg('mr.rating as avg_rating')
-    .count('mr.id as total_ratings')
-    .groupBy('mi.name')
-    .having(db.raw('AVG(mr.rating) < 3.0'))
-    .orderBy('avg_rating', 'asc');
-
-  // Stale Meals: meals stuck in-progress for > 4 hours
-  // last_status_change_at added in migration 036 — safe fallback if column missing
-  let staleMealsCount = 0;
-  try {
-    const staleResult = await db('meal_cells')
+    // 8. Stale Meals
+    db('meal_cells')
       .whereIn('delivery_status', ['preparing', 'out_for_delivery'])
       .where('last_status_change_at', '<', db.raw("NOW() - INTERVAL '4 hours'"))
-      .count('id as cnt')
-      .first();
-    staleMealsCount = parseInt((staleResult as any)?.cnt ?? '0', 10);
-  } catch {
-    // Column may not exist yet — non-critical
-  }
+      .count('id as cnt').first()
+      .then(r => parseInt((r as any)?.cnt ?? '0', 10)).catch(() => 0),
 
-  // Operation Pulse: Last 20 system events
-  const pulse = await db('audit_logs as al')
-    .leftJoin('admins as a', 'a.id', 'al.admin_id')
-    .select('al.*', 'a.name as admin_name')
-    .orderBy('al.created_at', 'desc')
-    .limit(20);
+    // 9. Operation Pulse
+    db('audit_logs as al')
+      .leftJoin('admins as a', 'a.id', 'al.admin_id')
+      .select('al.*', 'a.name as admin_name')
+      .orderBy('al.created_at', 'desc')
+      .limit(20).catch(() => []),
 
-  // Opportunity Pulse: Expiring subscriptions (within 48h)
-  const expiringVIPs = await db('subscriptions as s')
-    .join('users as u', 'u.id', 's.user_id')
-    .where('s.state', 'active')
-    .whereBetween('s.end_date', [today, db.raw("CURRENT_DATE + INTERVAL '2 days'")])
-    .select('u.name', 's.end_date', 's.id')
-    .limit(5);
+    // 10. Opportunities & Friction
+    Promise.all([
+      db('subscriptions as s')
+        .join('users as u', 'u.id', 's.user_id')
+        .where('s.state', 'active')
+        .whereBetween('s.end_date', [today, db.raw("CURRENT_DATE + INTERVAL '2 days'")])
+        .select('u.name', 's.end_date', 's.id').limit(5),
+      db('meal_cells as mc')
+        .join('subscriptions as s', 's.id', 'mc.subscription_id')
+        .join('users as u', 'u.id', 's.user_id')
+        .where('mc.delivery_status', 'failed')
+        .where('mc.date', '>=', db.raw("CURRENT_DATE - INTERVAL '3 days'"))
+        .select('u.name', 'u.id')
+        .count('mc.id as failures')
+        .groupBy('u.name', 'u.id')
+        .having(db.raw('COUNT(mc.id) > 2'))
+        .limit(5)
+    ]).catch(() => [[], []]),
 
-  // High Friction Users (3+ failures in last 3 days)
-  const bleedingUsers = await db('meal_cells as mc')
-    .join('subscriptions as s', 's.id', 'mc.subscription_id')
-    .join('users as u', 'u.id', 's.user_id')
-    .where('mc.delivery_status', 'failed')
-    .where('mc.date', '>=', db.raw("CURRENT_DATE - INTERVAL '3 days'"))
-    .select('u.name', 'u.id')
-    .count('mc.id as failures')
-    .groupBy('u.name', 'u.id')
-    .having(db.raw('COUNT(mc.id) > 2'))
-    .limit(5);
-
-  //Achievement quanta — person_streaks may not exist yet on older DBs
-  let achievementQuanta = { elite_30: 0, pillar_14: 0, spark_7: 0 };
-  try {
-    const [elite, pillar, spark] = await Promise.all([
+    // 11. Achievements
+    Promise.all([
       db('person_streaks').where('current_streak', '>=', 30).count('id as cnt').first(),
       db('person_streaks').where('current_streak', '>=', 14).count('id as cnt').first(),
       db('person_streaks').where('current_streak', '>=', 7).count('id as cnt').first(),
-    ]);
-    achievementQuanta = {
+    ]).then(([elite, pillar, spark]) => ({
       elite_30: parseInt((elite as any)?.cnt ?? '0', 10),
       pillar_14: parseInt((pillar as any)?.cnt ?? '0', 10),
       spark_7: parseInt((spark as any)?.cnt ?? '0', 10),
-    };
-  } catch (err) {
-    console.error('[Dashboard] Achievement quanta fetch failed:', err);
-  }
+    })).catch(() => ({ elite_30: 0, pillar_14: 0, spark_7: 0 }))
+  ]);
+
+  const stats = (statsResult as any).rows[0];
+  const [expiringVIPs, bleedingUsers] = opportunitiesData;
 
   res.json({
     ...stats,
     prep_list: prepList,
-    system_health: (health || []).map(h => ({ action: h.action, last_run: h.created_at })),
+    system_health: (health as any[]).map(h => ({ action: h.action, last_run: h.created_at })),
     failed_jobs: failedJobsCount,
     bulk_subscribers: bulkSubscribersCount,
-    low_ratings: lowRatings || [],
+    low_ratings: lowRatings,
     stale_meals_count: staleMealsCount,
-    hotspots: hotspots || [],
-    pulse: (pulse || []).map(p => ({
+    hotspots: hotspots,
+    pulse: (pulse as any[]).map(p => ({
       ...p,
       actor: p.admin_name || 'System / User'
     })),
     opportunities: [
-      ...(expiringVIPs || []).map(v => ({ type: 'renewal', message: `${v.name}'s plan expires on ${v.end_date}`, target: `/admin/subscriptions/${v.id}` })),
-      ...(bleedingUsers || []).map(b => ({ type: 'friction', message: `${b.name} encountered ${b.failures} delivery failures`, target: `/admin/users/${b.id}` }))
+      ...(expiringVIPs as any[]).map(v => ({ type: 'renewal', message: `${v.name}'s plan expires on ${v.end_date}`, target: `/admin/subscriptions/${v.id}` })),
+      ...(bleedingUsers as any[]).map(b => ({ type: 'friction', message: `${b.name} encountered ${b.failures} delivery failures`, target: `/admin/users/${b.id}` }))
     ],
     achievement_quanta: achievementQuanta,
   });
