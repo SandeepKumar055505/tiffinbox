@@ -1,25 +1,64 @@
 import nodemailer from 'nodemailer';
 import { env } from '../config/env';
 
-// Gracefully skip email if Gmail not configured
 const enabled = !!(env.GMAIL_USER && env.GMAIL_APP_PASSWORD);
 
 const transporter = enabled
   ? nodemailer.createTransport({
       service: 'gmail',
       auth: { user: env.GMAIL_USER, pass: env.GMAIL_APP_PASSWORD },
+      pool: true,          // reuse connections
+      maxConnections: 3,
+      socketTimeout: 10000, // 10s socket timeout
     })
   : null;
 
+// Verify connection on startup (non-blocking — logs warn but doesn't crash)
+if (transporter) {
+  transporter.verify().then(() => {
+    console.log('[email] SMTP connection verified ✓');
+  }).catch((err: Error) => {
+    console.error('[email] SMTP verify failed — emails will not send:', err.message);
+  });
+}
+
+/**
+ * Send an email. Throws on failure — callers decide how to handle.
+ * Retries once after 1 s on transient network errors.
+ */
 async function send(to: string, subject: string, html: string): Promise<void> {
   if (!transporter) {
-    if (env.isDev) console.log(`[email skipped — no GMAIL config] To: ${to} | ${subject}`);
-    return;
+    if (env.isDev) {
+      console.log(`[email skipped — GMAIL not configured] To: ${to} | Subject: ${subject}`);
+      return;
+    }
+    throw new Error('Email service not configured (GMAIL_USER / GMAIL_APP_PASSWORD missing)');
   }
+
+  const attempt = async () =>
+    transporter.sendMail({
+      from: `TiffinBox <${env.GMAIL_USER}>`,
+      to,
+      subject,
+      html,
+    });
+
   try {
-    await transporter.sendMail({ from: `TiffinBox <${env.GMAIL_USER}>`, to, subject, html });
-  } catch (err) {
-    console.error('[email error]', err);
+    await attempt();
+  } catch (firstErr: any) {
+    // Retry once on transient network/timeout errors
+    const isTransient =
+      firstErr.code === 'ECONNECTION' ||
+      firstErr.code === 'ETIMEDOUT' ||
+      firstErr.code === 'ECONNRESET' ||
+      firstErr.responseCode >= 500;
+
+    if (isTransient) {
+      await new Promise(r => setTimeout(r, 1000));
+      await attempt(); // throws if second attempt also fails
+    } else {
+      throw firstErr; // auth errors, invalid address etc. — don't retry
+    }
   }
 }
 
@@ -39,6 +78,23 @@ function wrap(body: string): string {
 }
 
 // ── Transactional emails ──────────────────────────────────────────────────────
+
+export async function sendVerificationOtpEmail(opts: {
+  to: string;
+  name: string;
+  otp: string;
+}): Promise<void> {
+  const html = wrap(`
+    <h2 style="color:#2dd4bf;margin-top:0">Verify your phone 📱</h2>
+    <p>Hi ${opts.name},</p>
+    <p>Use the following code to verify your mobile number on TiffinBox:</p>
+    <div style="background:#1e293b;border-radius:12px;padding:24px;margin:24px 0;text-align:center">
+      <span style="font-size:32px;font-weight:900;letter-spacing:8px;color:#2dd4bf">${opts.otp}</span>
+    </div>
+    <p style="color:#94a3b8;font-size:12px">This code expires in 5 minutes. If you didn't request this, please ignore this email.</p>
+  `);
+  await send(opts.to, `${opts.otp} is your TiffinBox verification code`, html);
+}
 
 export async function sendPaymentReceipt(opts: {
   to: string;
@@ -145,19 +201,4 @@ export async function sendSupportReplyEmail(opts: {
   await send(opts.to, `Support Reply: ${opts.subject}`, html);
 }
 
-export async function sendVerificationOtpEmail(opts: {
-  to: string;
-  name: string;
-  otp: string;
-}): Promise<void> {
-  const html = wrap(`
-    <h2 style="color:#2dd4bf;margin-top:0">Verify your phone 📱</h2>
-    <p>Hi ${opts.name},</p>
-    <p>Use the following code to verify your mobile number on TiffinBox:</p>
-    <div style="background:#1e293b;border-radius:12px;padding:24px;margin:24px 0;text-align:center">
-      <span style="font-size:32px;font-weight:900;letter-spacing:8px;color:#2dd4bf">${opts.otp}</span>
-    </div>
-    <p style="color:#94a3b8;font-size:12px">This code expires in 5 minutes. If you didn't request this, please ignore this email.</p>
-  `);
-  await send(opts.to, `${opts.otp} is your TiffinBox verification code`, html);
-}
+export const isEmailEnabled = enabled;

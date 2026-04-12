@@ -213,51 +213,56 @@ router.delete('/me', requireUser, async (req, res) => {
   res.status(204).send();
 });
 
-// POST /api/auth/phone/otp — Generate and "send" verification code
+// POST /api/auth/phone/otp — Generate and send verification code via email
 router.post('/phone/otp', requireUser, validate(z.object({
   phone: z.string().regex(/^[6-9]\d{9}$/, 'Please enter a valid 10-digit Indian mobile number')
 })), async (req, res) => {
-  const start = Date.now();
   const { phone } = req.body;
   const normalizedPhone = '+91' + phone.replace(/\D/g, '');
 
-  // 1. Generate 4-digit code (Dev-Mode 1234, Production Random)
-  const isDev = env.NODE_ENV === 'development' || !env.NODE_ENV;
+  const user = await db('users').where({ id: req.userId }).select('email', 'name').first();
+  if (!user) return res.status(404).json({ error: 'User not found' });
+
+  // Cooldown: block if a valid OTP for this user was issued within the last 60 seconds
+  const recent = await db('phone_verifications')
+    .where({ phone: normalizedPhone, user_id: req.userId })
+    .where('expires_at', '>', db.fn.now())
+    .where('created_at', '>', new Date(Date.now() - 60_000))
+    .first();
+  if (recent) {
+    return res.status(429).json({ error: 'Please wait 60 seconds before requesting a new code.' });
+  }
+
+  // Generate 4-digit code — fixed in dev so tests are predictable
+  const isDev = env.NODE_ENV !== 'production';
   const otp = isDev ? '1234' : Math.floor(1000 + Math.random() * 9000).toString();
 
-  try {
-    // 2. Fetch User identity for email delivery
-    const user = await db('users').where({ id: req.userId }).select('email', 'name').first();
-    if (!user) return res.status(404).json({ error: 'User not found' });
-
-    // 3. Diamond Standard: Atomic substrate sync
-    await db.transaction(async (trx) => {
-      await trx('phone_verifications').where({ phone: normalizedPhone }).delete();
-      await trx('phone_verifications').insert({
-        phone: normalizedPhone,
-        otp_code: otp,
-        expires_at: new Date(Date.now() + 5 * 60 * 1000),
-        ip_address: req.ip,
-      });
+  // Store OTP scoped to this user (clear old for this user+phone first, atomically)
+  await db.transaction(async (trx) => {
+    await trx('phone_verifications').where({ phone: normalizedPhone, user_id: req.userId }).delete();
+    await trx('phone_verifications').insert({
+      phone: normalizedPhone,
+      user_id: req.userId,
+      otp_code: otp,
+      expires_at: new Date(Date.now() + 5 * 60 * 1000), // 5 min
+      ip_address: req.ip,
     });
+  });
 
-    // 4. Multi-Channel Failover: Email & Oracle Logging (Non-blocking)
-    emailService.sendVerificationOtpEmail({
-      to: user.email,
-      name: user.name,
-      otp: otp
-    }).catch(err => console.error('[OTP Email Background Failure]', err));
-
-    const duration = Date.now() - start;
-    console.log(`\n[OTP ORACLE] >>> IDENTITY VERIFICATION PULSE: ${otp} <<< for ${normalizedPhone} (User: ${user.email}) in ${duration}ms\n`);
-    
-    // Telemetry reinforcement
-    res.setHeader('X-Response-Time', `${duration}ms`);
-    return res.json({ message: 'Verification code sent successfully to your registered email.' });
-  } catch (err: any) {
-    console.error(`[OTP Failure] ${err.message}`);
-    res.status(500).json({ error: 'Failed to generate verification code. Please try again.' });
+  // Send email — awaited so failures surface immediately to the caller
+  try {
+    await emailService.sendVerificationOtpEmail({ to: user.email, name: user.name, otp });
+  } catch (emailErr: any) {
+    console.error(`[OTP] Email delivery failed for ${user.email}:`, emailErr.message);
+    // OTP is in DB — delete it so it can't be misused without delivery
+    await db('phone_verifications').where({ phone: normalizedPhone, user_id: req.userId }).delete().catch(() => {});
+    return res.status(503).json({
+      error: 'Could not deliver verification code. Please try again in a moment.',
+    });
   }
+
+  console.log(`[OTP] Sent to ${user.email} for ${normalizedPhone}${isDev ? ` (dev code: ${otp})` : ''}`);
+  return res.json({ message: 'Verification code sent to your registered email.' });
 });
 
 // POST /api/auth/phone/verify — strict code verification and user record update
@@ -268,50 +273,54 @@ router.post('/phone/verify', requireUser, validate(z.object({
   const { phone, otp } = req.body;
   const normalizedPhone = '+91' + phone.replace(/\D/g, '');
 
-  // 1. Retrieve and validate token
-  const verification = await db('phone_verifications')
-    .where({ phone: normalizedPhone })
-    .where('expires_at', '>', db.fn.now())
-    .first();
+  // Atomic verification inside a transaction with row-level lock
+  // Prevents race conditions where concurrent requests bypass the 3-attempt lockout
+  const result = await db.transaction(async (trx) => {
+    // 1. Lock the row for this user+phone so concurrent requests queue up
+    const verification = await trx('phone_verifications')
+      .where({ phone: normalizedPhone, user_id: req.userId })
+      .where('expires_at', '>', trx.fn.now())
+      .forUpdate()
+      .first();
 
-  if (!verification) {
-    return res.status(422).json({ error: 'Verification code expired or never requested.' });
+    if (!verification) return { status: 422, error: 'Verification code expired or never requested.' };
+    if (verification.attempts >= 3) return { status: 429, error: 'Too many failed attempts. Please request a new code.' };
+
+    // 2. Increment attempt count atomically before checking the code
+    //    This ensures concurrent requests always consume an attempt slot
+    await trx('phone_verifications').where({ id: verification.id }).increment('attempts', 1);
+
+    if (verification.otp_code !== otp) {
+      return { status: 401, error: 'Invalid verification code.' };
+    }
+
+    // 3. Code is correct — check for duplicate phone across accounts
+    const existing = await trx('users')
+      .where({ phone: normalizedPhone })
+      .whereNot({ id: req.userId })
+      .first();
+    if (existing) {
+      return { status: 409, error: 'This number is already linked to another account.', code: 'ERR_DUPLICATE_PHONE' };
+    }
+
+    // 4. Claim the number and clear the verification record
+    const [user] = await trx('users')
+      .where({ id: req.userId })
+      .update({ phone: normalizedPhone, phone_verified: true, updated_at: trx.fn.now() })
+      .returning('*');
+
+    await trx('phone_verifications').where({ id: verification.id }).delete();
+
+    return { status: 200, user };
+  });
+
+  if (result.status !== 200) {
+    return res.status(result.status).json(
+      result.code ? { error: result.error, code: result.code } : { error: result.error }
+    );
   }
 
-  if (verification.attempts >= 3) {
-    return res.status(429).json({ error: 'Too many failed attempts. Please request a new code.' });
-  }
-
-  // 2. Check code integrity
-  if (verification.otp_code !== otp) {
-    await db('phone_verifications')
-      .where({ id: verification.id })
-      .increment('attempts', 1);
-    return res.status(401).json({ error: 'Invalid verification code.' });
-  }
-
-  // 3. Fraud Shield: Prevent duplicate number linkage
-  const existing = await db('users').where({ phone: normalizedPhone }).whereNot({ id: req.userId }).first();
-  if (existing) {
-    return res.status(409).json({ 
-      error: 'This number is already linked to another gourmet account',
-      code: 'ERR_DUPLICATE_PHONE'
-    });
-  }
-
-  // 4. Manifest Identity: Update user and clear verification substrates
-  const [user] = await db('users')
-    .where({ id: req.userId })
-    .update({ 
-      phone: normalizedPhone, 
-      phone_verified: true, 
-      updated_at: db.fn.now() 
-    })
-    .returning('*');
-
-  await db('phone_verifications').where({ phone: normalizedPhone }).delete();
-  
-  res.json(safeUser(user));
+  res.json(safeUser(result.user));
 });
 
 function safeUser(user: any) {
