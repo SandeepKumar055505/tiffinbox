@@ -204,27 +204,66 @@ router.delete('/me', requireUser, async (req, res) => {
   res.status(204).send();
 });
 
-// POST /api/auth/phone/verify — store verified phone number (Firebase verifies, we store)
-router.post('/phone/verify', requireUser, async (req, res) => {
-  let { phone } = req.body;
-  if (!phone) return res.status(422).json({ error: 'Phone number is required' });
+// POST /api/auth/phone/otp — Generate and "send" verification code
+router.post('/phone/otp', requireUser, validate(z.object({
+  phone: z.string().regex(/^[6-9]\d{9}$/, 'Please enter a valid 10-digit Indian mobile number')
+})), async (req, res) => {
+  const { phone } = req.body;
+  const normalizedPhone = '+91' + phone.replace(/\D/g, '');
 
-  // Diamond Standard: Hardened Normalization (strip all but digits)
-  phone = phone.replace(/\D/g, '');
+  // 1. Generate 4-digit code (Dev-Mode 1234, Production Random)
+  const isDev = env.NODE_ENV === 'development' || !env.NODE_ENV;
+  const otp = isDev ? '1234' : Math.floor(1000 + Math.random() * 9000).toString();
 
-  // If 10 digits and starts with 6-9, prepend +91
-  if (/^[6-9]\d{9}$/.test(phone)) {
-    phone = '+91' + phone;
-  } else if (phone.length === 12 && phone.startsWith('91')) {
-    phone = '+' + phone;
+  // 2. Clear old attempts and store new verification record
+  await db('phone_verifications').where({ phone: normalizedPhone }).delete();
+  await db('phone_verifications').insert({
+    phone: normalizedPhone,
+    otp_code: otp,
+    expires_at: new Date(Date.now() + 5 * 60 * 1000), // 5 min expiry
+    ip_address: req.ip,
+  });
+
+  // 3. Mock Broadcast: Log to console in colors for developer visibility
+  console.log('\x1b[36m%s\x1b[0m', '────────────────────────────────────────────────────────────────');
+  console.log('\x1b[35m%s\x1b[0m', `[OTP Sentinel] Verification code for ${normalizedPhone} is: ${otp}`);
+  console.log('\x1b[36m%s\x1b[0m', '────────────────────────────────────────────────────────────────');
+
+  res.json({ message: 'Verification code sent successfully.' });
+});
+
+// POST /api/auth/phone/verify — strict code verification and user record update
+router.post('/phone/verify', requireUser, validate(z.object({
+  phone: z.string().regex(/^[6-9]\d{9}$/),
+  otp: z.string().length(4)
+})), async (req, res) => {
+  const { phone, otp } = req.body;
+  const normalizedPhone = '+91' + phone.replace(/\D/g, '');
+
+  // 1. Retrieve and validate token
+  const verification = await db('phone_verifications')
+    .where({ phone: normalizedPhone })
+    .where('expires_at', '>', db.fn.now())
+    .first();
+
+  if (!verification) {
+    return res.status(422).json({ error: 'Verification code expired or never requested.' });
   }
 
-  // Strict Indian +91 validation
-  if (!/^\+91[6-9]\d{9}$/.test(phone)) {
-    return res.status(422).json({ error: 'Please enter a valid 10-digit Indian mobile number' });
+  if (verification.attempts >= 3) {
+    return res.status(429).json({ error: 'Too many failed attempts. Please request a new code.' });
   }
 
-  const existing = await db('users').where({ phone }).whereNot({ id: req.userId }).first();
+  // 2. Check code integrity
+  if (verification.otp_code !== otp) {
+    await db('phone_verifications')
+      .where({ id: verification.id })
+      .increment('attempts', 1);
+    return res.status(401).json({ error: 'Invalid verification code.' });
+  }
+
+  // 3. Fraud Shield: Prevent duplicate number linkage
+  const existing = await db('users').where({ phone: normalizedPhone }).whereNot({ id: req.userId }).first();
   if (existing) {
     return res.status(409).json({ 
       error: 'This number is already linked to another gourmet account',
@@ -232,10 +271,17 @@ router.post('/phone/verify', requireUser, async (req, res) => {
     });
   }
 
+  // 4. Manifest Identity: Update user and clear verification substrates
   const [user] = await db('users')
     .where({ id: req.userId })
-    .update({ phone, phone_verified: true, updated_at: db.fn.now() })
+    .update({ 
+      phone: normalizedPhone, 
+      phone_verified: true, 
+      updated_at: db.fn.now() 
+    })
     .returning('*');
+
+  await db('phone_verifications').where({ phone: normalizedPhone }).delete();
   
   res.json(safeUser(user));
 });

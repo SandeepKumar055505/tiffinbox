@@ -58,7 +58,8 @@ export const auth = {
   updateProfile: (data: { wallet_auto_apply?: boolean; delivery_address?: string; notification_mutes?: string[] }) =>
     api.patch('/auth/me', data),
   deleteAccount: () => api.delete('/auth/me'),
-  verifyPhone: (phone: string) => api.post('/auth/phone/verify', { phone }),
+  sendOtp: (phone: string) => api.post('/auth/phone/otp', { phone }),
+  verifyPhone: (phone: string, otp: string) => api.post('/auth/phone/verify', { phone, otp }),
 };
 
 // ── Persons ───────────────────────────────────────────────────────────────────

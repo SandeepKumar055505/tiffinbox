@@ -51,6 +51,7 @@ export default function PhoneVerificationPage() {
     
     setLoading(true);
     try {
+      await authApi.sendOtp(phone);
       showToast('OTP sent to +91 ' + phone, 'info');
       setStep('otp');
       if ('vibrate' in navigator) navigator.vibrate(50);
@@ -72,15 +73,17 @@ export default function PhoneVerificationPage() {
 
     setLoading(true);
     try {
-      await authApi.verifyPhone(phone);
+      await authApi.verifyPhone(phone, finalOtp);
       
-      if ('vibrate' in navigator) navigator.vibrate([30, 30, 30]);
-      showToast('Number verified successfully!', 'success');
+      // Zenith Success: Sensorial Pulse
+      if ('vibrate' in navigator) navigator.vibrate([30, 30, 100, 30, 200]);
+      showToast('Identity verified. Welcome to the Circle.', 'success');
       
       await refresh();
       navigate('/', { replace: true });
     } catch (err: any) {
       handleShake();
+      setOtp(''); // Clear on fail for security
       showToast(err.response?.data?.error || 'Verification failed', 'error');
     } finally {
       setLoading(false);
@@ -159,7 +162,7 @@ export default function PhoneVerificationPage() {
                 <button
                   onClick={() => handleVerifyOtp()}
                   disabled={loading || otp.length < 4}
-                  className="w-full btn-primary !py-5 !rounded-3xl shadow-glow-subtle"
+                  className="w-full btn-primary !py-5 !rounded-3xl shadow-glow-subtle disabled:grayscale disabled:opacity-30 disabled:scale-95 transition-all duration-500"
                 >
                   {loading ? 'Verifying...' : 'Verify & Continue'}
                 </button>

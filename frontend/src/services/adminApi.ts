@@ -128,3 +128,8 @@ export const adminLedger = {
   debit: (data: { user_id: number; amount: number; description: string; note?: string }) =>
     api.post('/admin/ledger/debit', data),
 };
+
+export const adminReferrals = {
+  list: () => api.get('/admin/referrals'),
+  alerts: () => api.get('/admin/referrals/alerts'),
+};
