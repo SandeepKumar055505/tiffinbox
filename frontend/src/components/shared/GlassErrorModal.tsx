@@ -5,10 +5,11 @@ interface GlassErrorModalProps {
   isOpen: boolean;
   title: string;
   message: string;
+  requestId?: string;
   onClose: () => void;
 }
 
-export default function GlassErrorModal({ isOpen, title, message, onClose }: GlassErrorModalProps) {
+export default function GlassErrorModal({ isOpen, title, message, requestId, onClose }: GlassErrorModalProps) {
   return (
     <AnimatePresence>
       {isOpen && (
@@ -47,6 +48,11 @@ export default function GlassErrorModal({ isOpen, title, message, onClose }: Gla
                 <p className="text-label-caps !text-[11px] opacity-60 font-medium leading-relaxed max-w-[240px] mx-auto uppercase tracking-widest">
                   {message}
                 </p>
+                {requestId && (
+                  <p className="font-mono text-[9px] opacity-30 tracking-[0.1em] pt-2">
+                     REF_ID: {requestId}
+                  </p>
+                )}
               </div>
 
               {/* Action (Standardised Squircle) */}

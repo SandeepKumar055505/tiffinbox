@@ -60,6 +60,12 @@ export async function postLedgerEntry(entry: {
 
     const [row] = await trx('ledger_entries').insert(entry).returning('*');
 
+    // Ω.8: Mirror to User Snapshot (Atomic Sync)
+    const adjustment = entry.direction === 'credit' ? entry.amount : -entry.amount;
+    await trx('users')
+      .where({ id: entry.user_id })
+      .increment('wallet_balance', adjustment);
+
     // Ω.8: Manifest the financial movement in the Operation Pulse
     await trx('audit_logs').insert({
       admin_id: entry.created_by === 'admin' ? entry.metadata?.admin_id : null,
@@ -70,7 +76,8 @@ export async function postLedgerEntry(entry: {
         direction: entry.direction, 
         amount: entry.amount, 
         description: entry.description,
-        user_id: entry.user_id 
+        user_id: entry.user_id,
+        new_balance: true // flag for sync verification
       }),
     });
 
@@ -79,16 +86,11 @@ export async function postLedgerEntry(entry: {
 }
 
 export async function getWalletBalance(user_id: number): Promise<number> {
-  const row = await db('ledger_entries')
-    .where({ user_id })
-    .select(
-      db.raw(`
-        COALESCE(SUM(CASE WHEN direction = 'credit' THEN amount ELSE 0 END), 0) -
-        COALESCE(SUM(CASE WHEN direction = 'debit'  THEN amount ELSE 0 END), 0) AS balance
-      `)
-    )
+  const row = await db('users')
+    .where({ id: user_id })
+    .select('wallet_balance')
     .first();
-  return row ? parseInt(row.balance, 10) : 0;
+  return row ? parseInt(row.wallet_balance, 10) : 0;
 }
 
 export async function getWalletHistory(user_id: number, limit = 50): Promise<LedgerEntry[]> {

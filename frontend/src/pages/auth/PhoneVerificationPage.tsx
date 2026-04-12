@@ -3,6 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { useToast } from '../../context/ToastContext';
 import { auth as authApi } from '../../services/api';
+import { haptics } from '../../context/SensorialContext';
+import { LiquidConfirm } from '../../components/shared/LiquidConfirm';
 
 export default function PhoneVerificationPage() {
   const { user, refresh } = useAuth();
@@ -38,7 +40,7 @@ export default function PhoneVerificationPage() {
 
   const handleShake = () => {
     setIsShaking(true);
-    if ('vibrate' in navigator) navigator.vibrate([100, 50, 100]);
+    haptics.error();
     setTimeout(() => setIsShaking(false), 500);
   };
 
@@ -54,7 +56,7 @@ export default function PhoneVerificationPage() {
       await authApi.sendOtp(phone);
       showToast('OTP sent to +91 ' + phone, 'info');
       setStep('otp');
-      if ('vibrate' in navigator) navigator.vibrate(50);
+      haptics.impact();
     } catch (err: any) {
       handleShake();
       showToast(err.response?.data?.error || 'Failed to send OTP', 'error');
@@ -76,7 +78,7 @@ export default function PhoneVerificationPage() {
       await authApi.verifyPhone(phone, finalOtp);
       
       // Zenith Success: Sensorial Pulse
-      if ('vibrate' in navigator) navigator.vibrate([30, 30, 100, 30, 200]);
+      haptics.success();
       showToast('Identity verified. Welcome to the Circle.', 'success');
       
       await refresh();
@@ -158,14 +160,12 @@ export default function PhoneVerificationPage() {
                 className="w-full bg-bg-primary/40 border border-white/5 rounded-3xl py-6 text-center text-4xl font-black tracking-[0.5em] focus:ring-2 focus:ring-accent/30 focus:border-accent/40 transition-all outline-none"
               />
               
-              <div className="flex flex-col gap-4">
-                <button
-                  onClick={() => handleVerifyOtp()}
-                  disabled={loading || otp.length < 4}
-                  className="w-full btn-primary !py-5 !rounded-3xl shadow-glow-subtle disabled:grayscale disabled:opacity-30 disabled:scale-95 transition-all duration-500"
-                >
-                  {loading ? 'Verifying...' : 'Verify & Continue'}
-                </button>
+              <div className="flex flex-col gap-6 items-center">
+                <LiquidConfirm 
+                  onConfirm={() => handleVerifyOtp()}
+                  label="Slide to Verify Identity"
+                  successLabel="Identity Manifested"
+                />
                 
                 <button
                   onClick={() => { setStep('phone'); setOtp(''); }}

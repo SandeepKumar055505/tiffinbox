@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { Link } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { adminUsers } from '../../services/adminApi';
 import { useSensorial, haptics } from '../../context/SensorialContext';
@@ -84,6 +85,7 @@ export default function AdminUsersPage() {
                       </div>
                    </div>
                    <div className="flex gap-3">
+                      <Link to={`/users/${userDetail.user.id}`} className="glass p-3 rounded-full hover:scale-110 active:scale-95 transition-all text-xl">👤</Link>
                       <button className="glass p-3 rounded-full hover:scale-110 active:scale-95 transition-all text-xl">💬</button>
                       <button className="glass p-3 rounded-full hover:scale-110 active:scale-95 transition-all text-xl">💳</button>
                    </div>

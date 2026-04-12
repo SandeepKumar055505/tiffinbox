@@ -1,0 +1,15 @@
+-- Extension of App Settings for Sovereign Control
+ALTER TABLE app_settings 
+ADD COLUMN IF NOT EXISTS signup_wallet_credit INTEGER NOT NULL DEFAULT 12000,
+ADD COLUMN IF NOT EXISTS referral_reward_amount INTEGER NOT NULL DEFAULT 5000,
+ADD COLUMN IF NOT EXISTS max_grace_skips_per_week SMALLINT NOT NULL DEFAULT 2,
+ADD COLUMN IF NOT EXISTS breakfast_enabled BOOLEAN NOT NULL DEFAULT TRUE,
+ADD COLUMN IF NOT EXISTS lunch_enabled BOOLEAN NOT NULL DEFAULT TRUE,
+ADD COLUMN IF NOT EXISTS dinner_enabled BOOLEAN NOT NULL DEFAULT TRUE,
+ADD COLUMN IF NOT EXISTS delivery_otp_enabled BOOLEAN NOT NULL DEFAULT TRUE,
+ADD COLUMN IF NOT EXISTS ratings_enabled BOOLEAN NOT NULL DEFAULT TRUE,
+ADD COLUMN IF NOT EXISTS global_banner_text TEXT,
+ADD COLUMN IF NOT EXISTS global_banner_active BOOLEAN NOT NULL DEFAULT FALSE;
+
+-- Optimization for high-traffic lookups
+CREATE INDEX IF NOT EXISTS idx_app_settings_updated ON app_settings(updated_at);

@@ -34,6 +34,8 @@ router.patch(
     dinner_enabled: z.boolean().optional(),
     delivery_otp_enabled: z.boolean().optional(),
     ratings_enabled: z.boolean().optional(),
+    global_banner_text: z.string().max(500).optional(),
+    global_banner_active: z.boolean().optional(),
   })),
   async (req, res) => {
     // Ω.7: Recursive Defensive Mapping (Only allow keys defined in schema to reach DB)
@@ -43,7 +45,8 @@ router.patch(
       'max_skip_days_per_week', 'max_grace_skips_per_week', 'max_persons_per_user',
       'signup_wallet_credit', 'referral_reward_amount',
       'breakfast_enabled', 'lunch_enabled', 'dinner_enabled',
-      'delivery_otp_enabled', 'ratings_enabled'
+      'delivery_otp_enabled', 'ratings_enabled',
+      'global_banner_text', 'global_banner_active'
     ];
     
     const updateData: any = {};

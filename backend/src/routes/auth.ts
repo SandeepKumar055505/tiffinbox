@@ -208,6 +208,7 @@ router.delete('/me', requireUser, async (req, res) => {
 router.post('/phone/otp', requireUser, validate(z.object({
   phone: z.string().regex(/^[6-9]\d{9}$/, 'Please enter a valid 10-digit Indian mobile number')
 })), async (req, res) => {
+  const start = Date.now();
   const { phone } = req.body;
   const normalizedPhone = '+91' + phone.replace(/\D/g, '');
 
@@ -215,21 +216,28 @@ router.post('/phone/otp', requireUser, validate(z.object({
   const isDev = env.NODE_ENV === 'development' || !env.NODE_ENV;
   const otp = isDev ? '1234' : Math.floor(1000 + Math.random() * 9000).toString();
 
-  // 2. Clear old attempts and store new verification record
-  await db('phone_verifications').where({ phone: normalizedPhone }).delete();
-  await db('phone_verifications').insert({
-    phone: normalizedPhone,
-    otp_code: otp,
-    expires_at: new Date(Date.now() + 5 * 60 * 1000), // 5 min expiry
-    ip_address: req.ip,
-  });
+  try {
+    // Diamond Standard: Atomic substraite sync
+    await db.transaction(async (trx) => {
+      await trx('phone_verifications').where({ phone: normalizedPhone }).delete();
+      await trx('phone_verifications').insert({
+        phone: normalizedPhone,
+        otp_code: otp,
+        expires_at: new Date(Date.now() + 5 * 60 * 1000),
+        ip_address: req.ip,
+      });
+    });
 
-  // 3. Mock Broadcast: Log to console in colors for developer visibility
-  console.log('\x1b[36m%s\x1b[0m', '────────────────────────────────────────────────────────────────');
-  console.log('\x1b[35m%s\x1b[0m', `[OTP Sentinel] Verification code for ${normalizedPhone} is: ${otp}`);
-  console.log('\x1b[36m%s\x1b[0m', '────────────────────────────────────────────────────────────────');
-
-  res.json({ message: 'Verification code sent successfully.' });
+    const duration = Date.now() - start;
+    console.log(`[OTP Sentinel] Verification generated for ${normalizedPhone} in ${duration}ms`);
+    
+    // Telemetry reinforcement
+    res.setHeader('X-Response-Time', `${duration}ms`);
+    res.json({ message: 'Verification code sent successfully.' });
+  } catch (err: any) {
+    console.error(`[OTP Failure] ${err.message}`);
+    res.status(500).json({ error: 'Failed to generate verification code. Please try again.' });
+  }
 });
 
 // POST /api/auth/phone/verify — strict code verification and user record update
@@ -292,6 +300,7 @@ function safeUser(user: any) {
     name: user.name,
     email: user.email,
     avatar_url: user.avatar_url,
+    wallet_balance: user.wallet_balance,
     monthly_plan_unlocked: user.monthly_plan_unlocked,
     wallet_auto_apply: user.wallet_auto_apply,
     delivery_address: user.delivery_address ?? null,

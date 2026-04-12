@@ -6,6 +6,7 @@ export const adminAuth = {
 
 export const adminDashboard = {
   stats: () => api.get('/admin'),
+  integrityCheck: () => api.get('/admin/dashboard/integrity-check'),
   // Ω.3: Logistics Command Enpoints
   manifest: (date?: string) => api.get('/admin/logistics/manifest', { params: { date } }),
   updateLogisticsStatus: (id: number, data: {

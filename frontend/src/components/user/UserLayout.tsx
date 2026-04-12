@@ -1,6 +1,7 @@
 import React from 'react';
 import { NavLink, Outlet, useLocation } from 'react-router-dom';
 import { Home, Bookmark, Wallet, HelpCircle, User } from 'lucide-react';
+import { SovereignBanner } from '../shared/SovereignBanner';
 
 export default function UserLayout() {
   const location = useLocation();
@@ -15,6 +16,7 @@ export default function UserLayout() {
 
   return (
     <div className="flex flex-col min-h-screen">
+      <SovereignBanner />
       {/* Main Content Area */}
       <main className="flex-1 pb-24">
         <Outlet />

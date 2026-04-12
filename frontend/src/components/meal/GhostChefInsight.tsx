@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { haptics } from '../../context/SensorialContext';
 
 const INSIGHTS = [
   "A 14-day genesis allows the metabolism to find its sovereign rhythm.",
@@ -39,7 +40,11 @@ export const GhostChefInsight: React.FC<Props> = ({ status }) => {
 
   useEffect(() => {
     const timer = setInterval(() => {
-      setIndex(prev => (prev + 1) % activePool.length);
+      setIndex(prev => {
+        const next = (prev + 1) % activePool.length;
+        haptics.light();
+        return next;
+      });
     }, 8000);
     return () => clearInterval(timer);
   }, [activePool]);

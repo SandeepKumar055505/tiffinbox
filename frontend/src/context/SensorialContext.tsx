@@ -10,7 +10,8 @@ import api from '../services/api';
 export const haptics = {
   confirm: () => navigator.vibrate?.([10, 30]), // Double Tick
   error: () => navigator.vibrate?.([100, 50, 100]), // Deep Pulse
-  success: () => navigator.vibrate?.(10), // Light Tap
+  success: () => navigator.vibrate?.([40, 30, 80]), // Zenith Success Pulse
+  warning: () => navigator.vibrate?.([60, 40, 60]), // Rapid Staccato
   heavy: () => navigator.vibrate?.([50, 100, 50]), // Intense Selection Anchor
   impact: () => navigator.vibrate?.(20), // Solid Haptic Feedback
   light: () => navigator.vibrate?.(5), // Micro Interaction
@@ -28,6 +29,7 @@ interface SensorialConfirmOptions {
 interface SensorialErrorOptions {
   title: string;
   message: string;
+  requestId?: string;
 }
 
 interface SensorialContextValue {
@@ -89,8 +91,8 @@ export function SensorialProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     const handleGlobalError = (e: any) => {
-      const { title, message } = e.detail;
-      showError({ title, message });
+      const { title, message, requestId } = e.detail;
+      showError({ title, message, requestId });
     };
     window.addEventListener('diamond-sensorial-error', handleGlobalError);
 

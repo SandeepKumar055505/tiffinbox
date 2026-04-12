@@ -164,6 +164,30 @@ router.get('/', requireAdmin, async (_req, res) => {
   });
 });
 
+// GET /api/admin/dashboard/integrity-check — Sovereign Financial Validation
+router.get('/integrity-check', requireAdmin, async (_req, res) => {
+  // Compare users.wallet_balance against (SUM credits - SUM debits) for all users
+  const drift = await db('users as u')
+    .select('u.id', 'u.name', 'u.wallet_balance')
+    .select(db.raw(`
+      (SELECT COALESCE(SUM(CASE WHEN direction = 'credit' THEN amount ELSE -amount END), 0)
+       FROM ledger_entries
+       WHERE user_id = u.id) as ledger_sum
+    `))
+    .whereRaw('u.wallet_balance != (SELECT COALESCE(SUM(CASE WHEN direction = ' + "'" + 'credit' + "'" + ' THEN amount ELSE -amount END), 0) FROM ledger_entries WHERE user_id = u.id)')
+    .limit(10);
+
+  const totalUsers = await db('users').count('id as cnt').first().then(r => parseInt((r as any)?.cnt || '0', 10));
+  
+  res.json({
+    is_sovereign: drift.length === 0,
+    drift_count: drift.length,
+    drifting_users: drift,
+    total_users_checked: totalUsers,
+    ts: new Date().toISOString()
+  });
+});
+
 // GET /api/admin/dashboard/stale-meals — detailed list of meals stuck in progress
 router.get('/stale-meals', requireAdmin, async (_req, res) => {
   try {

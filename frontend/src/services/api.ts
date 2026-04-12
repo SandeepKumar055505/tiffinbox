@@ -35,8 +35,10 @@ api.interceptors.response.use(
     // Best in World: Sensorial Error Orchestration
     // Technical culprits are translated into Gourmet narratives
     const gourmet = translateToGourmet(err);
+    const requestId = err.response?.data?.requestId || err.response?.headers?.['x-request-id'];
+
     window.dispatchEvent(new CustomEvent('diamond-sensorial-error', {
-      detail: { title: gourmet.title, message: gourmet.message }
+      detail: { title: gourmet.title, message: gourmet.message, requestId }
     }));
 
     return Promise.reject(err);

@@ -46,6 +46,8 @@ const AdminAreaPage = React.lazy(() => import('./pages/admin/AdminAreaPage'));
 const AdminLedgerPage = React.lazy(() => import('./pages/admin/AdminLedgerPage'));
 const AdminReferralPage = React.lazy(() => import('./pages/admin/AdminReferralPage'));
 const AdminNotificationPage = React.lazy(() => import('./pages/admin/AdminNotificationPage'));
+const AdminUsersPage = React.lazy(() => import('./pages/admin/AdminUsersPage'));
+const AdminUserDetailPage = React.lazy(() => import('./pages/admin/AdminUserDetailPage'));
 const PhoneVerificationPage = React.lazy(() => import('./pages/auth/PhoneVerificationPage'));
 
 import GlassLayout from './components/shared/GlassLayout';
@@ -131,6 +133,8 @@ export default function App() {
                   <Route path="referrals" element={<AdminReferralPage />} />
                   <Route path="notifications" element={<AdminNotificationPage />} />
                   <Route path="skip" element={<AdminSkipPage />} />
+                  <Route path="users" element={<AdminUsersPage />} />
+                  <Route path="users/:id" element={<AdminUserDetailPage />} />
                 </Route>
 
                 <Route path="*" element={<NotFoundPage />} />

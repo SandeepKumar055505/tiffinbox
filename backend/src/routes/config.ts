@@ -70,6 +70,10 @@ router.get('/public', async (_req, res) => {
     integrity: {
       referral_shield_active: true,
       paise_sovereignty_active: true,
+    },
+    banner: {
+      active: settings?.global_banner_active ?? false,
+      text: settings?.global_banner_text ?? '',
     }
   });
 });

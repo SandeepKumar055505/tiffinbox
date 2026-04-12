@@ -6,17 +6,17 @@ export const db = Knex({
   connection: {
     connectionString: env.DATABASE_URL,
     ssl: { rejectUnauthorized: false },
-    connectionTimeoutMillis: 8000,
+    connectionTimeoutMillis: 10000,
     query_timeout: 10000,
     statement_timeout: 10000,
   },
   pool: {
-    min: 0,
-    max: 5,
-    acquireTimeoutMillis: 8000,
+    min: 2,
+    max: 10,
+    acquireTimeoutMillis: 10000,
     idleTimeoutMillis: 30000,
     reapIntervalMillis: 1000,
     propagateCreateError: false,
   },
-  acquireConnectionTimeout: 8000,
+  acquireConnectionTimeout: 10000,
 });

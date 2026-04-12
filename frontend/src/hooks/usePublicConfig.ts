@@ -32,6 +32,14 @@ export interface PublicConfig {
     signup_bonus: number;    // in rupees
     referral_reward: number; // in rupees
   };
+  integrity: {
+    referral_shield_active: boolean;
+    paise_sovereignty_active: boolean;
+  };
+  banner: {
+    active: boolean;
+    text: string;
+  };
 }
 
 /**

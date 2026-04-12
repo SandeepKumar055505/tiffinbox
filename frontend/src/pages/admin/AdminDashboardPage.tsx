@@ -6,10 +6,19 @@ import { formatRupees } from '../../utils/pricing';
 import { haptics } from '../../context/SensorialContext';
 
 export default function AdminDashboardPage() {
-  const { data: stats } = useQuery({
+  const currentTime = new Date();
+  const isBusinessHours = currentTime.getHours() >= 6 && currentTime.getHours() <= 22;
+
+  const { data: stats, isFetching } = useQuery({
     queryKey: ['admin-stats'],
     queryFn: () => adminDashboard.stats().then(r => r.data),
-    refetchInterval: 30_000,
+    refetchInterval: isBusinessHours ? 15_000 : 60_000, 
+  });
+
+  const { data: integrity } = useQuery({
+    queryKey: ['financial-integrity'],
+    queryFn: () => adminDashboard.integrityCheck().then(r => r.data),
+    refetchInterval: 300_000, // Check every 5 mins
   });
 
   const totalSalesToday = (Number(stats?.cash_revenue_today) || 0) + (Number(stats?.wallet_revenue_today) || 0);
@@ -19,7 +28,12 @@ export default function AdminDashboardPage() {
     { label: 'Meals Manifesting', value: stats.meals_today, color: 'text-blue-400', icon: '🍱' },
     { label: 'Delivered Orbit', value: stats.delivered_today, color: 'text-green-400', icon: '🚀' },
     { label: "Total GMV Today", value: formatRupees(totalSalesToday), color: 'text-yellow-400', icon: '💰' },
-    { label: 'Job Stability', value: `${100 - (stats.failed_jobs > 0 ? 1 : 0)}%`, color: stats.failed_jobs > 0 ? 'text-red-400' : 'text-teal-500', icon: '⚡' },
+    { 
+      label: 'Financial Integrity', 
+      value: integrity?.is_sovereign ? 'Sovereign' : `Drift (${integrity?.drift_count})`, 
+      color: integrity?.is_sovereign ? 'text-teal-400' : 'text-red-400', 
+      icon: integrity?.is_sovereign ? '⚛️' : '⚠️' 
+    },
     { label: 'Grace Skips', value: stats.pending_skips, color: stats.pending_skips > 0 ? 'text-orange-400' : 'text-gray-500', icon: '⏭️' },
   ] : [];
 
@@ -28,11 +42,21 @@ export default function AdminDashboardPage() {
       <div className="flex items-center justify-between">
         <div className="space-y-1">
           <h1 className="text-2xl font-black t-text tracking-tight">System Sovereignty</h1>
-          <p className="text-xs t-text-muted">{new Date().toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long' })} · Operational Pulse</p>
+          <p className="text-xs t-text-muted">{currentTime.toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long' })} · Operational Pulse</p>
         </div>
-        <div className="flex gap-2">
-           <div className="w-2 h-2 rounded-full bg-teal-500 animate-pulse" />
-           <p className="text-[10px] uppercase font-black tracking-widest text-teal-500">Live Manifest Sync</p>
+        <div className="flex items-center gap-4">
+           {isFetching && (
+             <div className="flex gap-2 items-center px-3 py-1 bg-white/5 rounded-full border border-white/5 animate-pulse">
+                <div className="w-1.5 h-1.5 rounded-full bg-blue-400" />
+                <p className="text-[10px] uppercase font-black tracking-widest text-blue-400">Syncing Oracle...</p>
+             </div>
+           )}
+           <div className={`flex gap-2 items-center px-3 py-1 rounded-full border ${isBusinessHours ? 'bg-teal-500/10 border-teal-500/20' : 'bg-gray-500/10 border-gray-500/20'}`}>
+              <div className={`w-1.5 h-1.5 rounded-full ${isBusinessHours ? 'bg-teal-500 animate-pulse' : 'bg-gray-500'}`} />
+              <p className={`text-[10px] uppercase font-black tracking-widest ${isBusinessHours ? 'text-teal-500' : 'text-gray-500'}`}>
+                {isBusinessHours ? 'Live Manifest Sync' : 'Low-Power Mode'}
+              </p>
+           </div>
         </div>
       </div>
 
