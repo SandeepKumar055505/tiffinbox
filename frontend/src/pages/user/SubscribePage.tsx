@@ -27,19 +27,27 @@ interface PromoResult { code: string; description: string; discount_type: 'flat'
 type Step = 'setup' | 'grid' | 'checkout' | 'processing' | 'success';
 
 const PLAN_OPTIONS = [
-  { days: 1 as const, label: 'Single Ritual', desc: 'Try a gourmet meal', badge: null },
-  { days: 7 as const, label: 'Genesis Week', desc: 'Save up to ₹140', badge: null },
-  { days: 14 as const, label: 'Signature Evolution', desc: 'Save up to ₹280', badge: 'Popular' },
-  { days: 30 as const, label: 'Zenith Lifecycle', desc: 'The Diamond Standard', badge: 'Elite' },
+  { days: 1 as const, label: '1 Day', sub: 'Try it out', badge: null, saving: null },
+  { days: 7 as const, label: '1 Week', sub: '7 days', badge: null, saving: '₹140 off' },
+  { days: 14 as const, label: '2 Weeks', sub: '14 days', badge: 'Popular', saving: '₹280 off' },
+  { days: 30 as const, label: '1 Month', sub: '30 days', badge: 'Best value', saving: '₹840 off' },
 ];
 
 const PHASE_CONFIG = {
-  setup: { color: 'rgba(20, 184, 166, 0.12)', name: 'Ritual Step 1 of 3' },
-  grid: { color: 'rgba(249, 115, 22, 0.1)', name: 'Flavor Selection' },
-  checkout: { color: 'rgba(99, 102, 241, 0.12)', name: 'Final Manifest' },
-  processing: { color: 'rgba(20, 184, 166, 0.08)', name: 'Synchronizing' },
-  success: { color: 'rgba(20, 184, 166, 0.15)', name: 'Manifest Complete' },
+  setup: { color: 'rgba(20, 184, 166, 0.12)', name: 'Step 1 of 3' },
+  grid: { color: 'rgba(249, 115, 22, 0.1)', name: 'Step 2 of 3' },
+  checkout: { color: 'rgba(99, 102, 241, 0.12)', name: 'Step 3 of 3' },
+  processing: { color: 'rgba(20, 184, 166, 0.08)', name: 'Processing' },
+  success: { color: 'rgba(20, 184, 166, 0.15)', name: 'Confirmed' },
 };
+
+const PERSON_COLORS = [
+  'from-teal-400 to-cyan-500',
+  'from-violet-400 to-purple-500',
+  'from-rose-400 to-pink-500',
+  'from-amber-400 to-orange-500',
+  'from-blue-400 to-indigo-500',
+];
 
 const PATTERN_OPTIONS = [
   { value: 'full' as const, label: 'All 7 days' },
@@ -81,6 +89,7 @@ export default function SubscribePage() {
   const { data: persons = [] } = useQuery<Person[]>({ queryKey: ['persons'], queryFn: () => personsApi.list().then(r => r.data) });
   const { data: weekMenu = {} } = useQuery({ queryKey: ['menu-week'], queryFn: () => menuApi.week().then(r => r.data) });
   const { data: walletData } = useQuery({ queryKey: ['wallet-balance'], queryFn: () => walletApi.balance().then(r => r.data) });
+  const { data: streaks = [] } = useQuery({ queryKey: ['person-streaks'], queryFn: () => api.get('/streaks').then(r => r.data).catch(() => []), enabled: persons.length > 0 });
 
   // Project Diamond: Shadow Draft Sync
   const wizardState = { personId, planDays, pattern, startDate, days, selectedAddressId };
@@ -279,166 +288,198 @@ export default function SubscribePage() {
     const minDate = tomorrow.toISOString().split('T')[0];
 
     return (
-      <div className="bg-bg-primary text-text-primary p-4 sm:p-8 relative transition-all duration-[3000ms]" style={{ background: `radial-gradient(circle at top right, ${PHASE_CONFIG.setup.color}, transparent)` }}>
-        <div className="absolute top-0 left-0 w-full h-full pointer-events-none transition-opacity duration-[3000ms]">
+      <div className="min-h-screen bg-bg-primary text-text-primary p-4 sm:p-8 relative overflow-x-hidden transition-all duration-[3000ms]" style={{ background: `radial-gradient(circle at top right, ${PHASE_CONFIG.setup.color}, transparent)` }}>
+        <div className="absolute top-0 left-0 w-full h-full pointer-events-none">
           <div className="absolute top-[-15%] left-[-15%] w-[70rem] h-[70rem] bg-accent/5 blur-[250px] rounded-full animate-mesh" />
         </div>
 
-        <div className="max-w-xl mx-auto space-y-8 sm:space-y-15 relative z-10">
+        <div className="max-w-xl mx-auto space-y-10 relative z-10 pb-8">
           {renderHeader("Start your plan", "Tell us who's eating and when.", () => navigate('/'))}
+          <LiquidProgressBar currentStep={1} totalSteps={3} />
 
-          <LiquidProgressBar currentStep={1} totalSteps={3} />          <section className="space-y-4 animate-glass" style={{ animationDelay: '0.1s' }}>
-            <div className="flex items-center gap-5 px-1">
-              <h3 className="text-label-caps !text-[11px] !opacity-50 font-black uppercase tracking-widest whitespace-nowrap">Manifest Identity</h3>
+          {/* ── 01 Who is this for? ── */}
+          <section className="space-y-4 animate-glass" style={{ animationDelay: '0.08s' }}>
+            <div className="flex items-center gap-3">
+              <span className="text-[10px] font-black text-accent/35 tracking-[0.25em] tabular-nums shrink-0 select-none">01</span>
               <div className="h-px flex-1 bg-border/15" />
             </div>
-            {persons.length === 0 && (
-              <div className="surface-liquid p-8 text-center border border-dashed border-border/30 rounded-[2rem] opacity-60">
-                <p className="text-[14px] font-medium italic t-text-muted">You haven't initiated any family identities yet.</p>
-                <Link to="/profile" className="btn-ghost !text-accent font-black mt-5 !px-6 !py-2.5 text-[11px] uppercase tracking-widest bg-accent/5 rounded-xl">Initialize →</Link>
-              </div>
-            )}
-            <div className="grid grid-cols-1 gap-4">
-              {persons.map(p => {
-                const sel = personId === p.id;
-                return (
-                  <button
-                    key={p.id}
-                    onClick={() => { setPersonId(p.id); haptics.success(); }}
-                    className={`p-5 text-left transition-all duration-300 rounded-[1.8rem] relative overflow-hidden group
-                      ${sel
-                        ? 'surface-liquid ring-2 ring-accent/40 shadow-glow-subtle'
-                        : 'surface-glass ring-1 ring-border/15 hover:ring-border/30 backdrop-blur-md'}`}
-                  >
-                    {sel && <div className="absolute top-0 right-0 w-32 h-32 bg-accent/5 blur-3xl" />}
+            <div>
+              <h3 className="text-[18px] font-black t-text-primary leading-tight">Who is this for?</h3>
+              <p className="text-[12px] t-text-muted mt-1">Select the person receiving these meals</p>
+            </div>
 
-                    <div className="flex items-center gap-5 relative z-10">
-                      <div className={`w-14 h-14 rounded-[1.2rem] flex items-center justify-center text-[22px] font-black flex-shrink-0 transition-all duration-300
-                        ${sel ? 'bg-gradient-to-br from-teal-400 to-cyan-500 text-white shadow-lg scale-105' : 'bg-border/10 t-text-muted group-hover:bg-border/20'}`}>
-                        {p.name[0].toUpperCase()}
-                      </div>
-                      <div className="min-w-0 flex-1 space-y-1">
-                        <p className={`text-[17px] font-black tracking-tight leading-none transition-colors duration-300
-                          ${sel ? 't-text-primary' : 't-text-muted'}`}>
-                          {p.name}
-                        </p>
-                        <div className="flex items-center gap-2">
-                          <span className={`text-[9px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full
-                             ${p.dietary_tag === 'Veg' ? 'text-teal-400 bg-teal-500/10' : 'text-amber-400 bg-amber-500/10'}`}>
-                            {p.dietary_tag || 'Standard'}
-                          </span>
-                          {p.spice_level && (
-                            <span className="text-[9px] font-bold t-text-muted opacity-40 uppercase tracking-widest">
-                              {p.spice_level} Spice
+            {persons.length === 0 ? (
+              <div className="surface-glass rounded-[1.5rem] p-7 text-center border border-dashed border-border/20">
+                <div className="w-14 h-14 rounded-2xl bg-bg-subtle flex items-center justify-center mx-auto mb-4 text-2xl">👤</div>
+                <p className="text-[14px] font-bold t-text-primary">No family members yet</p>
+                <p className="text-[12px] t-text-muted mt-1 mb-5">Add a family member in your profile first</p>
+                <Link to="/profile" className="inline-flex items-center gap-2 text-[13px] font-bold text-accent bg-accent/10 px-5 py-2.5 rounded-xl hover:bg-accent/15 transition-colors">
+                  Add member →
+                </Link>
+              </div>
+            ) : (
+              <div className="grid gap-2.5">
+                {persons.map((p, idx) => {
+                  const sel = personId === p.id;
+                  const personStreak = (streaks as any[]).find((s: any) => s.person_id === p.id)?.current_streak ?? 0;
+                  const color = PERSON_COLORS[idx % PERSON_COLORS.length];
+                  return (
+                    <button
+                      key={p.id}
+                      onClick={() => { setPersonId(p.id); haptics.success(); }}
+                      className={`w-full p-4 text-left rounded-[1.5rem] transition-all duration-200 active:scale-[0.99]
+                        ${sel
+                          ? 'ring-2 ring-accent/50 bg-accent/[0.06] shadow-[0_0_20px_rgba(20,184,166,0.09)]'
+                          : 'ring-1 ring-border/20 bg-bg-card hover:bg-bg-subtle hover:ring-border/35'}`}
+                    >
+                      <div className="flex items-center gap-4">
+                        <div className={`w-12 h-12 rounded-[1rem] bg-gradient-to-br ${color} flex items-center justify-center text-white font-black text-[17px] flex-shrink-0 shadow-sm`}>
+                          {p.name[0].toUpperCase()}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className={`text-[15px] font-bold leading-tight transition-colors ${sel ? 't-text-primary' : 'text-text-secondary'}`}>
+                              {p.name}
                             </span>
+                            {personStreak >= 3 && (
+                              <span className="text-[10px] font-black text-orange-400 bg-orange-400/10 px-2 py-0.5 rounded-full leading-none">
+                                🔥 {personStreak}d streak
+                              </span>
+                            )}
+                          </div>
+                          <div className="flex items-center gap-2 mt-1.5 flex-wrap">
+                            <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full transition-colors
+                              ${p.dietary_tag === 'Veg'
+                                ? sel ? 'bg-teal-500/10 text-teal-500' : 'bg-bg-subtle text-teal-600/60'
+                                : sel ? 'bg-amber-500/10 text-amber-500' : 'bg-bg-subtle text-amber-600/60'}`}>
+                              {p.dietary_tag || 'All types'}
+                            </span>
+                            {p.spice_level && (
+                              <span className="text-[11px] t-text-muted opacity-40">
+                                {p.spice_level === 'mild' ? '🌶' : p.spice_level === 'medium' ? '🌶🌶' : '🌶🌶🌶'}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                        <div className={`w-6 h-6 rounded-full flex-shrink-0 flex items-center justify-center transition-all
+                          ${sel ? 'bg-gradient-to-br from-teal-400 to-cyan-400 shadow-sm' : 'border-2 border-border/25'}`}>
+                          {sel && (
+                            <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3.5}>
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                            </svg>
                           )}
                         </div>
                       </div>
-                      {sel && (
-                        <motion.div
-                          initial={{ scale: 0.8, opacity: 0 }}
-                          animate={{ scale: 1, opacity: 1 }}
-                          className="w-7 h-7 rounded-full bg-accent flex items-center justify-center flex-shrink-0 shadow-glow-subtle"
-                        >
-                          <svg className="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24"
-                            stroke="currentColor" strokeWidth={3.5}>
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                          </svg>
-                        </motion.div>
-                      )}
-                    </div>
-                  </button>
-                );
-              })}
-            </div>
+                    </button>
+                  );
+                })}
+              </div>
+            )}
           </section>
 
-
-          <section className="space-y-4 animate-glass" style={{ animationDelay: '0.15s' }}>
-            <div className="flex items-center gap-5 px-1">
-              <h3 className="text-label-caps !text-[11px] !opacity-50 font-black uppercase tracking-widest whitespace-nowrap">Plan Genesis</h3>
+          {/* ── 02 Plan length ── */}
+          <section className="space-y-4 animate-glass" style={{ animationDelay: '0.13s' }}>
+            <div className="flex items-center gap-3">
+              <span className="text-[10px] font-black text-accent/35 tracking-[0.25em] tabular-nums shrink-0 select-none">02</span>
               <div className="h-px flex-1 bg-border/15" />
             </div>
-            <div className="grid grid-cols-2 gap-3">
+            <div>
+              <h3 className="text-[18px] font-black t-text-primary leading-tight">How long?</h3>
+              <p className="text-[12px] t-text-muted mt-1">Longer plans save more every day</p>
+            </div>
+            <div className="grid grid-cols-2 gap-2.5">
               {PLAN_OPTIONS.map(opt => {
                 const selected = planDays === opt.days;
                 return (
                   <button
                     key={opt.days}
                     onClick={() => { setPlanDays(opt.days); if (opt.days === 1) setPattern('full'); haptics.success(); }}
-                    className={`py-5 px-4 text-left relative transition-all duration-300
-                      rounded-[1.8rem] active:scale-[0.97] group overflow-hidden
+                    className={`relative p-4 text-left rounded-[1.5rem] transition-all duration-200 active:scale-[0.97] overflow-hidden
                       ${selected
-                        ? 'surface-liquid ring-2 ring-accent/40 shadow-glow-subtle'
-                        : 'surface-glass ring-1 ring-border/15 hover:ring-border/30'}`}
+                        ? 'ring-2 ring-accent/50 bg-accent/[0.06] shadow-[0_0_20px_rgba(20,184,166,0.09)]'
+                        : 'ring-1 ring-border/20 bg-bg-card hover:bg-bg-subtle hover:ring-border/35'}`}
                   >
                     {opt.badge && (
-                      <span className={`absolute -top-1 -right-1
-                        bg-gradient-to-r ${opt.badge === 'Elite' ? 'from-indigo-500 to-violet-500' : 'from-teal-400 to-cyan-400'} 
-                        text-white text-[8px] font-black px-3 py-1 rounded-bl-xl uppercase tracking-[0.15em] shadow-sm z-20`}>
+                      <span className={`absolute top-0 right-0 text-[8px] font-black px-2.5 py-1 rounded-bl-xl rounded-tr-[1.5rem] uppercase tracking-wider
+                        ${opt.badge === 'Best value'
+                          ? 'bg-gradient-to-r from-violet-500 to-indigo-500 text-white'
+                          : 'bg-gradient-to-r from-teal-400 to-cyan-400 text-white'}`}>
                         {opt.badge}
                       </span>
                     )}
-
-                    <div className="relative z-10 space-y-2">
-                      <div className="flex items-center justify-between">
-                        <p className={`text-[18px] font-black leading-none transition-colors duration-300
-                           ${selected ? 't-text-primary' : 't-text-muted'}`}>
-                          {opt.label}
-                        </p>
-                        {selected && (
-                          <div className="w-5 h-5 rounded-full bg-accent flex items-center justify-center shadow-lg">
-                            <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24"
-                              stroke="currentColor" strokeWidth={4}>
-                              <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                            </svg>
-                          </div>
-                        )}
-                      </div>
-                      <p className={`text-[11px] font-bold leading-tight transition-colors duration-300
-                         ${selected ? 'text-accent' : 'opacity-40 t-text-muted'}`}>
-                        {opt.desc}
-                      </p>
+                    <div className={`text-[22px] font-black mb-0.5 transition-colors ${selected ? 'text-accent' : 't-text-primary'}`}>
+                      {opt.label}
                     </div>
+                    <div className={`text-[11px] font-medium transition-colors ${selected ? 'text-accent/60' : 't-text-muted opacity-50'}`}>
+                      {opt.sub}
+                    </div>
+                    {opt.saving && (
+                      <div className={`mt-2.5 text-[10px] font-black rounded-lg px-2 py-1 inline-block transition-colors
+                        ${selected ? 'bg-teal-500/10 text-teal-500' : 'bg-border/10 t-text-muted opacity-40'}`}>
+                        Save {opt.saving}
+                      </div>
+                    )}
+                    {selected && (
+                      <div className="absolute bottom-3.5 right-3.5 w-5 h-5 rounded-full bg-gradient-to-br from-teal-400 to-cyan-400 flex items-center justify-center shadow-sm">
+                        <svg className="w-2.5 h-2.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3.5}>
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                        </svg>
+                      </div>
+                    )}
                   </button>
                 );
               })}
             </div>
           </section>
 
+          {/* ── 03 Delivery schedule ── */}
           {planDays !== 1 && (
-            <section className="space-y-3 animate-glass" style={{ animationDelay: '0.2s' }}>
-              <div className="flex items-center gap-5 px-1">
-                <h3 className="text-label-caps !text-[11px] !opacity-50 font-semibold whitespace-nowrap">Delivery days</h3>
-                <div className="h-px flex-1 bg-border/20" />
+            <section className="space-y-4 animate-glass" style={{ animationDelay: '0.18s' }}>
+              <div className="flex items-center gap-3">
+                <span className="text-[10px] font-black text-accent/35 tracking-[0.25em] tabular-nums shrink-0 select-none">03</span>
+                <div className="h-px flex-1 bg-border/15" />
               </div>
-              <div className="grid grid-cols-3 gap-2 sm:gap-3">
-                {PATTERN_OPTIONS.map(opt => {
+              <div>
+                <h3 className="text-[18px] font-black t-text-primary leading-tight">Delivery schedule</h3>
+                <p className="text-[12px] t-text-muted mt-1">Which days do you want deliveries?</p>
+              </div>
+              <div className="grid gap-2">
+                {[
+                  { value: 'full' as const,     label: 'Every day',     days: ['M','T','W','T','F','S','S'], active: [1,1,1,1,1,1,1] },
+                  { value: 'no_sun' as const,   label: 'Skip Sunday',   days: ['M','T','W','T','F','S','S'], active: [1,1,1,1,1,1,0] },
+                  { value: 'weekdays' as const, label: 'Weekdays only', days: ['M','T','W','T','F','S','S'], active: [1,1,1,1,1,0,0] },
+                ].map(opt => {
                   const sel = pattern === opt.value;
                   return (
                     <button
                       key={opt.value}
                       onClick={() => { setPattern(opt.value); haptics.success(); }}
-                      className={`py-3 px-2 sm:p-4 transition-all duration-200 rounded-2xl relative
-                        flex flex-col items-center gap-2 sm:flex-row sm:justify-between sm:gap-3
+                      className={`flex items-center gap-4 p-3.5 rounded-[1.3rem] transition-all duration-200 text-left active:scale-[0.99]
                         ${sel
-                          ? 'ring-2 ring-accent/55 bg-accent/[0.08] shadow-[0_0_16px_rgba(20,184,166,0.12)]'
-                          : 'ring-1 ring-border bg-bg-card hover:bg-bg-subtle'}`}
+                          ? 'ring-2 ring-accent/50 bg-accent/[0.06]'
+                          : 'ring-1 ring-border/20 bg-bg-card hover:bg-bg-subtle'}`}
                     >
-                      <p className={`text-[9px] sm:text-[11px] font-semibold text-center sm:text-left leading-snug
-                        transition-colors duration-200
-                        ${sel ? 'text-accent' : 'text-text-muted'}`}>
+                      <div className="flex gap-1 flex-shrink-0">
+                        {opt.days.map((d, i) => (
+                          <div key={i} className={`w-[22px] h-[22px] rounded-md text-[8px] font-black flex items-center justify-center transition-colors
+                            ${opt.active[i]
+                              ? sel ? 'bg-accent text-white' : 'bg-bg-subtle t-text-primary'
+                              : 'bg-border/8 t-text-muted opacity-20'}`}>
+                            {d}
+                          </div>
+                        ))}
+                      </div>
+                      <span className={`text-[13px] font-bold flex-1 transition-colors ${sel ? 'text-accent' : 't-text-muted'}`}>
                         {opt.label}
-                      </p>
-                      {sel && (
-                        <span className="w-4 h-4 rounded-full bg-gradient-to-br from-teal-400 to-cyan-400
-                          flex items-center justify-center flex-shrink-0">
-                          <svg className="w-2.5 h-2.5 text-white" fill="none" viewBox="0 0 24 24"
-                            stroke="currentColor" strokeWidth={3}>
+                      </span>
+                      <div className={`w-5 h-5 rounded-full flex-shrink-0 flex items-center justify-center transition-all
+                        ${sel ? 'bg-gradient-to-br from-teal-400 to-cyan-400' : 'border-2 border-border/25'}`}>
+                        {sel && (
+                          <svg className="w-2.5 h-2.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3.5}>
                             <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
                           </svg>
-                        </span>
-                      )}
+                        )}
+                      </div>
                     </button>
                   );
                 })}
@@ -446,87 +487,115 @@ export default function SubscribePage() {
             </section>
           )}
 
-          <section className="space-y-4 animate-glass" style={{ animationDelay: '0.25s' }}>
-            <div className="flex items-center gap-5 px-1">
-              <h3 className="text-label-caps !text-[11px] !opacity-50 font-black uppercase tracking-widest whitespace-nowrap">Temporal Anchor</h3>
+          {/* ── 03/04 Start date ── */}
+          <section className="space-y-4 animate-glass" style={{ animationDelay: '0.22s' }}>
+            <div className="flex items-center gap-3">
+              <span className="text-[10px] font-black text-accent/35 tracking-[0.25em] tabular-nums shrink-0 select-none">
+                {planDays === 1 ? '03' : '04'}
+              </span>
               <div className="h-px flex-1 bg-border/15" />
             </div>
-            <div className="surface-liquid rounded-[2rem] p-6 ring-1 ring-border/15 space-y-4 shadow-elite">
-              <div className="flex items-center gap-4">
-                <div className="w-10 h-10 rounded-xl bg-accent/10 flex items-center justify-center flex-shrink-0 text-[18px]">
-                  ⏳
-                </div>
-                <div className="flex-1">
-                  <p className="text-[13px] font-black t-text-primary leading-tight">Artisanal Preparation</p>
-                  <p className="text-[10px] t-text-muted font-medium mt-0.5">We require a 12h temporal window to craft your meals.</p>
-                </div>
-              </div>
-              <input
-                type="date"
-                min={minDate}
-                value={startDate}
-                onChange={e => setStartDate(e.target.value)}
-                className="w-full bg-border/5 border border-border/20 px-6 py-4 rounded-[1.2rem] t-text-primary text-[24px] font-black tracking-tighter focus:outline-none focus:ring-2 focus:ring-accent/40 transition-all tabular-nums"
-              />
+            <div>
+              <h3 className="text-[18px] font-black t-text-primary leading-tight">When should we start?</h3>
+              <p className="text-[12px] t-text-muted mt-1">First delivery on the date you choose</p>
             </div>
+            <input
+              type="date"
+              min={minDate}
+              value={startDate}
+              onChange={e => setStartDate(e.target.value)}
+              className="w-full bg-bg-card ring-1 ring-border/25 hover:ring-border/40 px-5 py-4 rounded-[1.3rem] t-text-primary text-[20px] font-bold tracking-tight focus:outline-none focus:ring-2 focus:ring-accent/40 transition-all"
+            />
           </section>
 
-          <section className="space-y-4 animate-glass" style={{ animationDelay: '0.28s' }}>
-            <div className="flex items-center gap-5 px-1">
-              <h3 className="text-label-caps !text-[11px] !opacity-50 font-black uppercase tracking-widest whitespace-nowrap">Logistic Anchor</h3>
+          {/* ── 04/05 Deliver to ── */}
+          <section className="space-y-4 animate-glass" style={{ animationDelay: '0.26s' }}>
+            <div className="flex items-center gap-3">
+              <span className="text-[10px] font-black text-accent/35 tracking-[0.25em] tabular-nums shrink-0 select-none">
+                {planDays === 1 ? '04' : '05'}
+              </span>
               <div className="h-px flex-1 bg-border/15" />
             </div>
-            <div className="grid grid-cols-1 gap-4">
-              {addresses.map((addr: any) => {
-                const sel = selectedAddressId === addr.id;
-                return (
-                  <button
-                    key={addr.id}
-                    onClick={() => { setSelectedAddressId(addr.id); haptics.success(); }}
-                    className={`p-5 text-left transition-all duration-300 rounded-[1.8rem] relative overflow-hidden group
-                      ${sel
-                        ? 'surface-liquid ring-2 ring-accent/40 shadow-glow-subtle'
-                        : 'surface-glass ring-1 ring-border/15 hover:ring-border/30'}`}
-                  >
-                    <div className="flex items-center gap-5 relative z-10">
-                      <div className={`w-12 h-12 rounded-[1rem] flex items-center justify-center text-[20px] flex-shrink-0 transition-all duration-300
-                        ${sel ? 'bg-accent/15 scale-105' : 'bg-border/10 opacity-30 group-hover:bg-border/20'}`}>
-                        📍
+            <div className="flex items-end justify-between">
+              <div>
+                <h3 className="text-[18px] font-black t-text-primary leading-tight">Deliver to</h3>
+                <p className="text-[12px] t-text-muted mt-1">Where should we drop off your meals?</p>
+              </div>
+              {addresses.length > 0 && (
+                <Link to="/profile" className="text-[11px] font-bold text-accent/60 hover:text-accent transition-colors mb-1">
+                  Manage →
+                </Link>
+              )}
+            </div>
+
+            {addresses.length === 0 ? (
+              <div className="surface-glass rounded-[1.5rem] p-6 text-center border border-dashed border-border/20">
+                <div className="text-2xl mb-3">📍</div>
+                <p className="text-[13px] font-bold t-text-primary">No delivery addresses saved</p>
+                <p className="text-[11px] t-text-muted mt-1 mb-4">Add an address in your profile to continue</p>
+                <Link to="/profile" className="inline-flex items-center gap-2 text-[12px] font-bold text-accent bg-accent/10 px-4 py-2 rounded-xl hover:bg-accent/15 transition-colors">
+                  Add address →
+                </Link>
+              </div>
+            ) : (
+              <div className="grid gap-2.5">
+                {addresses.map((addr: any) => {
+                  const sel = selectedAddressId === addr.id;
+                  const addrLabel = (addr.label ?? '').toLowerCase();
+                  const icon = addrLabel.includes('home') ? '🏠' : addrLabel.includes('office') || addrLabel.includes('work') ? '🏢' : '📍';
+                  return (
+                    <button
+                      key={addr.id}
+                      onClick={() => { setSelectedAddressId(addr.id); haptics.success(); }}
+                      className={`flex items-center gap-4 p-4 rounded-[1.3rem] text-left transition-all duration-200 active:scale-[0.99]
+                        ${sel
+                          ? 'ring-2 ring-accent/50 bg-accent/[0.06] shadow-[0_0_16px_rgba(20,184,166,0.08)]'
+                          : 'ring-1 ring-border/20 bg-bg-card hover:bg-bg-subtle hover:ring-border/35'}`}
+                    >
+                      <div className={`w-11 h-11 rounded-xl flex items-center justify-center text-[18px] flex-shrink-0 transition-colors
+                        ${sel ? 'bg-accent/10' : 'bg-bg-subtle'}`}>
+                        {icon}
                       </div>
                       <div className="flex-1 min-w-0">
-                        <p className={`text-[16px] font-black tracking-tight leading-none mb-1 transition-colors duration-300
-                          ${sel ? 't-text-primary' : 't-text-muted'}`}>
+                        <p className={`text-[14px] font-bold truncate transition-colors ${sel ? 't-text-primary' : 'text-text-secondary'}`}>
                           {addr.label}
                         </p>
-                        <p className={`text-[11px] font-medium truncate opacity-40 transition-opacity
-                          ${sel ? 'opacity-70' : ''}`}>{addr.address}</p>
+                        <p className="text-[11px] t-text-muted truncate opacity-55 mt-0.5">{addr.address}</p>
                       </div>
-                      {sel && (
-                        <motion.div
-                          initial={{ scale: 0.8, opacity: 0 }}
-                          animate={{ scale: 1, opacity: 1 }}
-                          className="w-6 h-6 rounded-full bg-accent flex items-center justify-center flex-shrink-0"
-                        >
-                          <svg className="w-3.5 h-3.5 text-white" fill="none" viewBox="0 0 24 24"
-                            stroke="currentColor" strokeWidth={4}>
+                      <div className={`w-6 h-6 rounded-full flex-shrink-0 flex items-center justify-center transition-all
+                        ${sel ? 'bg-gradient-to-br from-teal-400 to-cyan-400 shadow-sm' : 'border-2 border-border/25'}`}>
+                        {sel && (
+                          <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3.5}>
                             <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
                           </svg>
-                        </motion.div>
-                      )}
-                    </div>
-                  </button>
-                );
-              })}
-            </div>
+                        )}
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            )}
           </section>
 
-          <button
-            onClick={() => { setStep('grid'); haptics.confirm(); }}
-            disabled={!personId || !selectedAddressId}
-            className="btn-primary w-full !py-5 !text-[15px] !rounded-2xl shadow-glow-subtle font-bold"
-          >
-            Choose meals →
-          </button>
+          {/* ── CTA ── */}
+          <div className="space-y-3 animate-glass" style={{ animationDelay: '0.30s' }}>
+            {(!personId || !selectedAddressId) && (
+              <p className="text-[12px] t-text-muted text-center opacity-60">
+                {!personId && !selectedAddressId
+                  ? 'Select a person and a delivery address to continue'
+                  : !personId
+                    ? 'Select who is eating to continue'
+                    : 'Select a delivery address to continue'}
+              </p>
+            )}
+            <button
+              onClick={() => { setStep('grid'); haptics.confirm(); }}
+              disabled={!personId || !selectedAddressId}
+              className="btn-primary w-full !py-5 !text-[16px] !rounded-[1.4rem] shadow-glow-subtle font-bold disabled:opacity-40 active:scale-[0.99] transition-all"
+            >
+              Choose meals →
+            </button>
+          </div>
         </div>
       </div>
     );

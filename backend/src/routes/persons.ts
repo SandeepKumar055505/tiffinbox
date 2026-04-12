@@ -45,12 +45,16 @@ router.patch('/:id', requireUser, validate(personSchema.partial()), async (req, 
     .update(req.body)
     .returning('*');
 
-  const { emitEvent, DomainEvent } = await import('../jobs/events');
-  emitEvent(DomainEvent.PERSON_UPDATED, { person_id: updated.id }).catch(err => {
-    console.error('[person.updated] Event manifestation drift:', err);
-  });
-
+  // Respond immediately — do not await event emission (prevents Render cold-start hangs)
   res.json(updated);
+
+  import('../jobs/events').then(({ emitEvent, DomainEvent }) => {
+    emitEvent(DomainEvent.PERSON_UPDATED, { person_id: updated.id }).catch(err => {
+      console.error('[person.updated] Event manifestation drift:', err);
+    });
+  }).catch(err => {
+    console.error('[person.updated] Event module import failed:', err);
+  });
 });
 
 router.delete('/:id', requireUser, async (req, res) => {
