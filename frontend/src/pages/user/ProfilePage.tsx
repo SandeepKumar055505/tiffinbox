@@ -148,7 +148,19 @@ export default function ProfilePage() {
             <h1 className="text-h1 !text-[34px] font-extrabold tracking-tight">Account</h1>
             <p className="text-[10px] font-black uppercase tracking-widest opacity-40">TiffinBox v1.0.4</p>
           </div>
-          <button onClick={logout} className="text-red-500 font-black text-[10px] uppercase tracking-[0.2em] bg-red-500/5 px-6 py-2.5 rounded-2xl mb-1 hover:bg-red-500/10 transition-all active:scale-95 shadow-glow-rose/10">
+          <button 
+            onClick={async () => {
+              if (await sensorial.confirm({
+                title: 'Exit Portal?',
+                message: 'Are you sure you want to conclude this session and leave the Diamond Circle?',
+                confirmText: 'Exit Now',
+                type: 'danger'
+              })) {
+                logout();
+              }
+            }} 
+            className="text-red-500 font-black text-[10px] uppercase tracking-[0.2em] bg-red-500/5 px-6 py-2.5 rounded-2xl mb-1 hover:bg-red-500/10 transition-all active:scale-95 shadow-glow-rose/10"
+          >
             Exit Portal
           </button>
         </header>
