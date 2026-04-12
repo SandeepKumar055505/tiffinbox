@@ -97,7 +97,7 @@ router.post('/google', validate(z.object({
     });
     res.status(400).json({ 
       error: 'Google authentication failed',
-      reason: err.message, // Diagnostic Unmasking
+      reason: env.NODE_ENV === 'production' ? 'Technical mismatch' : err.message,
       requestId: res.getHeader('X-Request-ID')
     });
   }
