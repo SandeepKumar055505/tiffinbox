@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ChevronDown } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
@@ -35,30 +35,77 @@ export default function ProfilePage() {
   const { user, logout, refresh } = useAuth();
   const { showToast } = useToast();
   const sensorial = useSensorial();
+  const navigate = useNavigate();
   const qc = useQueryClient();
   
   const [form, setForm] = useState<IPersonForm>(BLANK);
   const [editing, setEditing] = useState<number | null>(null);
   const [showForm, setShowForm] = useState(false);
-  const [addressEdit, setAddressEdit] = useState(false);
-  const [addressVal, setAddressVal] = useState(user?.delivery_address ?? '');
   const [showLegal, setShowLegal] = useState(false);
 
-  // Profile Health Logic
-  const healthScore = useMemo(() => {
-    let score = 20; // Base for Google Login
-    if (user?.phone_verified) score += 30;
-    if (user?.delivery_address) score += 30;
-    if (user?.referral_code) score += 20;
-    return score;
-  }, [user]);
+  // Profile Setup steps + health score
+  const setupSteps = useMemo(() => [
+    {
+      id: 'account',
+      emoji: '✦',
+      title: 'Account created',
+      desc: user?.email ?? 'Signed in with Google',
+      done: true,
+      points: 20,
+      action: null as null | (() => void),
+      actionLabel: '',
+    },
+    {
+      id: 'phone',
+      emoji: '📱',
+      title: 'Phone number',
+      desc: user?.phone_verified ? (user?.phone ?? 'Verified') : 'Add for delivery OTP & alerts',
+      done: !!user?.phone_verified,
+      points: 30,
+      action: () => navigate('/onboarding/phone'),
+      actionLabel: user?.phone ? 'Verify' : 'Add',
+    },
+    {
+      id: 'address',
+      emoji: '📍',
+      title: 'Delivery address',
+      desc: user?.delivery_address ? 'Drop-off saved' : 'Where should we deliver?',
+      done: !!user?.delivery_address,
+      points: 30,
+      action: () => {
+        document.getElementById('address-vault')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      },
+      actionLabel: 'Add',
+    },
+    {
+      id: 'referral',
+      emoji: '🎁',
+      title: 'Referral code',
+      desc: user?.referral_code ? `Code: ${user.referral_code}` : 'Auto-assigned on signup',
+      done: !!user?.referral_code,
+      points: 20,
+      action: null as null | (() => void),
+      actionLabel: '',
+    },
+  ], [user, navigate]);
+
+  const healthScore = useMemo(() =>
+    setupSteps.reduce((acc, s) => acc + (s.done ? s.points : 0), 0),
+  [setupSteps]);
+
+  const completedCount = setupSteps.filter(s => s.done).length;
+  const totalPoints = setupSteps.reduce((acc, s) => acc + s.points, 0);
+
+  // SVG ring params
+  const RING_RADIUS = 32;
+  const RING_CIRCUMFERENCE = 2 * Math.PI * RING_RADIUS;
+  const ringDashOffset = RING_CIRCUMFERENCE - (healthScore / totalPoints) * RING_CIRCUMFERENCE;
 
   const updateProfile = useMutation({
     mutationFn: (data: { wallet_auto_apply?: boolean; delivery_address?: string; notification_mutes?: string[] }) =>
       authApi.updateProfile(data),
     onSuccess: () => {
       refresh();
-      setAddressEdit(false);
       showToast('Address updated!');
     },
     onError: (err: any) => {
@@ -114,7 +161,20 @@ export default function ProfilePage() {
     enabled: persons.length > 0,
   });
 
+  const { data: allSubs = [] } = useQuery({
+    queryKey: ['user-subscriptions'],
+    queryFn: () => api.get('/subscriptions').then(r => r.data).catch(() => []),
+  });
+
   const bestStreak = (streaks as any[]).reduce((max: number, s: any) => Math.max(max, s.current_streak ?? 0), 0);
+  const activeSubsCount = (allSubs as any[]).filter((s: any) => s.state === 'active').length;
+  const bestStreakPerson = useMemo(() => {
+    const top = (streaks as any[]).reduce((best: any, s: any) =>
+      (s.current_streak ?? 0) > (best?.current_streak ?? 0) ? s : best, null);
+    if (!top) return null;
+    const p = persons.find(p => p.id === top.person_id);
+    return { streak: top.current_streak as number, name: p?.name ?? '' };
+  }, [streaks, persons]);
 
   const create = useMutation({
     mutationFn: () => personsApi.create(form),
@@ -170,84 +230,325 @@ export default function ProfilePage() {
           </button>
         </header>
 
-        {/* Profile Health Overhaul (Diamond Zenith) */}
-        <div className={`relative p-8 rounded-[2.5rem] border border-white/5 space-y-4 shadow-elite overflow-hidden transition-all duration-700 ${healthScore === 100 ? 'holographic-card ring-2 ring-accent/30' : 'surface-liquid'}`}>
-          {healthScore === 100 && (
-            <div className="absolute -top-4 -right-4 z-20 scale-75 sm:scale-100">
-               <DiamondBadge />
+        {/* Profile Setup Card */}
+        <div className={`relative rounded-[2rem] overflow-hidden transition-all duration-700 shadow-elite
+          ${healthScore === totalPoints ? 'holographic-card ring-2 ring-accent/30' : 'surface-liquid ring-1 ring-border/15'}`}>
+
+          {/* Top summary row */}
+          <div className="flex items-center gap-5 p-6 pb-4">
+            {/* Circular ring */}
+            <div className="relative flex-shrink-0 w-[76px] h-[76px]">
+              <svg width="76" height="76" viewBox="0 0 76 76" className="-rotate-90" aria-hidden="true">
+                <defs>
+                  <linearGradient id="profileRingGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                    <stop offset="0%" stopColor="#2dd4bf" />
+                    <stop offset="100%" stopColor="#22d3ee" />
+                  </linearGradient>
+                </defs>
+                {/* Track */}
+                <circle cx="38" cy="38" r={RING_RADIUS} fill="none"
+                  strokeWidth="4.5" stroke="currentColor" className="text-border/20" />
+                {/* Progress arc */}
+                <circle cx="38" cy="38" r={RING_RADIUS} fill="none"
+                  strokeWidth="4.5" stroke="url(#profileRingGrad)"
+                  strokeLinecap="round"
+                  strokeDasharray={RING_CIRCUMFERENCE}
+                  strokeDashoffset={ringDashOffset}
+                  style={{ transition: 'stroke-dashoffset 1.4s cubic-bezier(0.32,0.72,0,1)' }}
+                />
+              </svg>
+              {/* Score inside */}
+              <div className="absolute inset-0 flex flex-col items-center justify-center">
+                <span className="text-[17px] font-black leading-none text-accent tabular-nums">
+                  {completedCount}/{setupSteps.length}
+                </span>
+                <span className="text-[7px] font-bold uppercase tracking-wide t-text-muted mt-0.5">done</span>
+              </div>
             </div>
-          )}
-          
-          <div className="flex justify-between items-center px-1 relative z-10">
-            <p className="text-[10px] font-black uppercase tracking-[0.2em] opacity-40">Profile Health</p>
-            <p className={`text-[11px] font-black uppercase tracking-widest ${healthScore === 100 ? 'text-teal-500 font-black' : 'text-accent'}`}>
-              {healthScore === 100 ? '✨ Diamond Certified' : `${healthScore}% Complete`}
-            </p>
-          </div>
-          
-          <div className="h-4 w-full bg-white/5 rounded-full overflow-hidden relative z-10 p-1">
-            <div 
-              className={`h-full rounded-full transition-all duration-[1.5s] ease-out shadow-glow-accent ${healthScore === 100 ? 'status-mercury' : 'bg-accent'}`}
-              style={{ width: `${healthScore}%` }}
-            />
-          </div>
-          
-          <div className="relative z-10">
-            {healthScore < 100 ? (
-              <p className="text-[10px] opacity-40 font-bold italic px-1">
-                ✨ {healthScore < 50 ? 'Add a phone number to reach 50%' : 'Complete your delivery address to hit 100%!'}
-              </p>
-            ) : (
-              <div className="pt-2 animate-in fade-in slide-in-from-bottom-1 duration-1000">
-                <p className="text-[11px] font-black uppercase tracking-widest text-teal-500/80">Sovereign Identity Secured</p>
-                <p className="text-[10px] opacity-40 font-medium leading-relaxed mt-1">
-                  Your gourmet presence is optimized for the Diamond Circle. Seamless deliveries unlocked.
-                </p>
+
+            {/* Title + status */}
+            <div className="flex-1 min-w-0">
+              <p className="text-[9px] font-black uppercase tracking-[0.22em] t-text-muted mb-1.5">Account Setup</p>
+              {healthScore === totalPoints ? (
+                <>
+                  <p className="text-[19px] font-black leading-tight t-text-primary">Diamond Certified</p>
+                  <p className="text-[11px] t-text-muted mt-1 leading-snug">
+                    All steps complete — priority delivery active.
+                  </p>
+                </>
+              ) : (
+                <>
+                  <p className="text-[19px] font-black leading-tight t-text-primary">
+                    {healthScore}% complete
+                  </p>
+                  <p className="text-[11px] t-text-muted mt-1 leading-snug">
+                    {totalPoints - healthScore} pts left to reach Diamond.
+                  </p>
+                </>
+              )}
+            </div>
+
+            {/* Diamond badge — inline when certified */}
+            {healthScore === totalPoints && (
+              <div className="flex-shrink-0 scale-75 origin-right">
+                <DiamondBadge />
               </div>
             )}
           </div>
+
+          {/* Divider */}
+          <div className="mx-5 h-px bg-border/15" />
+
+          {/* Step list */}
+          <div className="px-3 py-3 space-y-0.5">
+            {setupSteps.map((step, idx) => {
+              // "next" = first incomplete step where all previous are done
+              const isNext = !step.done && setupSteps.slice(0, idx).every(s => s.done);
+              const isLocked = !step.done && !isNext;
+
+              const rowContent = (
+                <div className={`flex items-center gap-3.5 px-3 py-3 rounded-[1.2rem] transition-all duration-200
+                  ${isNext ? 'bg-accent/[0.07]' : ''}`}>
+
+                  {/* Status icon */}
+                  <div className={`w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 transition-all duration-300
+                    ${step.done ? 'bg-teal-500/15' : isNext ? 'bg-accent/10' : 'bg-border/10'}`}>
+                    {step.done ? (
+                      <svg className="w-4 h-4 text-teal-400" fill="none" viewBox="0 0 24 24"
+                        stroke="currentColor" strokeWidth={2.8}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                      </svg>
+                    ) : (
+                      <span className={`text-[15px] leading-none ${isLocked ? 'grayscale opacity-30' : ''}`}>
+                        {step.emoji}
+                      </span>
+                    )}
+                  </div>
+
+                  {/* Text */}
+                  <div className="flex-1 min-w-0">
+                    <p className={`text-[13px] font-bold leading-tight truncate transition-colors
+                      ${step.done ? 'opacity-55' : isNext ? 't-text-primary' : 'opacity-30'}`}>
+                      {step.title}
+                    </p>
+                    <p className={`text-[10px] mt-0.5 truncate leading-tight transition-colors
+                      ${step.done ? 'text-teal-500/55' : isNext ? 't-text-muted' : 'opacity-20'}`}>
+                      {step.desc}
+                    </p>
+                  </div>
+
+                  {/* Right side: pts badge or action */}
+                  <div className="flex-shrink-0">
+                    {step.done ? (
+                      <span className="text-[9px] font-black text-teal-400/70 bg-teal-500/10
+                        px-2.5 py-1 rounded-lg tabular-nums">
+                        +{step.points}
+                      </span>
+                    ) : isNext && step.action ? (
+                      <span className="flex items-center gap-0.5 text-[11px] font-black text-accent">
+                        {step.actionLabel}
+                        <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24"
+                          stroke="currentColor" strokeWidth={2.5}>
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+                        </svg>
+                      </span>
+                    ) : (
+                      <span className="text-[9px] font-black opacity-20 tabular-nums">+{step.points}</span>
+                    )}
+                  </div>
+                </div>
+              );
+
+              // Wrap with action if it's the next actionable step
+              if (isNext && step.action) {
+                return (
+                  <button key={step.id} onClick={() => { haptics.light(); step.action!(); }}
+                    className="w-full text-left active:scale-[0.98] transition-transform">
+                    {rowContent}
+                  </button>
+                );
+              }
+              return <div key={step.id}>{rowContent}</div>;
+            })}
+          </div>
+
+          {/* Bottom padding */}
+          <div className="h-2" />
         </div>
 
-        {/* User Profile (Apple Music / iOS Style) */}
+        {/* User Identity Card */}
         <section className="animate-glass">
-          <div className="flex items-center gap-5 py-4 px-2 mb-4">
-            {user?.avatar_url ? (
-              <img src={user.avatar_url} className="w-20 h-20 rounded-[1.5rem] object-cover shadow-2xl border-2 border-white/10" alt="" />
-            ) : (
-              <div className="w-20 h-20 rounded-[1.5rem] bg-accent/10 flex items-center justify-center text-accent font-black text-3xl shadow-glow-subtle border border-accent/20">
-                {user?.name?.[0]?.toUpperCase()}
+          <div className="surface-liquid ring-1 ring-border/15 rounded-[2rem] overflow-hidden shadow-elite">
+
+            {/* Identity header */}
+            <div className="flex items-center gap-4 p-5 pb-4">
+              {/* Avatar with conditional ring */}
+              <div className="relative flex-shrink-0">
+                <div className={`w-[70px] h-[70px] rounded-[1.2rem] overflow-hidden ring-2 shadow-lg transition-all duration-700
+                  ${healthScore === totalPoints
+                    ? 'ring-teal-400/50 shadow-teal-500/20'
+                    : bestStreak >= 7
+                      ? 'ring-amber-400/40 shadow-amber-500/10'
+                      : 'ring-border/25'}`}>
+                  {user?.avatar_url ? (
+                    <img src={user.avatar_url} className="w-full h-full object-cover" alt="" />
+                  ) : (
+                    <div className="w-full h-full bg-gradient-to-br from-accent/25 to-teal-500/15
+                      flex items-center justify-center">
+                      <span className="text-[26px] font-black text-accent leading-none">
+                        {user?.name?.[0]?.toUpperCase()}
+                      </span>
+                    </div>
+                  )}
+                </div>
+                {/* Streak fire indicator */}
+                {bestStreak >= 7 && (
+                  <div className="absolute -bottom-1.5 -right-1.5 w-[22px] h-[22px] rounded-full
+                    bg-amber-500 flex items-center justify-center shadow-lg text-[10px] leading-none">
+                    🔥
+                  </div>
+                )}
               </div>
-            )}
-            <div className="flex-1 min-w-0">
-              <p className="text-2xl font-black truncate tracking-tight">{user?.name}</p>
-              <p className="text-sm opacity-50 font-medium truncate mt-0.5">{user?.email}</p>
+
+              {/* Name + email + micro-badges */}
+              <div className="flex-1 min-w-0 space-y-1">
+                <div className="flex items-center gap-2">
+                  <p className="text-[21px] font-black tracking-tight t-text-primary leading-none truncate">
+                    {user?.name}
+                  </p>
+                  {healthScore === totalPoints && (
+                    <span className="flex-shrink-0 text-[8px] font-black text-teal-400 bg-teal-500/10
+                      px-2 py-0.5 rounded-full uppercase tracking-wider">
+                      Diamond
+                    </span>
+                  )}
+                </div>
+                <p className="text-[11px] t-text-muted font-medium truncate">{user?.email}</p>
+                <div className="flex items-center gap-1.5 flex-wrap pt-0.5">
+                  {user?.phone_verified ? (
+                    <span className="flex items-center gap-1 text-[9px] font-bold text-teal-400/80
+                      bg-teal-500/10 px-2 py-0.5 rounded-full">
+                      <svg className="w-2.5 h-2.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                      </svg>
+                      Phone verified
+                    </span>
+                  ) : (
+                    <Link to="/onboarding/phone"
+                      className="text-[9px] font-bold text-amber-400/70 bg-amber-500/10
+                        px-2 py-0.5 rounded-full hover:bg-amber-500/20 transition-colors">
+                      Verify phone →
+                    </Link>
+                  )}
+                  {persons.length > 0 && (
+                    <span className="text-[9px] font-bold t-text-muted opacity-40
+                      bg-border/20 px-2 py-0.5 rounded-full">
+                      {persons.length === 1 ? '1 member' : `Family · ${persons.length + 1}`}
+                    </span>
+                  )}
+                </div>
+              </div>
             </div>
-          </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
-            {/* Wallet Balance Integration */}
-            <Link to="/wallet" className="surface-glass p-5 rounded-3xl border border-white/5 flex items-center justify-between group hover:bg-bg-secondary/40 transition-all duration-300">
-              <div className="flex items-center gap-4">
-                <div className="w-10 h-10 rounded-xl bg-teal-500/10 flex items-center justify-center text-xl group-hover:scale-110 transition-transform">
-                  💳
+            {/* Divider */}
+            <div className="mx-4 h-px bg-border/12" />
+
+            {/* 4-stat grid — 2×2, divided by border */}
+            <div className="grid grid-cols-2 divide-x divide-y divide-border/10">
+
+              {/* Wallet */}
+              <Link to="/wallet"
+                className="flex items-center gap-3 p-4 hover:bg-bg-subtle/50 transition-colors group active:scale-[0.98]">
+                <div className="w-9 h-9 rounded-xl bg-teal-500/10 flex items-center justify-center flex-shrink-0
+                  group-hover:scale-105 transition-transform">
+                  <svg className="w-[17px] h-[17px] text-teal-400" fill="none" viewBox="0 0 24 24"
+                    stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round"
+                      d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
+                  </svg>
                 </div>
-                <div>
-                  <p className="text-[10px] uppercase font-black tracking-widest opacity-40">Wallet</p>
-                  <p className="text-xl font-black text-teal-500">{formatRupees(walletData?.balance || 0)}</p>
+                <div className="min-w-0 flex-1">
+                  <p className="text-[8.5px] font-black uppercase tracking-wider t-text-muted opacity-45 mb-0.5">Wallet</p>
+                  <p className="text-[15px] font-black text-teal-400 tabular-nums leading-tight truncate">
+                    {formatRupees(walletData?.balance || 0)}
+                  </p>
+                  <p className="text-[8px] t-text-muted opacity-30 font-medium mt-0.5">
+                    {user?.wallet_auto_apply ? 'Auto-apply on' : 'Tap to manage'}
+                  </p>
+                </div>
+                <svg className="w-3 h-3 t-text-muted opacity-20 group-hover:opacity-50 flex-shrink-0 transition-opacity"
+                  fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+                </svg>
+              </Link>
+
+              {/* Streak */}
+              <div className="flex items-center gap-3 p-4">
+                <div className="w-9 h-9 rounded-xl bg-amber-500/10 flex items-center justify-center flex-shrink-0 text-[16px] leading-none">
+                  🔥
+                </div>
+                <div className="min-w-0">
+                  <p className="text-[8.5px] font-black uppercase tracking-wider t-text-muted opacity-45 mb-0.5">Best Streak</p>
+                  <p className="text-[15px] font-black text-amber-400 tabular-nums leading-tight">
+                    {bestStreak}
+                    <span className="text-[10px] font-bold opacity-60 ml-0.5">
+                      {bestStreak === 1 ? 'day' : 'days'}
+                    </span>
+                  </p>
+                  <p className="text-[8px] t-text-muted opacity-30 font-medium mt-0.5 truncate">
+                    {bestStreakPerson?.name ? `${bestStreakPerson.name}'s streak` : 'Keep it going!'}
+                  </p>
                 </div>
               </div>
-            </Link>
 
-            <div className="surface-glass p-5 rounded-3xl border border-white/5 flex items-center justify-between">
-              <div className="flex items-center gap-4">
-                <div className="w-10 h-10 rounded-xl bg-accent/10 flex items-center justify-center text-xl">
-                  🚀
+              {/* Active plans */}
+              <Link to="/"
+                className="flex items-center gap-3 p-4 hover:bg-bg-subtle/50 transition-colors group active:scale-[0.98]">
+                <div className="w-9 h-9 rounded-xl bg-indigo-500/10 flex items-center justify-center flex-shrink-0
+                  group-hover:scale-105 transition-transform">
+                  <svg className="w-[17px] h-[17px] text-indigo-400" fill="none" viewBox="0 0 24 24"
+                    stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round"
+                      d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                  </svg>
                 </div>
-                <div>
-                  <p className="text-[10px] uppercase font-black tracking-widest opacity-40">Streak</p>
-                  <p className="text-xl font-black text-accent">{bestStreak} {bestStreak === 1 ? 'Day' : 'Days'}</p>
+                <div className="min-w-0 flex-1">
+                  <p className="text-[8.5px] font-black uppercase tracking-wider t-text-muted opacity-45 mb-0.5">Active Plans</p>
+                  <p className="text-[15px] font-black text-indigo-400 tabular-nums leading-tight">
+                    {activeSubsCount}
+                    <span className="text-[10px] font-bold opacity-60 ml-0.5">
+                      {activeSubsCount === 1 ? 'plan' : 'plans'}
+                    </span>
+                  </p>
+                  <p className="text-[8px] t-text-muted opacity-30 font-medium mt-0.5">
+                    {activeSubsCount === 0 ? 'Tap to subscribe' : 'View dashboard'}
+                  </p>
+                </div>
+                <svg className="w-3 h-3 t-text-muted opacity-20 group-hover:opacity-50 flex-shrink-0 transition-opacity"
+                  fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+                </svg>
+              </Link>
+
+              {/* Referrals */}
+              <div className="flex items-center gap-3 p-4">
+                <div className="w-9 h-9 rounded-xl bg-rose-500/10 flex items-center justify-center flex-shrink-0 text-[16px] leading-none">
+                  🎁
+                </div>
+                <div className="min-w-0">
+                  <p className="text-[8.5px] font-black uppercase tracking-wider t-text-muted opacity-45 mb-0.5">Friends Referred</p>
+                  <p className="text-[15px] font-black text-rose-400 tabular-nums leading-tight">
+                    {myReferrals.length}
+                    <span className="text-[10px] font-bold opacity-60 ml-0.5">
+                      {myReferrals.length === 1 ? 'friend' : 'friends'}
+                    </span>
+                  </p>
+                  <p className="text-[8px] t-text-muted opacity-30 font-medium mt-0.5">
+                    {myReferrals.length === 0 ? 'Earn wallet credits' : 'Credits added to wallet'}
+                  </p>
                 </div>
               </div>
+
             </div>
           </div>
         </section>
@@ -342,7 +643,7 @@ export default function ProfilePage() {
         </section>
 
         {/* Delivery Address Vault */}
-        <section className="animate-glass" style={{ animationDelay: '0.2s' }}>
+        <section id="address-vault" className="animate-glass" style={{ animationDelay: '0.2s' }}>
           <AddressVault />
         </section>
 

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { MapPin, Plus, Trash2, Home, Briefcase, Map as MapIcon, Check, Loader2 } from 'lucide-react';
+import { Plus, Trash2, Home, Briefcase, Map as MapIcon, Loader2, Pencil } from 'lucide-react';
 import { addresses as addressApi } from '../../services/api';
 import { useSensorial, haptics } from '../../context/SensorialContext';
 
@@ -18,6 +18,9 @@ const AddressVault: React.FC = () => {
   const [isAdding, setIsAdding] = useState(false);
   const [newLabel, setNewLabel] = useState('Home');
   const [newVal, setNewVal] = useState('');
+  const [editingId, setEditingId] = useState<number | null>(null);
+  const [editLabel, setEditLabel] = useState('Home');
+  const [editVal, setEditVal] = useState('');
 
   useEffect(() => {
     fetchAddresses();
@@ -50,6 +53,28 @@ const AddressVault: React.FC = () => {
       sensorial.showError({ 
         title: 'Vault Error', 
         message: 'Our master chefs were unable to record your new location. Please try again.' 
+      });
+    }
+  };
+
+  const startEdit = (addr: Address) => {
+    setEditingId(addr.id);
+    setEditLabel(addr.label);
+    setEditVal(addr.address);
+    haptics.light();
+  };
+
+  const handleUpdate = async () => {
+    if (!editingId || editVal.length < 5) return;
+    try {
+      const res = await addressApi.update(editingId, { label: editLabel, address: editVal });
+      setAddresses(addresses.map(a => a.id === editingId ? res.data : a));
+      haptics.success();
+      setEditingId(null);
+    } catch {
+      sensorial.showError({
+        title: 'Update Failed',
+        message: 'Could not save changes. Please try again.',
       });
     }
   };
@@ -105,33 +130,85 @@ const AddressVault: React.FC = () => {
               initial={{ opacity: 0, scale: 0.9 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.9 }}
-              className="group relative overflow-hidden rounded-[2rem] bg-white p-6 shadow-sm border border-gray-100 transition-all hover:shadow-md"
+              className="relative overflow-hidden rounded-[2rem] bg-white shadow-sm border border-gray-100 transition-all hover:shadow-md"
             >
-              <div className="flex items-start justify-between mb-4">
-                <div className={`p-3 rounded-2xl ${addr.is_default ? 'bg-orange-50 text-orange-500' : 'bg-gray-50 text-gray-400'}`}>
-                  {getIcon(addr.label)}
+              {editingId === addr.id ? (
+                /* Inline edit form */
+                <div className="p-5 space-y-4">
+                  <div className="flex gap-2">
+                    {['Home', 'Office', 'Other'].map(l => (
+                      <button
+                        key={l}
+                        onClick={() => setEditLabel(l)}
+                        className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
+                          editLabel === l ? 'bg-orange-500 text-white' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
+                        }`}
+                      >
+                        {l}
+                      </button>
+                    ))}
+                  </div>
+                  <textarea
+                    value={editVal}
+                    onChange={e => setEditVal(e.target.value)}
+                    rows={3}
+                    className="w-full rounded-2xl border border-gray-100 bg-gray-50 p-3 text-sm font-medium focus:ring-2 focus:ring-orange-400 focus:outline-none resize-none"
+                  />
+                  <div className="flex gap-2">
+                    <button
+                      onClick={handleUpdate}
+                      disabled={editVal.length < 5}
+                      className="flex-1 rounded-2xl bg-orange-500 py-2.5 text-sm font-bold text-white active:scale-95 disabled:opacity-40 transition-all"
+                    >
+                      Save
+                    </button>
+                    <button
+                      onClick={() => setEditingId(null)}
+                      className="rounded-2xl bg-gray-100 px-5 py-2.5 text-sm font-bold text-gray-500 active:scale-95 transition-all"
+                    >
+                      Cancel
+                    </button>
+                  </div>
                 </div>
-                <button
-                  onClick={() => requestDelete(addr.id)}
-                  className="opacity-0 group-hover:opacity-100 p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-2xl transition-all"
-                >
-                  <Trash2 size={18} />
-                </button>
-              </div>
-
-              <div>
-                <div className="flex items-center gap-2 mb-1">
-                  <h4 className="font-bold text-gray-900">{addr.label}</h4>
-                  {addr.is_default && (
-                    <span className="inline-flex items-center rounded-full bg-green-50 px-2 py-0.5 text-[10px] font-bold text-green-600 uppercase tracking-wider">
-                      Default
-                    </span>
-                  )}
+              ) : (
+                /* Normal view */
+                <div className="p-6">
+                  <div className="flex items-start justify-between mb-4">
+                    <div className={`p-3 rounded-2xl ${addr.is_default ? 'bg-orange-50 text-orange-500' : 'bg-gray-50 text-gray-400'}`}>
+                      {getIcon(addr.label)}
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <button
+                        onClick={() => startEdit(addr)}
+                        className="p-2 text-gray-400 hover:text-orange-500 hover:bg-orange-50 rounded-2xl transition-all"
+                        title="Edit"
+                      >
+                        <Pencil size={16} />
+                      </button>
+                      <button
+                        onClick={() => requestDelete(addr.id)}
+                        className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-2xl transition-all"
+                        title="Delete"
+                      >
+                        <Trash2 size={16} />
+                      </button>
+                    </div>
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-2 mb-1">
+                      <h4 className="font-bold text-gray-900">{addr.label}</h4>
+                      {addr.is_default && (
+                        <span className="inline-flex items-center rounded-full bg-green-50 px-2 py-0.5 text-[10px] font-bold text-green-600 uppercase tracking-wider">
+                          Default
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-sm text-gray-500 leading-relaxed font-medium">
+                      {addr.address}
+                    </p>
+                  </div>
                 </div>
-                <p className="text-sm text-gray-500 leading-relaxed font-medium">
-                  {addr.address}
-                </p>
-              </div>
+              )}
             </motion.div>
           ))}
         </AnimatePresence>

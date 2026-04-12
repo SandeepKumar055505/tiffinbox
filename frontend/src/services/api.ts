@@ -159,6 +159,7 @@ export const referrals = {
 export const addresses = {
   list: () => api.get('/addresses'),
   create: (data: { label: string; address: string; is_default: boolean }) => api.post('/addresses', data),
+  update: (id: number, data: { label?: string; address?: string; is_default?: boolean }) => api.patch(`/addresses/${id}`, data),
   remove: (id: number) => api.delete(`/addresses/${id}`),
 };
 
