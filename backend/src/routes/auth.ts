@@ -91,7 +91,15 @@ router.post('/google', validate(z.object({
       referrer_name: user?.last_referrer_name || referrer_name
     });
   } catch (err: any) {
-    res.status(400).json({ error: 'Google authentication failed' });
+    console.error(`[Google Auth Culprit] Verification Failed: ${err.message}`, {
+      body_exists: !!req.body.id_token,
+      audience: env.GOOGLE_CLIENT_ID
+    });
+    res.status(400).json({ 
+      error: 'Google authentication failed',
+      reason: env.NODE_ENV === 'production' ? 'Technical mismatch' : err.message,
+      requestId: res.getHeader('X-Request-ID')
+    });
   }
 });
 

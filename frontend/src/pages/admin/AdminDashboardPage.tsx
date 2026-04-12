@@ -93,7 +93,7 @@ export default function AdminDashboardPage() {
                    const isFinancial = p.action.startsWith('ledger.');
                    const isAchievement = p.action.startsWith('streak.');
                    const isNotification = p.action.startsWith('notification.');
-                   const data = JSON.parse(p.after_value || '{}');
+                   const pulseData = typeof p.after_value === 'string' ? JSON.parse(p.after_value || '{}') : (p.after_value || {});
                    
                    return (
                    <div key={i} className={`flex items-start gap-4 p-4 rounded-[1.5rem] transition-colors group ${isFriction ? 'bg-red-500/5 hover:bg-red-500/10 border border-red-500/10' : isFinancial ? 'bg-yellow-500/5 hover:bg-yellow-500/10 border border-yellow-500/10' : isAchievement ? 'bg-teal-500/5 hover:bg-teal-500/10 border border-teal-500/10 animate-pulse' : isNotification ? 'bg-blue-500/5 hover:bg-blue-500/10 border border-blue-500/10' : 'hover:bg-white/[0.03] border border-transparent'}`}>
@@ -107,13 +107,13 @@ export default function AdminDashboardPage() {
                          </div>
                          <p className="text-xs font-bold t-text leading-tight">
                            {isFriction ? (p.action.includes('validation') ? 'User failed schema validation' : `User encountered friction: ${p.action.split('.')[1]}`) : 
-                            isFinancial ? `${data.description || 'Financial movement manifested'}` :
-                            isAchievement ? `Household reached ${data.streak_days}-day streak milestone!` :
-                            isNotification ? (p.action === 'notification.broadcast' ? `Oracle broadcast sent to ${data.users_reached} households` : `Narrative delivered to user #${p.target_id}`) :
+                            isFinancial ? `${pulseData.description || 'Financial movement manifested'}` :
+                            isAchievement ? `Household reached ${pulseData.streak_days}-day streak milestone!` :
+                            isNotification ? (p.action === 'notification.broadcast' ? `Oracle broadcast sent to ${pulseData.users_reached} households` : `Narrative delivered to user #${p.target_id}`) :
                             `${p.actor} manifested a change`}
                          </p>
                          <p className="text-[10px] t-text-muted font-mono bg-black/20 p-2 rounded-lg mt-1 group-hover:bg-black/40 transition-colors">
-                            {JSON.stringify(data, null, 2)}
+                            {JSON.stringify(pulseData, null, 2)}
                          </p>
                       </div>
                    </div>
