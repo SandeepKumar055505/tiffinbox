@@ -25,7 +25,7 @@ export default function UserLayout() {
       <SovereignBanner />
       
       {/* Nexus Content Shell: The Scroll Chamber */}
-      <main className="flex-1 overflow-y-auto overflow-x-hidden scrollbar-none overscroll-behavior-contain relative z-0">
+      <main className="flex-1 overflow-y-auto overflow-x-hidden scrollbar-none relative z-0">
         <div className="min-h-full pb-32">
           <Outlet />
         </div>

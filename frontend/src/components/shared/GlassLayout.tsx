@@ -19,7 +19,7 @@ export default function GlassLayout({ children }: GlassLayoutProps) {
   const showFooter = !pathname.startsWith('/admin') && (!user || isPublicPath);
 
   return (
-    <div className="min-h-screen bg-bg-primary relative overflow-hidden selection:bg-accent/30 selection:text-accent font-sans">
+    <div className="h-[100dvh] w-full bg-bg-primary relative overflow-hidden selection:bg-accent/30 selection:text-accent font-sans">
       {/* Ambient background blobs */}
       <div className="pointer-events-none fixed inset-0 overflow-hidden -z-10 bg-[var(--color-bg-primary)] transition-colors duration-500">
         {/* Primary Accent glow */}
@@ -40,7 +40,7 @@ export default function GlassLayout({ children }: GlassLayoutProps) {
       </div>
 
       {/* Content wrapper */}
-      <div className="relative z-10 w-full max-w-7xl mx-auto min-h-screen flex flex-col">
+      <div className="relative z-10 w-full max-w-7xl mx-auto h-[100dvh] flex flex-col overflow-hidden">
         <div className="flex-1">{children}</div>
         {showFooter && <Footer />}
       </div>

@@ -279,7 +279,7 @@ export default function SubscribePage() {
     const minDate = tomorrow.toISOString().split('T')[0];
 
     return (
-      <div className="min-h-screen bg-bg-primary text-text-primary p-4 sm:p-8 relative overflow-x-hidden transition-all duration-[3000ms]" style={{ background: `radial-gradient(circle at top right, ${PHASE_CONFIG.setup.color}, transparent)` }}>
+      <div className="bg-bg-primary text-text-primary p-4 sm:p-8 relative transition-all duration-[3000ms]" style={{ background: `radial-gradient(circle at top right, ${PHASE_CONFIG.setup.color}, transparent)` }}>
         <div className="absolute top-0 left-0 w-full h-full pointer-events-none transition-opacity duration-[3000ms]">
           <div className="absolute top-[-15%] left-[-15%] w-[70rem] h-[70rem] bg-accent/5 blur-[250px] rounded-full animate-mesh" />
         </div>
@@ -534,7 +534,7 @@ export default function SubscribePage() {
 
   if (step === 'grid') {
     return (
-      <div className="min-h-screen bg-bg-primary text-text-primary p-2 sm:p-8 relative overflow-x-hidden transition-all duration-[3000ms]"
+      <div className="bg-bg-primary text-text-primary p-2 sm:p-8 relative transition-all duration-[3000ms]"
         style={{ background: `radial-gradient(circle at top right, ${isDark ? 'rgba(251,113,133,0.10)' : 'rgba(56,189,248,0.10)'}, transparent)` }}>
         <div className="absolute top-0 left-0 w-full h-full pointer-events-none transition-opacity duration-[3000ms]">
           <div className="absolute top-[-5%] right-[-10%] w-[60rem] h-[60rem] blur-[200px] rounded-full animate-mesh"
@@ -586,160 +586,230 @@ export default function SubscribePage() {
           {renderHeader("Review & Pay", "Confirm your order before payment.", () => setStep('grid'))}
           <LiquidProgressBar currentStep={3} totalSteps={3} />
 
-          <section className="animate-glass surface-liquid ring-1 ring-border/15 rounded-[2.2rem] overflow-hidden shadow-elite">
-            {/* Manifest Header */}
-            <div className="flex items-center gap-4 px-6 py-6 border-b border-border/5 bg-accent/3">
-              <div className="w-12 h-12 rounded-[1.2rem] bg-gradient-to-br from-indigo-500/10 to-violet-500/10 flex items-center justify-center flex-shrink-0 text-[20px]">
-                🎯
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-[17px] font-black t-text-primary leading-tight truncate">
-                  {selectedPerson?.name ?? 'Identity'}
-                </p>
-                <div className="flex items-center gap-2 mt-1">
-                  <span className={`text-[9px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full
-                    ${selectedPerson?.dietary_tag === 'Veg' ? 'text-teal-400 bg-teal-500/10' : 'text-amber-400 bg-amber-500/10'}`}>
-                    {selectedPerson?.dietary_tag || 'Standard'}
-                  </span>
-                  <p className="text-[9px] t-text-muted font-bold opacity-30 uppercase tracking-[0.2em] whitespace-nowrap">
-                    {planDays} Day Lifecycle
-                  </p>
-                </div>
-              </div>
-              <div className="text-right">
-                <p className="text-[10px] font-black t-text-muted opacity-30 uppercase tracking-[0.2em] mb-1">Timeline</p>
-                <p className="text-[12px] font-black t-text-primary tabular-nums">
-                  {fmtD(startDate)} → {fmtD(endDate || startDate)}
-                </p>
-              </div>
-            </div>
-
-            {/* Logical Coordinates */}
-            <div className="flex items-center gap-3 px-6 py-4 bg-border/3">
-              <div className="w-8 h-8 rounded-xl bg-indigo-500/10 flex items-center justify-center flex-shrink-0 text-[14px]">📍</div>
-              <p className="text-[12px] font-bold t-text-primary truncate flex-1">
-                {selectedAddress?.label ?? 'Delivery anchor'}
-                <span className="font-medium opacity-40 ml-2">— {selectedAddress?.address ?? 'Coordinates unknown'}</span>
-              </p>
-            </div>
-
-            {/* Meal Configuration breakdown */}
-            <div className="px-6 py-5 bg-bg-primary/5 border-t border-border/10">
-              <div className="flex items-center justify-between gap-4">
-                <div className="flex gap-2">
-                  {[
-                    { icon: '☕', val: mealCounts.breakfast, label: 'Early' },
-                    { icon: '🍱', val: mealCounts.lunch, label: 'Mid' },
-                    { icon: '🌙', val: mealCounts.dinner, label: 'Late' }
-                  ].map((m, i) => (
-                    <div key={i} className={`px-3 py-2 rounded-2xl flex flex-col items-center gap-1 group transition-all duration-300
-                        ${m.val > 0 ? 'bg-accent/10 ring-1 ring-accent/20' : 'opacity-20 bg-border/5'}`}>
-                      <span className="text-[14px]">{m.icon}</span>
-                      <span className={`text-[12px] font-black tabular-nums transition-colors
-                          ${m.val > 0 ? 'text-accent' : 't-text-muted'}`}>{m.val}</span>
-                    </div>
-                  ))}
-                </div>
-
-                <div className="flex-1 text-right space-y-1">
-                  <p className="text-[10px] font-black t-text-muted opacity-40 uppercase tracking-[0.15em]">Gourmet Allocation</p>
-                  <div className="flex items-center justify-end gap-2">
-                    <p className="text-[14px] font-black t-text-primary tabular-nums tracking-tighter">{totalMeals} Units</p>
-                    <button
-                      onClick={() => { haptics.impact('medium'); setStep('grid'); }}
-                      className="w-8 h-8 rounded-full bg-border/10 flex items-center justify-center hover:bg-accent/10 transition-colors shadow-sm"
-                    >
-                      <svg className="w-4 h-4 t-text-muted" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
-                      </svg>
-                    </button>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </section>
-
-          {/* Price manifest */}
-          <section className="animate-glass surface-liquid ring-1 ring-border/15 rounded-[1.8rem] overflow-hidden">
-            <div className="px-6 py-5 space-y-4">
-              <div className="flex items-center gap-2.5">
-                <div className="w-8 h-8 rounded-lg bg-accent/10 flex items-center justify-center text-[14px]">💳</div>
-                <h4 className="text-[14px] font-black t-text-primary tracking-tight">Fiscal Breakdown</h4>
-              </div>
-
-              <div className="space-y-3 t-text-muted">
-                <div className="flex justify-between items-center px-1">
-                  <p className="text-[13px] font-bold opacity-60">Base Plan Value</p>
-                  <p className="text-[14px] font-black t-text-primary tabular-nums">{formatRupees(snapshot.base_total)}</p>
-                </div>
-
-                {snapshot.discount_total > 0 && (
-                  <div className="flex justify-between items-center px-1">
-                    <div className="flex items-center gap-2">
-                      <p className="text-[13px] font-bold text-teal-400">Plan Genesis Discount</p>
-                      {savingsPct > 0 && (
-                        <span className="text-[9px] font-black text-white bg-teal-500 px-1.5 py-0.5 rounded-full shadow-sm">
-                          {savingsPct}% OFF
-                        </span>
-                      )}
-                    </div>
-                    <p className="text-[14px] font-black text-teal-400 tabular-nums">−{formatRupees(snapshot.discount_total)}</p>
-                  </div>
-                )}
-
-                {snapshot.promo_discount > 0 && (
-                  <div className="flex justify-between items-center px-1">
-                    <p className="text-[13px] font-bold text-accent">Manifest Voucher</p>
-                    <p className="text-[14px] font-black text-accent tabular-nums">−{formatRupees(snapshot.promo_discount)}</p>
-                  </div>
-                )}
-
-                {snapshot.wallet_applied > 0 && (
-                  <div className="flex justify-between items-center px-1">
-                    <p className="text-[13px] font-bold text-violet-400">Vault Credit Applied</p>
-                    <p className="text-[14px] font-black text-violet-400 tabular-nums">−{formatRupees(snapshot.wallet_applied)}</p>
-                  </div>
-                )}
-
-                <div className="pt-2 border-t border-border/10 flex justify-between items-end">
-                  <div>
-                    <p className="text-[9px] font-black opacity-30 uppercase tracking-[0.2em] mb-1">Covenant Amount</p>
-                    <PriceTicker value={snapshot.final_total} className="!text-[32px] font-black t-text-primary tracking-tighter" />
-                  </div>
-                  {(snapshot.discount_total + snapshot.promo_discount + snapshot.wallet_applied) > 0 && (
-                    <div className="text-right">
-                      <div className="bg-teal-500/10 px-3 py-1.5 rounded-xl border border-teal-500/20 inline-flex items-center gap-2">
-                        <span className="text-[14px] animate-pulse">✨</span>
-                        <p className="text-[10px] font-black text-teal-400 uppercase tracking-widest leading-none">
-                          Saving {formatRupees(snapshot.discount_total + snapshot.promo_discount + snapshot.wallet_applied)}
-                        </p>
+          <div className="space-y-6">
+            {/* The Identity Sigil & Logistic Anchor */}
+            <section className="animate-glass surface-liquid ring-1 ring-border/15 rounded-[2.5rem] overflow-hidden shadow-zenith">
+              <div className="relative p-7">
+                {/* Identity Sigil Overlay */}
+                <div className="absolute top-0 right-0 w-32 h-32 bg-accent/5 blur-3xl rounded-full translate-x-10 -translate-y-10" />
+                
+                <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-6 relative z-10">
+                  <div className="flex items-center gap-4 sm:gap-5">
+                    <div className="relative flex-shrink-0">
+                      <motion.div 
+                        animate={{ scale: [1, 1.15, 1], opacity: [0.3, 0.1, 0.3] }}
+                        transition={{ duration: 4, repeat: Infinity }}
+                        className="absolute -inset-3 bg-accent/20 blur-xl rounded-full" 
+                      />
+                      <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl bg-gradient-to-br from-indigo-500 to-violet-600 flex items-center justify-center text-[22px] sm:text-[24px] font-black text-white shadow-glow-subtle ring-2 ring-white/10">
+                        {selectedPerson?.name[0].toUpperCase() ?? '👤'}
                       </div>
+                    </div>
+                    <div className="min-w-0 space-y-1">
+                      <h3 className="text-[20px] sm:text-[22px] font-black t-text-primary tracking-tight leading-tight truncate">
+                        {selectedPerson?.name ?? 'Identity'}
+                      </h3>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className={`text-[8.5px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full
+                          ${selectedPerson?.dietary_tag === 'Veg' ? 'text-teal-400 bg-teal-500/10 border border-teal-500/20' : 'text-amber-400 bg-amber-500/10 border border-amber-500/20'}`}>
+                          {selectedPerson?.dietary_tag || 'Standard'}
+                        </span>
+                        <span className="text-[8.5px] font-black uppercase tracking-widest t-text-muted opacity-40">
+                          {planDays} DAY RITUAL
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <div className="sm:text-right border-l-2 sm:border-l-0 sm:border-r-0 border-accent/10 sm:border-transparent pl-4 sm:pl-0">
+                    <p className="text-[9px] font-black t-text-muted opacity-30 uppercase tracking-[0.2em] mb-1.5">Timeline</p>
+                    <div className="bg-border/10 rounded-xl px-3 py-1.5 ring-1 ring-border/5 inline-block sm:block">
+                      <p className="text-[11px] sm:text-[12px] font-black t-text-primary tabular-nums tracking-tight">
+                        {fmtD(startDate)} — {fmtD(endDate || startDate)}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Logistic Anchor */}
+                <div className="mt-6 sm:mt-8 pt-6 border-t border-border/10 flex items-center gap-4">
+                  <div className="w-10 h-10 rounded-xl bg-accent/10 flex items-center justify-center text-[18px] shadow-sm ring-1 ring-accent/20 flex-shrink-0">
+                    📍
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-[13px] sm:text-[14px] font-bold t-text-primary leading-tight truncate">
+                      {selectedAddress?.label ?? 'Delivery Anchor'}
+                    </p>
+                    <p className="text-[10px] sm:text-[11px] font-medium t-text-muted opacity-50 truncate mt-0.5">
+                      {selectedAddress?.address ?? 'Sector Synchronized'}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </section>
+
+            {/* Sustenance Spectrum: Meal Allocation */}
+            <section className="animate-glass grid grid-cols-1 gap-4">
+              <div className="flex items-center gap-5 px-1">
+                <h3 className="text-label-caps !text-[10px] !opacity-40 font-black uppercase tracking-[0.2em] whitespace-nowrap">
+                  Sustenance Spectrum
+                </h3>
+                <div className="h-px flex-1 bg-border/20" />
+              </div>
+
+              <div className="grid grid-cols-3 gap-3">
+                {[
+                  { icon: '☕', val: mealCounts.breakfast, label: 'Morning Gold', color: 'from-amber-400/20 to-orange-500/10', text: 'text-amber-500' },
+                  { icon: '🍱', val: mealCounts.lunch, label: 'Mid-Day Fuel', color: 'from-accent/20 to-teal-500/10', text: 'text-accent' },
+                  { icon: '🌙', val: mealCounts.dinner, label: 'Restorative', color: 'from-indigo-400/20 to-violet-500/10', text: 'text-indigo-400' }
+                ].map((m, i) => (
+                  <div key={i} className={`relative rounded-3xl p-4 border transition-all duration-500 group overflow-hidden
+                    ${m.val > 0 
+                      ? `surface-liquid border-accent/20 ring-1 ring-accent/10 shadow-sm` 
+                      : 'opacity-30 grayscale border-border/10 bg-border/5'}`}>
+                    
+                    {m.val > 0 && <div className={`absolute inset-0 bg-gradient-to-br ${m.color} opacity-40`} />}
+                    
+                    <div className="relative z-10 flex flex-col items-center text-center space-y-2">
+                       <span className="text-[20px] drop-shadow-md transform group-hover:scale-110 transition-transform">{m.icon}</span>
+                       <div>
+                         <p className="text-[18px] font-black t-text-primary leading-none tabular-nums">{m.val}</p>
+                         <p className={`text-[8px] font-black uppercase tracking-wider mt-1.5 ${m.text} opacity-60`}>{m.label}</p>
+                       </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              <div className="surface-glass rounded-2xl p-4 flex items-center justify-between ring-1 ring-border/15">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-8 rounded-lg bg-accent/5 flex items-center justify-center border border-accent/20">
+                    <span className="text-[14px] font-black text-accent tabular-nums">{totalMeals}</span>
+                  </div>
+                  <p className="text-[12px] font-bold t-text-muted opacity-60 uppercase tracking-widest">Total Units</p>
+                </div>
+                <button
+                  onClick={() => { haptics.impact('medium'); setStep('grid'); }}
+                  className="px-4 py-2 rounded-xl bg-accent/10 hover:bg-accent/20 text-accent text-[11px] font-black uppercase tracking-widest transition-all active:scale-95"
+                >
+                  Edit Ritual
+                </button>
+              </div>
+            </section>
+          </div>
+
+          {/* Fiscal Manifest: Receipt of Honor */}
+          <section className="animate-glass surface-liquid ring-1 ring-border/15 rounded-[2.5rem] overflow-hidden shadow-zenith relative">
+            <div className="absolute top-0 left-0 w-full h-2 bg-gradient-to-b from-accent/5 to-transparent" />
+            
+            <div className="p-7 space-y-6">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-8 h-8 rounded-lg bg-accent/10 flex items-center justify-center text-[14px] ring-1 ring-accent/20">💳</div>
+                  <h4 className="text-[14px] font-black t-text-primary tracking-tight">Fiscal Manifest</h4>
+                </div>
+                <span className="text-[9px] font-black t-text-muted opacity-30 uppercase tracking-[0.2em]">Covenant Receipt</span>
+              </div>
+
+              <div className="space-y-4">
+                <div className="flex justify-between items-center group">
+                  <p className="text-[13px] font-bold t-text-muted opacity-60 group-hover:opacity-100 transition-opacity">Base Plan Value</p>
+                  <p className="text-[14px] font-black t-text-primary tabular-nums tracking-tight">{formatRupees(snapshot.base_total)}</p>
+                </div>
+
+                {/* Digital Tear-off Separator */}
+                <div className="h-px w-full border-t border-dashed border-border/20 my-2" />
+
+                <div className="space-y-3">
+                  {snapshot.discount_total > 0 && (
+                    <div className="flex justify-between items-center px-1">
+                      <div className="flex items-center gap-2">
+                        <div className="w-1.5 h-1.5 rounded-full bg-teal-400 animate-pulse" />
+                        <p className="text-[13px] font-bold text-teal-400/80">Plan Genesis Discount</p>
+                      </div>
+                      <p className="text-[14px] font-black text-teal-400 tabular-nums">−{formatRupees(snapshot.discount_total)}</p>
+                    </div>
+                  )}
+
+                  {snapshot.promo_discount > 0 && (
+                    <div className="flex justify-between items-center px-1 animate-glass">
+                      <div className="flex items-center gap-2">
+                        <div className="w-1.5 h-1.5 rounded-full bg-accent animate-pulse" />
+                        <p className="text-[13px] font-bold text-accent/80">Manifest Voucher</p>
+                      </div>
+                      <p className="text-[14px] font-black text-accent tabular-nums">−{formatRupees(snapshot.promo_discount)}</p>
+                    </div>
+                  )}
+
+                  {snapshot.wallet_applied > 0 && (
+                    <div className="flex justify-between items-center px-1">
+                      <div className="flex items-center gap-2">
+                        <div className="w-1.5 h-1.5 rounded-full bg-violet-400 animate-pulse" />
+                        <p className="text-[13px] font-bold text-violet-400/80">Vault Credit Applied</p>
+                      </div>
+                      <p className="text-[14px] font-black text-violet-400 tabular-nums">−{formatRupees(snapshot.wallet_applied)}</p>
                     </div>
                   )}
                 </div>
+
+                {/* Savings Ribbon of Honor */}
+                {(snapshot.discount_total + snapshot.promo_discount + snapshot.wallet_applied) > 0 && (
+                  <motion.div 
+                    initial={{ scale: 0.95, opacity: 0 }}
+                    animate={{ scale: 1, opacity: 1 }}
+                    className="bg-teal-500/5 border border-teal-500/10 rounded-2xl p-3 flex items-center justify-between"
+                  >
+                    <div className="flex items-center gap-2.5">
+                      <span className="text-[16px] animate-bounce">✨</span>
+                      <p className="text-[10px] font-black text-teal-400 uppercase tracking-widest">Ribbon of Honor</p>
+                    </div>
+                    <p className="text-[12px] font-black text-teal-400 tabular-nums">
+                      Saved {formatRupees(snapshot.discount_total + snapshot.promo_discount + snapshot.wallet_applied)}
+                    </p>
+                  </motion.div>
+                )}
+
+                <div className="pt-4 border-t border-border/10">
+                  <div className="flex justify-between items-end">
+                    <div className="space-y-1">
+                      <p className="text-[9px] font-black opacity-30 uppercase tracking-[0.2em]">To Be Manifested</p>
+                      <PriceTicker value={snapshot.final_total} className="!text-[42px] font-black t-text-primary tracking-tighter leading-none" />
+                    </div>
+                    <div className="text-right pb-1">
+                      <div className="flex items-center gap-1.5 justify-end t-text-muted opacity-40 mb-1">
+                        <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                        </svg>
+                        <span className="text-[8px] font-black uppercase tracking-[0.1em]">Secured Gateway</span>
+                      </div>
+                      <p className="text-[9px] font-bold t-text-muted opacity-30 uppercase tracking-[0.15em]">UPI · CARDS · NET</p>
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
           </section>
 
-          {/* Ritual Controls: Promo & Wallet */}
-          <section className="space-y-4 animate-glass" style={{ animationDelay: '0.15s' }}>
+          {/* Ritual Controls: The Voucher & Vault */}
+          <section className="grid grid-cols-1 sm:grid-cols-2 gap-4 animate-glass" style={{ animationDelay: '0.2s' }}>
             {!promoResult ? (
-              <div className="space-y-3">
-                <div className="flex gap-2 p-1.5 surface-glass rounded-2xl ring-1 ring-border/20 group hover:ring-accent/40 transition-all">
+              <div className="relative group">
+                <div className="absolute inset-0 bg-accent/5 blur-xl group-hover:bg-accent/10 transition-all rounded-full opacity-0 group-hover:opacity-100" />
+                <div className="relative flex gap-2 p-2 px-3 surface-glass rounded-[1.8rem] ring-1 ring-border/15 group-hover:ring-accent/40 transition-all shadow-sm">
                   <input
                     type="text"
-                    placeholder="Manifest Code"
+                    placeholder="Voucher Code"
                     value={promoInput}
                     onChange={e => setPromoInput(e.target.value.toUpperCase())}
                     onKeyDown={e => e.key === 'Enter' && applyPromo()}
-                    className="flex-1 bg-transparent px-4 py-3 text-[14px] font-bold t-text-primary placeholder:opacity-30 focus:outline-none"
+                    className="flex-1 bg-transparent px-3 py-3 text-[13px] font-bold t-text-primary placeholder:opacity-30 focus:outline-none"
                   />
                   <button
                     onClick={applyPromo}
                     disabled={promoLoading || !promoInput.trim()}
-                    className="bg-accent text-white px-3 rounded-xl font-bold text-[12px] shadow-glow-subtle active:scale-95 transition-all disabled:opacity-30 disabled:grayscale"
+                    className="bg-accent text-white px-5 rounded-2xl font-black text-[10px] uppercase tracking-widest shadow-glow-subtle active:scale-95 transition-all disabled:opacity-30 disabled:grayscale"
                   >
-                    {promoLoading ? '⏳' : 'Manifest'}
+                    {promoLoading ? '⌛' : 'Apply'}
                   </button>
                 </div>
               </div>
@@ -747,18 +817,18 @@ export default function SubscribePage() {
               <motion.div
                 initial={{ scale: 0.98, opacity: 0 }}
                 animate={{ scale: 1, opacity: 1 }}
-                className="surface-liquid p-5 rounded-[2rem] flex items-center justify-between ring-2 ring-accent/30 shadow-glow-subtle group"
+                className="surface-liquid p-4 rounded-[1.8rem] flex items-center justify-between ring-2 ring-accent/30 shadow-glow-subtle bg-accent/5"
               >
                 <div className="flex items-center gap-4">
                   <div className="w-10 h-10 rounded-xl bg-accent text-white flex items-center justify-center text-[18px] shadow-lg">🎁</div>
-                  <div>
-                    <p className="text-[14px] font-black text-accent leading-none">{promoResult.code}</p>
-                    <p className="text-[10px] font-medium text-accent opacity-60 mt-1">{promoResult.description}</p>
+                  <div className="min-w-0">
+                    <p className="text-[13px] font-black text-accent leading-none truncate">{promoResult.code}</p>
+                    <p className="text-[9px] font-bold text-accent opacity-50 mt-1 uppercase tracking-tight">{promoResult.description}</p>
                   </div>
                 </div>
                 <button
                   onClick={() => { haptics.impact('light'); setPromoResult(null); setPromoCode(''); setPromoInput(''); }}
-                  className="w-8 h-8 rounded-full bg-accent/10 flex items-center justify-center text-accent hover:bg-accent hover:text-white transition-all opacity-40 hover:opacity-100"
+                  className="w-8 h-8 rounded-full bg-accent/10 flex items-center justify-center text-accent hover:bg-accent hover:text-white transition-all"
                 >
                   <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
                     <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
@@ -770,27 +840,26 @@ export default function SubscribePage() {
             {(walletData?.balance ?? 0) > 0 && (
               <button
                 onClick={() => { haptics.impact('medium'); setApplyWallet(!applyWallet); }}
-                className={`w-full p-5 rounded-[2rem] flex items-center justify-between transition-all duration-300 relative overflow-hidden
+                className={`p-4 rounded-[1.8rem] flex items-center justify-between transition-all duration-300 relative overflow-hidden group
                   ${applyWallet
                     ? 'surface-liquid ring-2 ring-violet-500/30'
-                    : 'surface-glass ring-1 ring-border/15 opacity-60 grayscale-[0.5]'}`}
+                    : 'surface-glass ring-1 ring-border/15 opacity-60'}`}
               >
-                {applyWallet && <div className="absolute top-0 right-0 w-24 h-24 bg-violet-500/5 blur-2xl" />}
                 <div className="flex items-center gap-4 relative z-10">
-                  <div className={`w-11 h-11 rounded-xl flex items-center justify-center text-[18px] transition-all
-                    ${applyWallet ? 'bg-violet-500 text-white shadow-lg scale-105' : 'bg-border/10'}`}>💳</div>
+                  <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-[18px] transition-all
+                    ${applyWallet ? 'bg-violet-500 text-white shadow-lg scale-105' : 'bg-border/10'}`}>🏛️</div>
                   <div className="text-left">
-                    <p className={`text-[14px] font-black leading-none ${applyWallet ? 't-text-primary' : 't-text-muted'}`}>Vault Credits</p>
-                    <p className={`text-[11px] mt-1 font-bold ${applyWallet ? 'text-violet-400' : 'opacity-40 t-text-muted'}`}>
-                      {formatRupees(walletData!.balance)} available
+                    <p className={`text-[13px] font-black leading-none ${applyWallet ? 't-text-primary' : 't-text-muted'}`}>Vault Credits</p>
+                    <p className={`text-[10px] mt-1 font-bold ${applyWallet ? 'text-violet-400' : 'opacity-40 t-text-muted'}`}>
+                      {formatRupees(walletData!.balance)} Available
                     </p>
                   </div>
                 </div>
-                <div className={`w-12 h-6 rounded-full relative transition-colors duration-500 p-1 flex-shrink-0
+                <div className={`w-10 h-5 rounded-full relative transition-colors duration-500 p-0.5 flex-shrink-0
                   ${applyWallet ? 'bg-violet-500' : 'bg-border/20'}`}>
                   <motion.div
-                    animate={{ x: applyWallet ? 24 : 0 }}
-                    transition={{ type: 'spring', stiffness: 400, damping: 30 }}
+                    animate={{ x: applyWallet ? 20 : 0 }}
+                    transition={{ type: 'spring', stiffness: 500, damping: 30 }}
                     className="w-4 h-4 bg-white rounded-full shadow-md"
                   />
                 </div>
@@ -798,52 +867,44 @@ export default function SubscribePage() {
             )}
           </section>
 
-          {/* Security Ritual & Final Action */}
-          <section className="animate-glass surface-liquid ring-1 ring-border/20 rounded-[2.2rem] overflow-hidden shadow-elite space-y-px">
-            <div className="flex items-center justify-between px-7 pt-6 pb-4">
-              <div className="space-y-1">
-                <p className="text-[10px] font-black uppercase tracking-[0.2em] t-text-muted opacity-40">Total Covenant Value</p>
-                <PriceTicker value={snapshot.final_total} className="!text-[38px] text-accent tracking-tighter" />
-                {snapshot.final_total === 0 && (
-                  <div className="bg-teal-500/10 px-2 py-0.5 rounded-lg inline-block">
-                    <p className="text-[9px] text-teal-400 font-black uppercase tracking-widest">Fully Covered</p>
-                  </div>
-                )}
-              </div>
-              <div className="text-right space-y-1.5 opacity-50">
-                <div className="flex items-center gap-1.5 justify-end t-text-primary">
-                  <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-                  </svg>
-                  <span className="text-[10px] font-black uppercase tracking-wider">Vault Secured</span>
-                </div>
-                <p className="text-[9px] font-bold t-text-muted uppercase tracking-widest">UPI · Card · Net</p>
-              </div>
-            </div>
-
-            <div className="px-6 pb-6">
+          {/* Payment Zenith: The Focus Pill */}
+          <div className="relative pt-6">
+            <div className="absolute inset-x-0 -top-10 h-20 bg-gradient-to-t from-bg-primary via-bg-primary/80 to-transparent z-0 pointer-events-none" />
+            
+            <div className="relative z-10 space-y-4">
               <button
                 onClick={() => { haptics.impact('heavy'); createSub.mutate(); }}
                 disabled={createSub.isPending}
-                className="btn-primary w-full !py-5 !text-[17px] !rounded-[1.4rem] shadow-glow-subtle font-black
-                  disabled:opacity-40 active:scale-[0.97] transition-all relative overflow-hidden group"
+                className={`group relative w-full py-5 rounded-[1.8rem] font-black text-[17px] tracking-tight overflow-hidden transition-all duration-300 active:scale-[0.97]
+                  ${createSub.isPending 
+                    ? 'bg-border/10 cursor-not-allowed' 
+                    : 'bg-accent hover:brightness-110 shadow-glow-subtle text-white'}`}
               >
-                <div className="absolute top-0 left-0 w-full h-full bg-gradient-to-r from-white/0 via-white/10 to-white/0 -translate-x-full group-hover:translate-x-full transition-transform duration-1000" />
-                {createSub.isPending
-                  ? <div className="flex items-center justify-center gap-3">
-                    <div className="w-5 h-5 rounded-full border-2 border-white/30 border-t-white animate-spin" />
-                    <span>Synchronizing…</span>
-                  </div>
-                  : snapshot.final_total === 0
-                    ? 'Begin Journey →'
-                    : `Pay ${formatRupees(snapshot.final_total)} →`}
+                <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000" />
+                
+                <div className="relative flex items-center justify-center gap-3">
+                  {createSub.isPending ? (
+                    <>
+                      <div className="w-5 h-5 rounded-full border-2 border-accent/20 border-t-accent animate-spin" />
+                      <span className="text-accent animate-pulse">Synchronizing...</span>
+                    </>
+                  ) : (
+                    <>
+                      <span>{snapshot.final_total === 0 ? 'Activate Covenant' : `Confirm & Pay ${formatRupees(snapshot.final_total)}`}</span>
+                      <svg className="w-5 h-5 transform group-hover:translate-x-1 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M14 5l7 7m0 0l-7 7m7-7H3" />
+                      </svg>
+                    </>
+                  )}
+                </div>
               </button>
-              <p className="text-center text-[10px] t-text-muted font-medium opacity-30 mt-4 leading-relaxed">
-                By initiating this ritual you agree to our{' '}
+              
+              <p className="text-center text-[10px] t-text-muted font-medium opacity-30 leading-relaxed px-8">
+                By activating this covenant you agree to our{' '}
                 <Link to="/terms" className="underline opacity-60 hover:opacity-100 transition-opacity">Manifesto & Terms</Link>
               </p>
             </div>
-          </section>
+          </div>
         </div>
       </div>
     );
