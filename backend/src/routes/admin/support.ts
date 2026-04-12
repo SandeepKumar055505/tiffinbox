@@ -29,7 +29,14 @@ router.get('/tickets/:id', requireAdmin, async (req, res) => {
     .first();
   if (!ticket) return res.status(404).json({ error: 'Ticket not found' });
 
-  const messages = await db('support_messages').where({ ticket_id: ticket.id }).orderBy('sent_at');
+  const messages = await db('support_messages')
+    .where({ ticket_id: ticket.id })
+    .select(
+      'id', 'ticket_id', 'author_role', 'message', 'attachment_url', 'sent_at',
+      'sent_at as created_at',
+      'author_role as sender'
+    )
+    .orderBy('sent_at');
   res.json({ ticket, messages });
 });
 
@@ -44,7 +51,11 @@ router.post(
 
     const [msg] = await db('support_messages')
       .insert({ ticket_id: ticket.id, author_role: 'admin', message: req.body.message })
-      .returning('*');
+      .returning([
+        'id', 'ticket_id', 'author_role', 'message', 'attachment_url', 'sent_at',
+        'sent_at as created_at',
+        'author_role as sender'
+      ]);
 
     await db('support_tickets').where({ id: ticket.id }).update({ status: 'pending', updated_at: db.fn.now() });
 

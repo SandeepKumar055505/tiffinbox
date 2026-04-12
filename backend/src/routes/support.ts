@@ -53,6 +53,11 @@ router.get('/tickets/:id/messages', requireUser, async (req, res) => {
 
   const messages = await db('support_messages')
     .where({ ticket_id: ticket.id })
+    .select(
+      'id', 'ticket_id', 'author_role', 'message', 'attachment_url', 'sent_at',
+      'sent_at as created_at',
+      'author_role as sender'
+    )
     .orderBy('sent_at');
   res.json({ ticket, messages });
 });
@@ -77,7 +82,11 @@ router.post(
         message: req.body.message,
         attachment_url: req.body.attachment_url || null
       })
-      .returning('*');
+      .returning([
+        'id', 'ticket_id', 'author_role', 'message', 'attachment_url', 'sent_at',
+        'sent_at as created_at',
+        'author_role as sender'
+      ]);
 
     await db('support_tickets')
       .where({ id: ticket.id })

@@ -1,19 +1,45 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Link } from 'react-router-dom';
+import { motion, AnimatePresence } from 'framer-motion';
+import { 
+  Send, 
+  Paperclip, 
+  ChevronLeft, 
+  MessageSquare, 
+  Clock, 
+  CheckCircle2, 
+  AlertCircle,
+  HelpCircle,
+  Package,
+  CreditCard,
+  ChefHat,
+  X
+} from 'lucide-react';
 import { support as supportApi } from '../../services/api';
 import { SupportTicket } from '../../types';
+import { useSensorial, haptics } from '../../context/SensorialContext';
 
 interface Message {
   id: number;
   sender: 'user' | 'admin';
+  author_role?: 'user' | 'admin'; // Compatibility
   message: string;
-  created_at: string;
+  sent_at: string;
+  created_at?: string; // Compatibility
   attachment_url?: string;
 }
 
+const CONCIERGE_CHIPS = [
+  { id: 'delivery', label: 'Delivery Signal', icon: Package, subject: 'Delivery Inquiry', template: 'I am inquiring about the manifestation of my current delivery...' },
+  { id: 'quality', label: 'Culinary Quality', icon: ChefHat, subject: 'Food Quality Feedback', template: 'I wish to share insights regarding the artisanal quality of my recent meal...' },
+  { id: 'payment', label: 'Fiscal Support', icon: CreditCard, subject: 'Payment/Billing Issue', template: 'I require assistance with the fiscal processing of my subscription...' },
+  { id: 'other', label: 'Other Rituals', icon: HelpCircle, subject: 'General Support', template: 'I have a unique inquiry regarding the TiffinBox experience...' },
+];
+
 export default function SupportPage() {
   const qc = useQueryClient();
+  const { showError } = useSensorial();
+  
   const [subject, setSubject] = useState('');
   const [message, setMessage] = useState('');
   const [selectedId, setSelectedId] = useState<number | null>(null);
@@ -21,6 +47,7 @@ export default function SupportPage() {
   const [attachment, setAttachment] = useState<string | null>(null);
   const [isUploading, setIsUploading] = useState(false);
   const [uploadError, setUploadError] = useState('');
+  
   const fileInputRef = useRef<HTMLInputElement>(null);
   const threadEnd = useRef<HTMLDivElement>(null);
 
@@ -33,15 +60,18 @@ export default function SupportPage() {
     queryKey: ['support-thread', selectedId],
     queryFn: () => supportApi.getMessages(selectedId!).then(r => r.data),
     enabled: !!selectedId,
-    refetchInterval: 15000,
+    refetchInterval: 10000,
   });
 
   const create = useMutation({
     mutationFn: () => supportApi.createTicket({ subject, message }),
     onSuccess: () => {
-      setSubject(''); setMessage('');
+      setSubject(''); 
+      setMessage('');
+      haptics.success();
       qc.invalidateQueries({ queryKey: ['support-tickets'] });
     },
+    onError: () => showError({ title: 'Manifest Error', message: 'Failed to manifest your request.' }),
   });
 
   const sendReply = useMutation({
@@ -49,9 +79,11 @@ export default function SupportPage() {
     onSuccess: () => {
       setReply('');
       setAttachment(null);
+      haptics.confirm();
       qc.invalidateQueries({ queryKey: ['support-thread', selectedId] });
       qc.invalidateQueries({ queryKey: ['support-tickets'] });
     },
+    onError: () => showError({ title: 'Transmission Error', message: 'Failed to transmit your signal.' }),
   });
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -63,184 +95,256 @@ export default function SupportPage() {
       const { upload } = await import('../../services/api');
       const res = await upload.image(file);
       setAttachment(res.data.url);
+      haptics.light();
     } catch {
-      setUploadError('Upload failed — please try a smaller image or try again.');
+      setUploadError('Upload failed — please select a smaller artifact.');
     } finally {
       setIsUploading(false);
     }
   };
 
+  const handleChipSelect = (chip: typeof CONCIERGE_CHIPS[0]) => {
+    setSubject(chip.subject);
+    setMessage(chip.template);
+    haptics.impact();
+  };
+
   useEffect(() => {
-    threadEnd.current?.scrollIntoView({ behavior: 'smooth' });
+    if (thread?.messages?.length) {
+      threadEnd.current?.scrollIntoView({ behavior: 'smooth' });
+    }
   }, [thread?.messages?.length]);
 
-  // Thread view
+  const getTime = (m: Message) => {
+    const dateStr = m.sent_at || m.created_at;
+    if (!dateStr) return '--:--';
+    return new Date(dateStr).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' });
+  };
+
+  const getDate = (t: SupportTicket) => {
+    return new Date(t.created_at).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' });
+  };
+
+  // Rendering Dialogue Thread
   if (selectedId && thread) {
     return (
-      <div className="min-h-screen pb-24 animate-glass flex flex-col bg-bg-primary/50" style={{ height: '100dvh' }}>
-        <div className="max-w-2xl mx-auto w-full flex-1 flex flex-col px-6">
-          <header className="flex items-center gap-4 pt-4 pb-3 bg-bg-primary/40 backdrop-blur-xl sticky top-0 z-20">
-            <button onClick={() => setSelectedId(null)} className="w-10 h-10 rounded-xl surface-glass flex flex-shrink-0 items-center justify-center text-text-muted hover:text-accent transition-all duration-500 shadow-sm border-white/5 ring-1 ring-white/5 group">
-              <span className="text-lg group-hover:-translate-x-1 transition-transform">←</span>
-            </button>
-            <div className="flex-1 space-y-0.5 min-w-0">
-              <div className="flex items-center justify-between">
-                <h1 className="text-h1 truncate">{thread.ticket.subject}</h1>
-              </div>
-              <div className="flex items-center gap-2">
-                <span className={`w-2 h-2 rounded-full ${thread.ticket.status === 'resolved' ? 'bg-teal-500 shadow-glow-subtle' : 'bg-yellow-500 shadow-[0_0_10px_rgba(234,179,8,0.3)]'} animate-pulse`} />
-                <p className="text-label-caps !text-[10px] font-bold opacity-60 uppercase tracking-[0.1em]">{thread.ticket.status}</p>
-              </div>
+      <motion.div 
+        initial={{ opacity: 0, scale: 0.98 }}
+        animate={{ opacity: 1, scale: 1 }}
+        exit={{ opacity: 0, scale: 0.98 }}
+        className="fixed inset-0 z-[100] bg-bg-primary flex flex-col h-[100dvh]"
+      >
+        {/* Thread Header Ritual */}
+        <header className="px-6 pt-4 pb-4 bg-bg-primary/80 backdrop-blur-2xl border-b border-white/5 flex items-center gap-4 sticky top-0 z-30">
+          <button 
+            onClick={() => { setSelectedId(null); haptics.light(); }}
+            className="w-10 h-10 rounded-full surface-glass flex items-center justify-center text-text-muted hover:text-accent transition-all active:scale-90"
+          >
+            <ChevronLeft size={20} />
+          </button>
+          <div className="flex-1 min-w-0">
+            <h1 className="text-lg font-bold truncate leading-tight">{thread.ticket.subject}</h1>
+            <div className="flex items-center gap-2 mt-0.5">
+              <span className={`w-1.5 h-1.5 rounded-full ${thread.ticket.status === 'resolved' ? 'bg-teal-500' : 'bg-yellow-500 animate-pulse'}`} />
+              <p className="text-[10px] font-black uppercase tracking-widest opacity-40">{thread.ticket.status}</p>
             </div>
-          </header>
-
-          <div className="flex-1 overflow-y-auto space-y-6 pb-10 scrollbar-none mask-fade-top">
-            {thread.messages.map(m => (
-              <div key={m.id} className={`flex ${m.sender === 'user' ? 'justify-end' : 'justify-start'} animate-glass`}>
-                <div className={`max-w-[85%] rounded-[2rem] px-8 py-5 shadow-lg ring-1 transition-all duration-500 ${
-                  m.sender === 'user'
-                    ? 'surface-elevated border-accent/20 bg-accent/5 ring-accent/10 shadow-accent/5'
-                    : 'surface-glass bg-white/5 ring-white/5'
-                }`}>
-                  <p className="text-body-sm !text-base leading-relaxed font-medium">{m.message}</p>
-                  {m.attachment_url && (
-                    <div className="mt-4 rounded-xl overflow-hidden shadow-inner ring-1 ring-white/10">
-                      <img src={m.attachment_url} alt="Attachment" className="w-full h-auto max-h-64 object-cover" />
-                    </div>
-                  )}
-                  <p className="text-label-caps !text-[9px] opacity-30 mt-4 font-bold flex items-center gap-2 justify-end">
-                    <span>{m.sender === 'admin' ? 'Support' : 'You'}</span>
-                    <span className="w-1 h-1 rounded-full bg-current opacity-30" />
-                    <span>{new Date(m.created_at).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}</span>
-                  </p>
-                </div>
-              </div>
-            ))}
-            <div ref={threadEnd} />
           </div>
+        </header>
 
-          {thread.ticket.status !== 'resolved' && (
-            <div className="py-8 border-t border-border/10 space-y-4 bg-bg-primary/40 backdrop-blur-xl sticky bottom-0 z-20 rounded-t-[3rem]">
-              {uploadError && (
-                <div className="px-8 animate-glass">
-                  <p className="text-xs text-red-400 font-medium">{uploadError}</p>
-                </div>
-              )}
-              {attachment && (
-                <div className="px-8 animate-glass">
-                  <div className="relative inline-block group">
-                    <img src={attachment} className="w-20 h-20 rounded-xl object-cover ring-2 ring-accent shadow-lg" alt="Preview"/>
-                    <button onClick={() => setAttachment(null)} className="absolute -top-2 -right-2 w-6 h-6 rounded-full bg-red-500 text-white text-xs flex items-center justify-center shadow-lg border-2 border-bg-primary group-hover:scale-110 transition-transform">×</button>
+        {/* Conversation Stream */}
+        <div className="flex-1 overflow-y-auto px-6 py-6 space-y-6 scrollbar-none mask-fade-top overflow-x-hidden">
+          {thread.messages.map((m, idx) => {
+            const isUser = (m.sender || m.author_role) === 'user';
+            return (
+              <motion.div 
+                key={m.id || idx}
+                initial={{ opacity: 0, y: 10, x: isUser ? 20 : -20 }}
+                animate={{ opacity: 1, y: 0, x: 0 }}
+                className={`flex ${isUser ? 'justify-end' : 'justify-start'}`}
+              >
+                <div className={`max-w-[85%] relative group`}>
+                  <div className={`px-5 py-3.5 rounded-[2rem] shadow-lg ring-1 transition-all duration-300 ${
+                    isUser 
+                      ? 'bg-accent/10 border-accent/20 ring-accent/10 text-right rounded-tr-none' 
+                      : 'surface-glass bg-white/5 border-white/10 ring-white/5 rounded-tl-none'
+                  }`}>
+                    <p className="text-sm font-medium leading-relaxed">{m.message}</p>
+                    {m.attachment_url && (
+                      <div className="mt-3 rounded-2xl overflow-hidden shadow-inner ring-1 ring-white/10 max-w-sm">
+                        <img src={m.attachment_url} alt="Manifested Attachment" className="w-full h-auto object-cover max-h-64" />
+                      </div>
+                    )}
+                  </div>
+                  <div className={`flex items-center gap-2 mt-2 px-2 opacity-30 text-[9px] font-bold uppercase tracking-widest ${isUser ? 'justify-end' : 'justify-start'}`}>
+                    <span>{isUser ? 'You' : 'Artisan'}</span>
+                    <span className="w-0.5 h-0.5 rounded-full bg-current" />
+                    <span>{getTime(m)}</span>
                   </div>
                 </div>
+              </motion.div>
+            );
+          })}
+          <div ref={threadEnd} />
+        </div>
+
+        {/* Input Zenith Cluster */}
+        <footer className="px-6 pt-6 pb-28 bg-bg-primary/80 backdrop-blur-3xl border-t border-white/5 safe-area-bottom">
+          {thread.ticket.status !== 'resolved' ? (
+            <div className="space-y-4">
+              {uploadError && <p className="text-[10px] text-red-500 font-bold px-2 animate-pulse">{uploadError}</p>}
+              {attachment && (
+                <div className="relative inline-block ml-2 animate-in fade-in zoom-in duration-300">
+                  <img src={attachment} className="w-16 h-16 rounded-2xl object-cover ring-2 ring-accent shadow-glow-subtle" alt="Preview"/>
+                  <button onClick={() => setAttachment(null)} className="absolute -top-2 -right-2 w-6 h-6 rounded-full bg-red-500 text-white flex items-center justify-center shadow-lg"><X size={12}/></button>
+                </div>
               )}
-              <div className="flex gap-3 px-6">
+              <div className="flex items-center gap-3">
                 <input type="file" ref={fileInputRef} className="hidden" accept="image/*" onChange={handleFileUpload} />
                 <button 
                   onClick={() => fileInputRef.current?.click()}
-                  className="w-14 h-14 rounded-2xl surface-glass flex-shrink-0 flex items-center justify-center text-text-muted hover:text-accent transition-all active:scale-95 group"
+                  className={`w-12 h-12 rounded-2xl surface-glass flex items-center justify-center text-text-muted hover:text-accent transition-all active:scale-90 ${isUploading ? 'animate-pulse' : ''}`}
                 >
-                  <span className={`text-2xl ${isUploading ? 'animate-spin' : 'group-hover:rotate-12 transition-transform'}`}>📎</span>
+                  <Paperclip size={20} className={isUploading ? 'animate-spin' : ''} />
                 </button>
-                <input
-                  className="flex-1 input-field !text-base !py-4 !px-6 !rounded-2xl shadow-inner border-white/5 ring-1 ring-white/5"
-                  placeholder="Type your message here..."
-                  value={reply}
-                  onChange={e => setReply(e.target.value)}
-                  onKeyDown={e => e.key === 'Enter' && !e.shiftKey && (reply.trim() || attachment) && sendReply.mutate()}
-                />
+                <div className="flex-1 relative">
+                  <input
+                    className="w-full surface-glass border-white/10 rounded-2xl py-3.5 px-5 outline-none focus:ring-2 focus:ring-accent/30 transition-all text-sm font-medium placeholder:opacity-20"
+                    placeholder="Brief your artisanal concierge..."
+                    value={reply}
+                    onChange={e => setReply(e.target.value)}
+                    onKeyDown={e => e.key === 'Enter' && !e.shiftKey && (reply.trim() || attachment) && sendReply.mutate()}
+                  />
+                </div>
                 <button
                   onClick={() => sendReply.mutate()}
-                  disabled={(!reply.trim() && !attachment) || sendReply.isPending || isUploading}
-                  className="btn-primary !py-4 px-8 shrink-0 !rounded-2xl shadow-glow-subtle flex items-center justify-center transition-all active:scale-95"
+                  disabled={(!reply.trim() && !attachment) || sendReply.isPending}
+                  className="w-12 h-12 rounded-2xl bg-accent flex items-center justify-center text-white shadow-glow-subtle disabled:opacity-30 disabled:grayscale transition-all active:scale-90"
                 >
-                  {sendReply.isPending ? '…' : <span className="font-bold">Send</span>}
+                  {sendReply.isPending ? <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <Send size={20} />}
                 </button>
               </div>
             </div>
-          )}
-          {thread.ticket.status === 'resolved' && (
-            <div className="py-8 text-center animate-glass rounded-2xl bg-accent/5 border border-dashed border-accent/20 mb-8">
-              <p className="text-label-caps !text-[10px] sm:!text-[11px] font-bold opacity-40 uppercase tracking-[0.2em]">This conversation has been resolved and closed</p>
+          ) : (
+            <div className="py-2 text-center">
+              <p className="text-[10px] font-black uppercase tracking-widest opacity-30">This Engagement has been Manifested & Resolved</p>
             </div>
           )}
-        </div>
-      </div>
+        </footer>
+      </motion.div>
     );
   }
 
-  // Ticket list view
+  // Orchestrator Manifest (List View)
   return (
-    <div className="min-h-screen pb-24 animate-glass bg-bg-primary/50">
-      <div className="max-w-2xl mx-auto px-6 space-y-8 relative z-10">
-        {/* Apple Music Header */}
-        <header className="pt-6 pb-3 border-b border-border/10 mb-6">
-          <h1 className="text-h1 !text-[34px] font-extrabold tracking-tight">Support</h1>
+    <div className="min-h-screen pb-32 animate-glass bg-bg-primary/50">
+      <div className="max-w-2xl mx-auto px-6 space-y-8 relative z-10 pt-8 mt-2">
+        {/* Sovereign Header */}
+        <header className="space-y-1">
+          <h1 className="text-[40px] font-black tracking-tight leading-tight">Concierge</h1>
+          <p className="text-sm font-medium opacity-40 tracking-tight">How may we manifest your perfection today?</p>
         </header>
 
-        <section className="space-y-4 animate-glass" style={{ animationDelay: '0.1s' }}>
-          <h3 className="text-label-caps !text-[12px] !opacity-50 font-bold uppercase tracking-widest pl-4">New Request</h3>
-          <div className="surface-glass rounded-2xl border border-white/5 shadow-sm overflow-hidden flex flex-col">
+        {/* Concierge Ritual Selection */}
+        <section className="space-y-4">
+          <div className="flex items-center justify-between px-1">
+            <h3 className="text-[10px] font-black uppercase tracking-[0.2em] opacity-30">Manifest New Signal</h3>
+          </div>
+          <div className="flex gap-3 overflow-x-auto pb-4 scrollbar-none -mx-6 px-6">
+            {CONCIERGE_CHIPS.map(chip => (
+              <button
+                key={chip.id}
+                onClick={() => handleChipSelect(chip)}
+                className="flex-shrink-0 px-5 py-3.5 rounded-2xl surface-glass border border-white/5 flex items-center gap-3 hover:bg-white/5 transition-all active:scale-95 group shadow-sm"
+              >
+                <div className="w-8 h-8 rounded-xl bg-white/5 flex items-center justify-center group-hover:scale-110 transition-transform">
+                  <chip.icon size={16} className="text-accent" />
+                </div>
+                <span className="text-xs font-bold tracking-tight">{chip.label}</span>
+              </button>
+            ))}
+          </div>
+
+          <div className="surface-glass rounded-3xl border border-white/5 shadow-2xl overflow-hidden flex flex-col focus-within:ring-2 focus-within:ring-accent/20 transition-all">
             <input
-              className="w-full bg-transparent border-0 border-b border-border/10 focus:ring-0 focus:outline-none !text-base !py-4 !px-5 !font-medium placeholder:opacity-40"
-              placeholder="Subject"
+              className="w-full bg-transparent border-0 border-b border-white/5 focus:ring-0 outline-none py-4 px-6 text-base font-bold placeholder:opacity-20"
+              placeholder="The Essence (Subject)"
               value={subject}
               onChange={e => setSubject(e.target.value)}
             />
             <textarea
-              className="w-full bg-transparent border-0 border-b border-border/10 focus:ring-0 focus:outline-none resize-none min-h-[140px] !text-base !py-4 !px-5 placeholder:opacity-40 leading-relaxed"
-              placeholder="Describe your issue in detail..."
+              className="w-full bg-transparent border-0 focus:ring-0 outline-none resize-none min-h-[160px] py-4 px-6 text-sm font-medium leading-relaxed placeholder:opacity-20"
+              placeholder="Detail your requirements for our artisans..."
               value={message}
               onChange={e => setMessage(e.target.value)}
             />
-            <div className="p-4 bg-white/[0.01]">
+            <div className="p-4 bg-white/[0.02]">
               <button
                 onClick={() => create.mutate()}
                 disabled={!subject.trim() || !message.trim() || create.isPending}
-                className="btn-primary w-full !py-3.5 !text-base !rounded-xl font-bold shadow-sm transition-all duration-300"
+                className="w-full py-4 rounded-2xl bg-accent text-white font-black text-sm tracking-widest uppercase shadow-glow-subtle active:scale-95 transition-all disabled:opacity-20 disabled:grayscale"
               >
-                {create.isPending ? 'Sending…' : 'Submit Ticket'}
+                {create.isPending ? 'Manifesting...' : 'Initiate Engagement'}
               </button>
             </div>
           </div>
         </section>
 
-        <section className="space-y-4 animate-glass" style={{ animationDelay: '0.2s' }}>
-          <h3 className="text-label-caps !text-[12px] !opacity-50 font-bold uppercase tracking-widest pl-4">Your Tickets</h3>
+        {/* Engagement History Manifest */}
+        <section className="space-y-4">
+          <div className="flex items-center justify-between px-1">
+            <h3 className="text-[10px] font-black uppercase tracking-[0.2em] opacity-30">Active Engagements</h3>
+            {tickets.length > 0 && <span className="text-[9px] font-black opacity-40">{tickets.length} Signals Captured</span>}
+          </div>
 
-          {tickets.length === 0 && (
-            <div className="surface-glass p-8 text-center rounded-2xl opacity-60">
-              <p className="text-h3 !text-lg sm:!text-xl">No active tickets</p>
-              <p className="text-body-sm !text-sm sm:!text-base opacity-70 mt-1">When you create a support request, it will appear here.</p>
-            </div>
-          )}
-
-          {tickets.length > 0 && (
-            <div className="surface-glass rounded-2xl overflow-hidden divide-y divide-border/10 border border-white/5 shadow-sm">
-              {tickets.map(t => (
-                <button
-                  key={t.id}
-                  onClick={() => setSelectedId(t.id)}
-                  className="w-full text-left p-4 sm:p-5 hover:bg-bg-secondary/40 transition-colors flex justify-between items-center gap-4"
-                >
-                  <div className="min-w-0 flex-1 space-y-1">
-                    <p className="text-body-sm !text-base font-bold truncate">{t.subject}</p>
-                    <p className="text-label-caps !text-[10px] opacity-40 uppercase tracking-widest">
-                       {new Date(t.created_at).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' })}
-                    </p>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <span className={`text-[9px] font-bold uppercase tracking-widest px-3 py-1 rounded-md transition-all ${
-                      t.status === 'open' ? 'bg-blue-500/10 text-blue-500' :
-                      t.status === 'resolved' ? 'bg-teal-500/10 text-teal-600' :
-                      'bg-yellow-500/10 text-yellow-600'
-                    }`}>{t.status}</span>
-                    <span className="text-text-muted text-xl leading-none -mt-0.5">›</span>
-                  </div>
-                </button>
-              ))}
-            </div>
-          )}
+          <AnimatePresence mode="popLayout">
+            {tickets.length === 0 ? (
+              <motion.div 
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                className="py-16 text-center space-y-3 opacity-20"
+              >
+                <MessageSquare size={48} className="mx-auto" />
+                <p className="text-sm font-bold tracking-widest uppercase">No Active Signals</p>
+              </motion.div>
+            ) : (
+              <div className="space-y-3">
+                {tickets.map((t, idx) => (
+                  <motion.button
+                    key={t.id}
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: idx * 0.05 }}
+                    onClick={() => { setSelectedId(t.id); haptics.light(); }}
+                    className="w-full surface-glass rounded-2xl p-5 border border-white/5 flex items-center justify-between group hover:bg-white/5 transition-all active:scale-[0.98]"
+                  >
+                    <div className="flex items-center gap-4 min-w-0">
+                      <div className={`w-12 h-12 rounded-2xl flex items-center justify-center transition-all ${
+                        t.status === 'open' ? 'bg-yellow-500/10 text-yellow-500' :
+                        t.status === 'resolved' ? 'bg-teal-500/10 text-teal-500' :
+                        'bg-blue-500/10 text-blue-500'
+                      }`}>
+                        {t.status === 'resolved' ? <CheckCircle2 size={24} /> : (t.status === 'open' ? <Clock size={24} className="animate-pulse" /> : <AlertCircle size={24} />)}
+                      </div>
+                      <div className="text-left min-w-0">
+                        <p className="text-sm font-black truncate leading-tight tracking-tight">{t.subject}</p>
+                        <p className="text-[10px] font-black opacity-30 uppercase tracking-widest mt-1">{getDate(t)} · Signal #{t.id}</p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <div className={`px-3 py-1.5 rounded-full text-[9px] font-black uppercase tracking-widest ${
+                        t.status === 'open' ? 'bg-yellow-500/10 text-yellow-600' :
+                        t.status === 'resolved' ? 'bg-teal-500/10 text-teal-600' :
+                        'bg-blue-500/10 text-blue-600'
+                      }`}>
+                        {t.status}
+                      </div>
+                      <ChevronLeft size={16} className="rotate-180 opacity-20 group-hover:opacity-100 group-hover:translate-x-1 transition-all" />
+                    </div>
+                  </motion.button>
+                ))}
+              </div>
+            )}
+          </AnimatePresence>
         </section>
       </div>
     </div>
