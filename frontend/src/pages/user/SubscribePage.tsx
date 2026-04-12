@@ -512,7 +512,7 @@ export default function SubscribePage() {
           <div className="absolute top-[-5%] right-[-10%] w-[60rem] h-[60rem] blur-[200px] rounded-full animate-mesh"
             style={{ background: isDark ? 'rgba(251,113,133,0.06)' : 'rgba(56,189,248,0.07)' }} />
         </div>
-        <div className="max-w-2xl mx-auto px-2 sm:px-2 space-y-6 relative z-10 pb-28">
+        <div className="max-w-2xl mx-auto px-2 sm:px-2 space-y-6 relative z-10 pb-14">
           {renderHeader("Pick your meals", "Tap to include or skip. Swap any dish with the ↕ icon.", () => setStep('setup'))}
           <LiquidProgressBar currentStep={2} totalSteps={3} />
           <MealGrid days={days} weekMenu={weekMenu} planDays={planDays} maxDayOffs={planDays <= 7 ? 1 : 2} mealPrices={mealPrices} onChange={setDays} />
