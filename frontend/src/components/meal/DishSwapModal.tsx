@@ -72,12 +72,12 @@ export default function DishSwapModal({
           {/* Header Ritual */}
           <div className="flex items-start justify-between px-7 pt-6 pb-5">
             <div>
-              <p className={`text-[10px] font-black uppercase tracking-[0.3em] mb-1
-                ${isDark ? 'text-white/30' : 'text-indigo-950/30'}`}>
+              <p className={`text-[9px] font-semibold uppercase tracking-[0.2em] mb-1
+                ${isDark ? 'text-white/30' : 'text-indigo-950/40'}`}>
                 {dateLabel}
               </p>
-              <h3 className={`text-[22px] font-black tracking-tight leading-none
-                ${isDark ? 'text-white' : 'text-indigo-950'}`}>
+              <h3 className={`text-[20px] font-black tracking-tight leading-tight
+                ${isDark ? 'text-white' : 'text-indigo-950/80'}`}>
                 Swap your {MEAL_LABELS[mealType]}
               </h3>
             </div>
@@ -98,48 +98,51 @@ export default function DishSwapModal({
           <div className="px-7 pb-8 space-y-7 max-h-[75vh] overflow-y-auto scrollbar-none">
             {/* The Sovereign Selection (Current) */}
             <div>
-              <p className={`text-[11px] font-black uppercase tracking-widest mb-3
-                ${isDark ? 'text-white/20' : 'text-indigo-950/20'}`}>
+              <p className={`text-[9px] font-semibold uppercase tracking-wider mb-3
+                ${isDark ? 'text-white/20' : 'text-indigo-950/30'}`}>
                 Sovereign Choice
               </p>
               <div className={`
                 flex items-center gap-4 rounded-3xl p-4 border relative overflow-hidden group
                 ${isDark 
-                  ? 'bg-accent/10 border-accent/20 shadow-[0_0_20px_rgba(20,184,166,0.1)]' 
-                  : 'bg-accent/5 border-accent/20 shadow-[0_0_20px_rgba(20,184,166,0.05)]'
+                  ? 'bg-white/[0.04] border-white/10 shadow-lg' 
+                  : 'bg-indigo-900/5 border-indigo-900/10 shadow-sm'
                 }
               `}>
-                <div className="w-16 h-16 rounded-2xl bg-accent/20 overflow-hidden flex-shrink-0
-                  flex items-center justify-center ring-2 ring-accent/30 ring-offset-2 ring-offset-transparent">
+                <div className="w-14 h-14 rounded-2xl bg-accent/20 overflow-hidden flex-shrink-0
+                  flex items-center justify-center ring-2 ring-accent/30 ring-offset-2 ring-offset-transparent shadow-sm">
                   {currentItem.image_url
-                    ? <img src={currentItem.image_url} className="w-full h-full object-cover transform scale-105" alt="" />
-                    : <span className="text-3xl">{MEAL_EMOJI[mealType]}</span>
+                    ? <img src={currentItem.image_url} className="w-full h-full object-cover" alt="" />
+                    : <span className="text-2xl">{MEAL_EMOJI[mealType]}</span>
                   }
                 </div>
                 <div className="min-w-0 flex-1">
-                  <p className={`text-[15px] font-black tracking-tight truncate
-                    ${isDark ? 'text-white' : 'text-indigo-950'}`}>
+                  <p className={`text-[14px] font-bold tracking-tight truncate
+                    ${isDark ? 'text-white' : 'text-indigo-950/80'}`}>
                     {currentItem.name}
                   </p>
-                  <p className={`text-[12px] italic font-serif leading-tight mt-1 line-clamp-2
-                    ${isDark ? 'text-white/40' : 'text-indigo-950/40'}`}>
+                  <p className={`text-[11px] leading-tight mt-1 line-clamp-2
+                    ${isDark ? 'text-white/40' : 'text-indigo-950/50'}`}>
                     {currentItem.description || 'A masterpiece of culinary balance.'}
                   </p>
                 </div>
                 {/* Active Indicator */}
-                <motion.div 
-                  animate={{ scale: [1, 1.2, 1] }}
-                  transition={{ duration: 2, repeat: Infinity }}
-                  className="w-2.5 h-2.5 rounded-full bg-accent shadow-[0_0_10px_#14b8a6]" 
-                />
+                <div className="relative flex items-center justify-center w-6 h-6">
+                  <motion.div 
+                    animate={{ scale: [1, 1.8, 1], opacity: [0.5, 0.2, 0.5] }}
+                    transition={{ duration: 2, repeat: Infinity }}
+                    className="absolute w-full h-full rounded-full bg-accent" 
+                  />
+                  <div className="w-2 h-2 rounded-full bg-accent shadow-[0_0_8px_#14b8a6]" />
+                </div>
               </div>
             </div>
 
             {/* Alternatives Gallery */}
             {swappableItems.length > 0 ? (
               <div>
-                <p className={`text-[11px] font-black uppercase tracking-widest mb-4
-                  ${isDark ? 'text-white/20' : 'text-indigo-950/20'}`}>
+                <p className={`text-[9px] font-semibold uppercase tracking-wider mb-4
+                  ${isDark ? 'text-white/20' : 'text-indigo-950/30'}`}>
                   Explore Alternatives
                 </p>
                 <div className="grid grid-cols-2 gap-4">
@@ -184,12 +187,12 @@ export default function DishSwapModal({
                       </div>
                       {/* Info Ritual */}
                       <div className="p-4 space-y-1">
-                        <p className={`text-[13px] font-heavy tracking-tight leading-snug line-clamp-2
-                          ${isDark ? 'text-white' : 'text-indigo-950'}`}>
+                        <p className={`text-[13px] font-bold tracking-tight leading-snug line-clamp-2
+                          ${isDark ? 'text-white' : 'text-indigo-950/80'}`}>
                           {item.name}
                         </p>
-                        <p className={`text-[10px] sm:text-[11px] font-medium leading-tight line-clamp-2
-                          ${isDark ? 'text-white/30' : 'text-indigo-950/30'}`}>
+                        <p className={`text-[10px] leading-tight line-clamp-2
+                          ${isDark ? 'text-white/30' : 'text-indigo-950/40'}`}>
                           {item.description || 'Curated for today.'}
                         </p>
                       </div>
@@ -209,9 +212,8 @@ export default function DishSwapModal({
             <button
               onClick={() => { onClose(); haptics.light(); }}
               className={`
-                w-full py-2 text-[12px] font-black uppercase tracking-[0.2em] transition-all
-                rounded-2xl border border-transparent hover:border-current
-                ${isDark ? 'text-white/20 hover:text-white/40' : 'text-indigo-950/20 hover:text-indigo-950/40'}
+                w-full py-2 text-[12px] font-medium transition-all
+                ${isDark ? 'text-white/30 hover:text-white/55' : 'text-indigo-950/40 hover:text-indigo-900/60'}
               `}
             >
               Maintain Current Ritual
