@@ -113,9 +113,21 @@ router.patch(
   })),
   async (req, res) => {
     const subId = parseInt(req.params.id, 10);
+    
+    // Ω.7: Recursive Defensive Mapping
+    const validKeys = ['breakfast_cutoff_hour', 'lunch_cutoff_hour', 'dinner_cutoff_hour'];
+    const updateData: any = {};
+    for (const key of validKeys) {
+      if (req.body[key] !== undefined) updateData[key] = req.body[key];
+    }
+
+    if (Object.keys(updateData).length === 0) {
+      return res.status(400).json({ error: 'No valid fields provided for update.' });
+    }
+
     const [updated] = await db('subscriptions')
       .where({ id: subId })
-      .update({ ...req.body, updated_at: db.fn.now() })
+      .update({ ...updateData, updated_at: db.fn.now() })
       .returning('*');
 
     await db('audit_logs').insert({

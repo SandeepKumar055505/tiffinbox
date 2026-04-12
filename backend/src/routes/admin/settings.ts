@@ -36,10 +36,34 @@ router.patch(
     ratings_enabled: z.boolean().optional(),
   })),
   async (req, res) => {
+    // Ω.7: Recursive Defensive Mapping (Only allow keys defined in schema to reach DB)
+    const validKeys = [
+      'breakfast_price', 'lunch_price', 'dinner_price',
+      'breakfast_cutoff_hour', 'lunch_cutoff_hour', 'dinner_cutoff_hour',
+      'max_skip_days_per_week', 'max_grace_skips_per_week', 'max_persons_per_user',
+      'signup_wallet_credit', 'referral_reward_amount',
+      'breakfast_enabled', 'lunch_enabled', 'dinner_enabled',
+      'delivery_otp_enabled', 'ratings_enabled'
+    ];
+    
+    const updateData: any = {};
+    for (const key of validKeys) {
+      if (req.body[key] !== undefined) updateData[key] = req.body[key];
+    }
+
+    if (Object.keys(updateData).length === 0) {
+      return res.status(400).json({ error: 'No valid fields provided for update.' });
+    }
+
     const before = await db('app_settings').where({ id: 1 }).first();
+    if (!before) {
+      // Emergency Integrity: Row 1 must exist. If missing, seed it now.
+      await db('app_settings').insert({ id: 1 });
+    }
+
     const [updated] = await db('app_settings')
       .where({ id: 1 })
-      .update({ ...req.body, updated_at: db.fn.now() })
+      .update({ ...updateData, updated_at: db.fn.now() })
       .returning('*');
 
     await db('audit_logs').insert({
@@ -47,8 +71,8 @@ router.patch(
       action: 'settings.update',
       target_type: 'app_settings',
       target_id: 1,
-      before_value: JSON.stringify(before),
-      after_value: JSON.stringify(req.body),
+      before_value: JSON.stringify(before || {}),
+      after_value: JSON.stringify(updateData),
     });
 
     res.json(updated);

@@ -64,49 +64,47 @@ require('express-async-errors');
 
 // ── Middleware ────────────────────────────────────────────────────────────────
 app.use(morgan(env.isDev ? 'dev' : 'combined'));
-// Allowed production origins — custom domain (any subdomain) + Render fallback
-const ORIGIN_REGEX = /^https?:\/\/((localhost(:\d+)?)|((.+\.)?mytiffinpoint\.com)|(tiffinbox-web\.onrender\.com))$/i;
+
+// Ω.9: X-Request-ID Telemetry (Best in the World Debugging)
+app.use((_req, res, next) => {
+  const requestId = Math.random().toString(36).substring(2, 10).toUpperCase();
+  res.setHeader('X-Request-ID', requestId);
+  next();
+});
+
+// Allowed production origins — explicit whitelist for diamond-standard reliability
+const ALLOWED_ORIGINS = [
+  'https://mytiffinpoint.com',
+  'https://www.mytiffinpoint.com',
+  'https://tiffinbox-web.onrender.com',
+  'https://tiffinbox-api.onrender.com',
+  'http://localhost:3000',
+  'http://localhost:5173',
+];
+
 const corsOptions: cors.CorsOptions = {
   origin: (origin, cb) => {
-    if (!origin || env.isDev || ORIGIN_REGEX.test(origin)) {
+    // In dev, allow all. In prod, allow whitelist + null origin (native apps/postman)
+    if (!origin || env.isDev || ALLOWED_ORIGINS.includes(origin)) {
       return cb(null, true);
     }
-    console.warn(`CORS blocked for origin: ${origin}`);
+    // Subdomain wildcard support for custom partner deployments
+    if (origin.endsWith('.mytiffinpoint.com')) {
+      return cb(null, true);
+    }
+    console.warn(`[CORS Shield] Blocked origin: ${origin}`);
     return cb(new Error(`CORS blocked for origin: ${origin}`));
   },
   credentials: true,
   methods: ['GET', 'HEAD', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
-  maxAge: 600,
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'X-Request-ID'],
+  maxAge: 86400, // 24 hours — optimize preflight latency
 };
+
 app.use(cors(corsOptions));
-// Explicit preflight handler — guarantees OPTIONS gets a CORS-headered response
 app.options('*', cors(corsOptions));
 
-// Raw body for Razorpay webhook signature verification
-app.use('/api/payments/webhook', express.raw({ type: 'application/json' }));
-app.use(express.json({ limit: '1mb' }));
-app.use(express.urlencoded({ extended: true, limit: '1mb' }));
-
-// Maintenance Mode middleware
-app.use((_req, res, next) => {
-  if (process.env.MAINTENANCE_MODE === 'true') {
-    return res.status(503).json({ 
-      error: 'Service Temporarily Unavailable', 
-      message: 'TiffinBox is undergoing scheduled maintenance. Please check back in a few minutes.' 
-    });
-  }
-  next();
-});
-
-// Rate limiting
-app.use('/api/', rateLimit({ windowMs: 15 * 60 * 1000, max: 200, standardHeaders: true }));
-app.use('/api/auth/', rateLimit({ windowMs: 15 * 60 * 1000, max: 20, standardHeaders: true }));
-app.use('/api/admin/login', rateLimit({ windowMs: 60 * 60 * 1000, max: 5, standardHeaders: true })); // Extreme limit for admin
-// ── Routes ────────────────────────────────────────────────────────────────────
-app.get('/api/health', (_req, res) => res.json({ status: 'ok', ts: new Date().toISOString() }));
-app.get('/', (_req, res) => res.json({ status: 'TiffinBox API Live', website: env.FRONTEND_URL }));
-
+// ── Registry Cleanup & Routes ──────────────────────────────────────────────────
 app.use('/api/config', configRoutes);
 app.use('/api/auth', authRoutes);
 app.use('/api/persons', personRoutes);
@@ -137,10 +135,34 @@ app.use('/api/admin/ratings', adminRatingsRoutes);
 app.use('/api/admin/referrals', adminReferralRoutes);
 app.use('/api/admin/users', adminUserRoutes);
 app.use('/api/admin/logistics', adminLogisticsRoutes);
-app.use('/api/admin/holidays', adminHolidayRoutes);
 app.use('/api/admin/areas', adminAreaRoutes);
 app.use('/api/admin/narratives', adminNarrativeRoutes);
 app.use('/api/admin/notifications', adminNotificationRoutes);
+
+// Raw body for Razorpay webhook signature verification
+app.use('/api/payments/webhook', express.raw({ type: 'application/json' }));
+app.use(express.json({ limit: '1mb' }));
+app.use(express.urlencoded({ extended: true, limit: '1mb' }));
+
+// Maintenance Mode middleware
+app.use((_req, res, next) => {
+  if (process.env.MAINTENANCE_MODE === 'true') {
+    return res.status(503).json({ 
+      error: 'Service Temporarily Unavailable', 
+      message: 'TiffinBox is undergoing scheduled maintenance.' 
+    });
+  }
+  next();
+});
+
+// Rate limiting
+app.use('/api/', rateLimit({ windowMs: 15 * 60 * 1000, max: 200, standardHeaders: true }));
+app.use('/api/auth/', rateLimit({ windowMs: 15 * 60 * 1000, max: 20, standardHeaders: true }));
+app.use('/api/admin/login', rateLimit({ windowMs: 60 * 60 * 1000, max: 5, standardHeaders: true }));
+
+// ── Health Check ──────────────────────────────────────────────────────────────
+app.get('/api/health', (_req, res) => res.json({ status: 'ok', ts: new Date().toISOString() }));
+app.get('/', (_req, res) => res.json({ status: 'TiffinBox API Live', website: env.FRONTEND_URL }));
 
 // ── Error handler ─────────────────────────────────────────────────────────────
 if (env.SENTRY_DSN) {
@@ -148,12 +170,19 @@ if (env.SENTRY_DSN) {
 }
 
 app.use(async (err: any, req: express.Request, res: express.Response, _next: express.NextFunction) => {
-  console.error(err);
+  console.error(`[X-Request-ID: ${res.getHeader('X-Request-ID')}]`, err);
   
+  // CORS Shield: Guarantee headers are present even in error states
+  const origin = req.headers.origin;
+  if (origin && (env.isDev || ALLOWED_ORIGINS.includes(origin) || origin.endsWith('.mytiffinpoint.com'))) {
+    res.setHeader('Access-Control-Allow-Origin', origin);
+    res.setHeader('Access-Control-Allow-Credentials', 'true');
+  }
+
   const status = err.status || err.statusCode || 500;
   const errorKey = err.errorKey || (err.response?.data?.error_key);
   
-  // Ω.6: Log Friction to Audit Logs if it's a known operational gate
+  // Ω.6: Log Friction to Audit Logs
   if (status >= 400 && status < 500 && errorKey) {
     try {
       const { db } = await import('./config/db');
@@ -165,7 +194,7 @@ app.use(async (err: any, req: express.Request, res: express.Response, _next: exp
           method: req.method, 
           status, 
           ip: req.ip,
-          user_agent: req.headers['user-agent']
+          requestId: res.getHeader('X-Request-ID')
         }),
       });
     } catch (auditErr) {
@@ -175,7 +204,8 @@ app.use(async (err: any, req: express.Request, res: express.Response, _next: exp
 
   res.status(status).json({ 
     error: err.message || 'Internal server error',
-    error_key: errorKey 
+    error_key: errorKey,
+    requestId: res.getHeader('X-Request-ID')
   });
 });
 
