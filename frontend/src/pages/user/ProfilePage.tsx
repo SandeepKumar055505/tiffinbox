@@ -535,7 +535,7 @@ export default function ProfilePage() {
                   </p>
                 </div>
                 <div className="relative">
-                  <motion.div 
+                  <motion.div
                     animate={{ x: [0, 4, 0] }}
                     transition={{ repeat: Infinity, duration: 1.5 }}
                     className="group-hover:text-indigo-400 transition-colors"
@@ -815,7 +815,7 @@ export default function ProfilePage() {
         </section>
 
         {/* Notifications */}
-        <section className="space-y-4 animate-glass" style={{ animationDelay: '0.35s' }}>
+        {/* <section className="space-y-4 animate-glass" style={{ animationDelay: '0.35s' }}>
           <h3 className="text-label-caps !text-[12px] !opacity-50 font-bold uppercase tracking-widest pl-4">Digital Mutes</h3>
           <div className="surface-glass rounded-[2rem] border border-white/5 overflow-hidden divide-y divide-white/5 shadow-sm">
             {NOTIFICATIONS.map(n => {
@@ -837,7 +837,7 @@ export default function ProfilePage() {
               );
             })}
           </div>
-        </section>
+        </section> */}
 
         {/* Legal & Company — collapsible */}
         <section className="space-y-2 animate-glass" style={{ animationDelay: '0.38s' }}>

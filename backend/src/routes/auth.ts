@@ -40,12 +40,12 @@ router.post('/google', validate(z.object({
         .where({ referral_code: req.body.referral_code })
         .select('id', 'name')
         .first();
-      
+
       if (referrer) {
         referred_by_id = referrer.id;
         // Safe Mode: "Rahul Sharma" -> "Rahul S."
         const names = referrer.name.trim().split(/\s+/);
-        referrer_name = names.length > 1 
+        referrer_name = names.length > 1
           ? `${names[0]} ${names[names.length - 1][0]}.`
           : names[0];
       }
@@ -77,7 +77,7 @@ router.post('/google', validate(z.object({
     } else {
       // Update device fingerprint on returning login
       if (req.body.fingerprint) {
-        await db('users').where({ id: user.id }).update({ 
+        await db('users').where({ id: user.id }).update({
           last_fingerprint: req.body.fingerprint,
           updated_at: db.fn.now()
         });
@@ -85,9 +85,9 @@ router.post('/google', validate(z.object({
     }
 
     const token = signUserToken(user.id);
-    res.json({ 
-      token, 
-      user: safeUser(user), 
+    res.json({
+      token,
+      user: safeUser(user),
       is_new_user: isNewUser,
       referrer_name: user?.last_referrer_name || referrer_name
     });
@@ -96,7 +96,7 @@ router.post('/google', validate(z.object({
       body_exists: !!req.body.id_token,
       audience: env.GOOGLE_CLIENT_ID
     });
-    res.status(400).json({ 
+    res.status(400).json({
       error: 'Google authentication failed',
       reason: env.NODE_ENV === 'production' ? 'Technical mismatch' : err.message,
       requestId: res.getHeader('X-Request-ID')
@@ -200,7 +200,7 @@ router.delete('/me', requireUser, async (req, res) => {
 
   // 1. Cancel all active subscriptions
   await db('subscriptions').where({ user_id: req.userId, state: 'active' }).update({ state: 'cancelled', updated_at: db.fn.now() });
-  
+
   // 2. Anonymize user data (GDPR/Compliance)
   await db('users').where({ id: req.userId }).update({
     name: 'Deleted User',
@@ -343,9 +343,9 @@ function generateReferralCode(): string {
 }
 
 async function onNewUserCreated(
-  user_id: number, 
-  referred_by: number | null, 
-  signup_ip: string, 
+  user_id: number,
+  referred_by: number | null,
+  signup_ip: string,
   fingerprint: string | null = null,
   referrer_name: string | null = null
 ): Promise<void> {
@@ -366,7 +366,7 @@ async function onNewUserCreated(
 
     if (isSameIp || isSameDevice) {
       console.warn(`[Referral Shield] Blocking fraudulent attempt. User ${user_id} referred by ${referred_by} on same IP/Device.`);
-      
+
       // Log for Admin Dashboard (Diamond Standard Security)
       await db('fraud_alerts').insert({
         user_id,
