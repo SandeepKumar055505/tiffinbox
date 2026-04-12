@@ -241,19 +241,19 @@ router.post('/phone/otp', requireUser, validate(z.object({
       });
     });
 
-    // 4. Multi-Channel Failover: Email & Oracle Logging
-    await emailService.sendVerificationOtpEmail({
+    // 4. Multi-Channel Failover: Email & Oracle Logging (Non-blocking)
+    emailService.sendVerificationOtpEmail({
       to: user.email,
       name: user.name,
       otp: otp
-    });
+    }).catch(err => console.error('[OTP Email Background Failure]', err));
 
     const duration = Date.now() - start;
     console.log(`\n[OTP ORACLE] >>> IDENTITY VERIFICATION PULSE: ${otp} <<< for ${normalizedPhone} (User: ${user.email}) in ${duration}ms\n`);
     
     // Telemetry reinforcement
     res.setHeader('X-Response-Time', `${duration}ms`);
-    res.json({ message: 'Verification code sent successfully to your registered email.' });
+    return res.json({ message: 'Verification code sent successfully to your registered email.' });
   } catch (err: any) {
     console.error(`[OTP Failure] ${err.message}`);
     res.status(500).json({ error: 'Failed to generate verification code. Please try again.' });
