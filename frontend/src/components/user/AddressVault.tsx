@@ -11,9 +11,14 @@ interface Address {
   is_default: boolean;
 }
 
-const AddressVault: React.FC = () => {
+interface AddressVaultProps {
+  onUpdate?: () => void;
+}
+
+const AddressVault: React.FC<AddressVaultProps> = ({ onUpdate }) => {
   const [addresses, setAddresses] = useState<Address[]>([]);
   const [loading, setLoading] = useState(true);
+  const [isUpdating, setIsUpdating] = useState(false);
   const sensorial = useSensorial();
   const [isAdding, setIsAdding] = useState(false);
   const [newLabel, setNewLabel] = useState('Home');
@@ -39,6 +44,7 @@ const AddressVault: React.FC = () => {
 
   const handleAdd = async () => {
     if (newVal.length < 5) return;
+    setIsUpdating(true);
     try {
       const res = await addressApi.create({ 
         label: newLabel, 
@@ -49,11 +55,14 @@ const AddressVault: React.FC = () => {
       haptics.success();
       setIsAdding(false);
       setNewVal('');
+      onUpdate?.();
     } catch (err: any) {
       sensorial.showError({ 
         title: 'Vault Error', 
         message: 'Our master chefs were unable to record your new location. Please try again.' 
       });
+    } finally {
+      setIsUpdating(false);
     }
   };
 
@@ -66,16 +75,20 @@ const AddressVault: React.FC = () => {
 
   const handleUpdate = async () => {
     if (!editingId || editVal.length < 5) return;
+    setIsUpdating(true);
     try {
       const res = await addressApi.update(editingId, { label: editLabel, address: editVal });
       setAddresses(addresses.map(a => a.id === editingId ? res.data : a));
       haptics.success();
       setEditingId(null);
+      onUpdate?.();
     } catch {
       sensorial.showError({
         title: 'Update Failed',
         message: 'Could not save changes. Please try again.',
       });
+    } finally {
+      setIsUpdating(false);
     }
   };
 
@@ -90,6 +103,7 @@ const AddressVault: React.FC = () => {
         await addressApi.remove(id);
         setAddresses(addresses.filter(a => a.id !== id));
         haptics.success();
+        onUpdate?.();
       } catch (err) {
         sensorial.showError({
           title: 'Operation Delayed',
@@ -106,18 +120,23 @@ const AddressVault: React.FC = () => {
     return <MapIcon size={20} />;
   };
 
-  if (loading) return <div className="flex justify-center p-8"><Loader2 className="animate-spin text-orange-500" /></div>;
+  if (loading) return (
+    <div className="flex flex-col items-center justify-center p-12 space-y-4">
+      <Loader2 className="animate-spin text-accent w-10 h-10 opacity-40" />
+      <p className="text-[10px] font-black uppercase tracking-[0.2em] text-accent opacity-30">Synchronizing Vault...</p>
+    </div>
+  );
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h2 className="text-xl font-bold text-gray-900">Address Book</h2>
+      <div className="flex items-center justify-between px-1">
+        <h2 className="text-label-caps !text-[12px] !opacity-50 font-bold uppercase tracking-widest">Delivery Vault</h2>
         <button
-          onClick={() => setIsAdding(true)}
-          className="flex items-center gap-2 rounded-2xl bg-orange-50 px-4 py-2 text-sm font-semibold text-orange-600 transition-all hover:bg-orange-100 active:scale-95"
+          onClick={() => { setIsAdding(true); haptics.light(); }}
+          className="flex items-center gap-1.5 rounded-xl bg-accent/[0.08] px-4 py-2 text-[11px] font-black uppercase tracking-wider text-accent transition-all hover:bg-accent/[0.12] active:scale-95 border border-accent/10"
         >
-          <Plus size={18} />
-          Add New
+          <Plus size={14} strokeWidth={2.5} />
+          New Location
         </button>
       </div>
 
@@ -127,44 +146,57 @@ const AddressVault: React.FC = () => {
             <motion.div
               key={addr.id}
               layout
-              initial={{ opacity: 0, scale: 0.9 }}
+              initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.9 }}
-              className="relative overflow-hidden rounded-[2rem] bg-white shadow-sm border border-gray-100 transition-all hover:shadow-md"
+              exit={{ opacity: 0, scale: 0.95 }}
+              className={`relative overflow-hidden rounded-[2rem] transition-all duration-500 border
+                ${addr.is_default ? 'bg-bg-secondary border-accent/20 ring-1 ring-accent/5 shadow-glow-accent/5' : 'surface-glass border-white/5'}`}
             >
               {editingId === addr.id ? (
                 /* Inline edit form */
-                <div className="p-5 space-y-4">
-                  <div className="flex gap-2">
-                    {['Home', 'Office', 'Other'].map(l => (
-                      <button
-                        key={l}
-                        onClick={() => setEditLabel(l)}
-                        className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
-                          editLabel === l ? 'bg-orange-500 text-white' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
-                        }`}
-                      >
-                        {l}
-                      </button>
-                    ))}
+                <div className="p-6 space-y-5">
+                  <div className="space-y-2">
+                    <p className="text-[10px] font-black uppercase tracking-widest t-text-muted opacity-40">Classification</p>
+                    <div className="flex gap-2">
+                      {['Home', 'Office', 'Other'].map(l => (
+                        <button
+                          key={l}
+                          onClick={() => { setEditLabel(l); haptics.light(); }}
+                          className={`flex-1 py-2 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all duration-300 ${
+                            editLabel === l 
+                              ? 'bg-accent text-white shadow-glow-subtle' 
+                              : 'bg-bg-subtle/50 t-text-muted border border-white/5 hover:border-accent/30'
+                          }`}
+                        >
+                          {l}
+                        </button>
+                      ))}
+                    </div>
                   </div>
-                  <textarea
-                    value={editVal}
-                    onChange={e => setEditVal(e.target.value)}
-                    rows={3}
-                    className="w-full rounded-2xl border border-gray-100 bg-gray-50 p-3 text-sm font-medium focus:ring-2 focus:ring-orange-400 focus:outline-none resize-none"
-                  />
+                  
+                  <div className="space-y-2">
+                    <p className="text-[10px] font-black uppercase tracking-widest t-text-muted opacity-40">Address Details</p>
+                    <textarea
+                      value={editVal}
+                      onChange={e => setEditVal(e.target.value)}
+                      rows={3}
+                      className="w-full rounded-2xl border border-white/5 bg-bg-card/50 p-4 text-[13px] font-semibold t-text-primary focus:ring-2 focus:ring-accent/40 focus:outline-none resize-none placeholder:opacity-20 shadow-inner"
+                      placeholder="Enter precise point details..."
+                    />
+                  </div>
+
                   <div className="flex gap-2">
                     <button
-                      onClick={handleUpdate}
-                      disabled={editVal.length < 5}
-                      className="flex-1 rounded-2xl bg-orange-500 py-2.5 text-sm font-bold text-white active:scale-95 disabled:opacity-40 transition-all"
+                      onClick={() => { haptics.impact('medium'); handleUpdate(); }}
+                      disabled={editVal.length < 5 || isUpdating}
+                      className="flex-1 rounded-2xl bg-accent py-3 text-[11px] font-black uppercase tracking-widest text-white shadow-glow-subtle active:scale-95 disabled:opacity-40 transition-all flex items-center justify-center gap-2"
                     >
-                      Save
+                      {isUpdating && <Loader2 size={12} className="animate-spin" />}
+                      {isUpdating ? 'Manifesting...' : 'Save Manifest'}
                     </button>
                     <button
-                      onClick={() => setEditingId(null)}
-                      className="rounded-2xl bg-gray-100 px-5 py-2.5 text-sm font-bold text-gray-500 active:scale-95 transition-all"
+                      onClick={() => { setEditingId(null); haptics.light(); }}
+                      className="px-6 rounded-2xl bg-bg-subtle/80 text-[11px] font-black uppercase tracking-widest t-text-muted border border-white/5 active:scale-95 transition-all"
                     >
                       Cancel
                     </button>
@@ -173,37 +205,40 @@ const AddressVault: React.FC = () => {
               ) : (
                 /* Normal view */
                 <div className="p-6">
-                  <div className="flex items-start justify-between mb-4">
-                    <div className={`p-3 rounded-2xl ${addr.is_default ? 'bg-orange-50 text-orange-500' : 'bg-gray-50 text-gray-400'}`}>
+                  <div className="flex items-start justify-between mb-5">
+                    <div className={`w-11 h-11 rounded-2xl flex items-center justify-center transition-colors duration-500
+                      ${addr.is_default ? 'bg-accent/10 t-text-primary ring-1 ring-accent/20' : 'bg-bg-subtle/40 t-text-faint ring-1 ring-white/5'}`}>
                       {getIcon(addr.label)}
                     </div>
-                    <div className="flex items-center gap-1">
+                    <div className="flex items-center gap-1.5 translate-x-1.5 -translate-y-1.5">
                       <button
                         onClick={() => startEdit(addr)}
-                        className="p-2 text-gray-400 hover:text-orange-500 hover:bg-orange-50 rounded-2xl transition-all"
+                        className="p-2.5 t-text-muted opacity-30 hover:opacity-100 hover:text-accent hover:bg-accent/10 rounded-xl transition-all"
                         title="Edit"
                       >
-                        <Pencil size={16} />
+                        <Pencil size={14} strokeWidth={2.5} />
                       </button>
-                      <button
-                        onClick={() => requestDelete(addr.id)}
-                        className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-2xl transition-all"
-                        title="Delete"
-                      >
-                        <Trash2 size={16} />
-                      </button>
+                      {!addr.is_default && (
+                        <button
+                          onClick={() => requestDelete(addr.id)}
+                          className="p-2.5 t-text-muted opacity-30 hover:opacity-100 hover:text-red-500 hover:bg-red-500/10 rounded-xl transition-all"
+                          title="Delete"
+                        >
+                          <Trash2 size={14} strokeWidth={2.5} />
+                        </button>
+                      )}
                     </div>
                   </div>
-                  <div>
-                    <div className="flex items-center gap-2 mb-1">
-                      <h4 className="font-bold text-gray-900">{addr.label}</h4>
+                  <div className="space-y-1">
+                    <div className="flex items-center gap-2.5">
+                      <h4 className="text-[17px] font-black t-text-primary tracking-tight leading-none">{addr.label}</h4>
                       {addr.is_default && (
-                        <span className="inline-flex items-center rounded-full bg-green-50 px-2 py-0.5 text-[10px] font-bold text-green-600 uppercase tracking-wider">
-                          Default
+                        <span className="inline-flex items-center rounded-full bg-accent/10 px-2 py-0.5 text-[8px] font-black text-accent uppercase tracking-[0.15em] ring-1 ring-accent/20">
+                          Primary
                         </span>
                       )}
                     </div>
-                    <p className="text-sm text-gray-500 leading-relaxed font-medium">
+                    <p className="text-[12px] t-text-muted leading-relaxed font-medium opacity-60 line-clamp-2 mt-2">
                       {addr.address}
                     </p>
                   </div>
@@ -215,19 +250,19 @@ const AddressVault: React.FC = () => {
 
         {isAdding && (
           <motion.div
-            initial={{ opacity: 0, y: 10 }}
+            initial={{ opacity: 0, y: 15 }}
             animate={{ opacity: 1, y: 0 }}
-            className="rounded-[2.5rem] bg-orange-50/50 p-6 border-2 border-dashed border-orange-200"
+            className="rounded-[2.5rem] bg-accent/[0.03] p-6 border-2 border-dashed border-accent/20 shadow-inner"
           >
-            <div className="mb-4">
-              <label className="text-xs font-bold text-orange-600 uppercase tracking-widest block mb-2">Location Tag</label>
+            <div className="mb-5 space-y-2">
+              <label className="text-[9px] font-black text-accent uppercase tracking-[0.2em] block pl-1">Logistic Tag</label>
               <div className="flex gap-2">
                 {['Home', 'Office', 'Other'].map(l => (
                   <button
                     key={l}
-                    onClick={() => setNewLabel(l)}
-                    className={`px-4 py-2 rounded-xl text-sm font-bold transition-all ${
-                      newLabel === l ? 'bg-orange-500 text-white' : 'bg-white text-gray-500'
+                    onClick={() => { setNewLabel(l); haptics.light(); }}
+                    className={`flex-1 py-3 rounded-2xl text-[10px] font-black uppercase tracking-wider transition-all duration-300 ${
+                      newLabel === l ? 'bg-accent text-white shadow-glow-subtle' : 'bg-bg-secondary t-text-muted border border-white/5'
                     }`}
                   >
                     {l}
@@ -236,27 +271,28 @@ const AddressVault: React.FC = () => {
               </div>
             </div>
 
-            <div className="mb-6">
-              <label className="text-xs font-bold text-orange-600 uppercase tracking-widest block mb-2">Full Address</label>
+            <div className="mb-6 space-y-2">
+              <label className="text-[9px] font-black text-accent uppercase tracking-[0.2em] block pl-1">Precise Location</label>
               <textarea
                 value={newVal}
                 onChange={(e) => setNewVal(e.target.value)}
-                placeholder="Enter complete building, street, and area details..."
-                className="w-full rounded-2xl border-none bg-white p-4 text-sm font-medium focus:ring-2 focus:ring-orange-500 h-24 resize-none shadow-inner"
+                placeholder="Include building, floor, street, and landmarks..."
+                className="w-full rounded-[1.5rem] border-white/5 bg-bg-secondary p-4 text-[13px] font-semibold t-text-primary focus:ring-2 focus:ring-accent/40 h-28 resize-none shadow-sm focus:outline-none placeholder:opacity-20"
               />
             </div>
 
             <div className="flex gap-3">
               <button
-                onClick={handleAdd}
-                disabled={newVal.length < 5}
-                className="flex-1 rounded-2xl bg-orange-600 py-3 text-sm font-bold text-white shadow-lg active:scale-95 disabled:opacity-50"
+                onClick={() => { haptics.impact('medium'); handleAdd(); }}
+                disabled={newVal.length < 5 || isUpdating}
+                className="flex-1 rounded-2xl bg-accent py-3.5 text-[11px] font-black uppercase tracking-[0.15em] text-white shadow-glow-accent/20 active:scale-95 disabled:opacity-40 transition-all flex items-center justify-center gap-2"
               >
-                Save Address
+                {isUpdating && <Loader2 size={12} className="animate-spin" />}
+                {isUpdating ? 'Manifesting...' : 'Secure Location'}
               </button>
               <button
-                onClick={() => setIsAdding(false)}
-                className="rounded-2xl bg-gray-100 px-6 py-3 text-sm font-bold text-gray-500 active:scale-95"
+                onClick={() => { setIsAdding(false); haptics.light(); }}
+                className="px-6 rounded-2xl bg-bg-subtle text-[11px] font-black uppercase tracking-[0.15em] t-text-muted border border-white/5 active:scale-95 transition-all"
               >
                 Cancel
               </button>

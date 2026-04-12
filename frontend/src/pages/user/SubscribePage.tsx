@@ -540,7 +540,7 @@ export default function SubscribePage() {
           <div className="absolute top-[-5%] right-[-10%] w-[60rem] h-[60rem] blur-[200px] rounded-full animate-mesh"
             style={{ background: isDark ? 'rgba(251,113,133,0.06)' : 'rgba(56,189,248,0.07)' }} />
         </div>
-        <div className="max-w-2xl mx-auto px-2 sm:px-2 space-y-6 relative z-10 pb-14">
+        <div className="max-w-2xl mx-auto px-2 sm:px-2 space-y-6 relative z-10 pb-10">
           {renderHeader("Pick your meals", "Tap to include or skip. Swap any dish with the ↕ icon.", () => setStep('setup'))}
           <LiquidProgressBar currentStep={2} totalSteps={3} />
           <MealGrid days={days} weekMenu={weekMenu} planDays={planDays} maxDayOffs={planDays <= 7 ? 1 : 2} mealPrices={mealPrices} onChange={setDays} />
@@ -576,13 +576,13 @@ export default function SubscribePage() {
       : 0;
 
     return (
-      <div className="bg-bg-primary text-text-primary p-4 sm:p-8 relative overflow-x-hidden transition-all duration-[3000ms]"
+      <div className="bg-bg-primary text-text-primary p-4 sm:p-8 relative transition-all duration-[3000ms]"
         style={{ background: `radial-gradient(circle at top right, ${PHASE_CONFIG.checkout.color}, transparent)` }}>
         <div className="absolute top-0 left-0 w-full h-full pointer-events-none">
           <div className="absolute bottom-[-10%] left-[-10%] w-[60rem] h-[60rem] bg-indigo-500/10 blur-[250px] rounded-full animate-mesh" />
         </div>
 
-        <div className="max-w-2xl mx-auto px-4 sm:px-6 space-y-5 relative z-10 pb-44">
+        <div className="max-w-2xl mx-auto px-4 sm:px-6 space-y-5 relative z-10 pb-2">
           {renderHeader("Review & Pay", "Confirm your order before payment.", () => setStep('grid'))}
           <LiquidProgressBar currentStep={3} totalSteps={3} />
 
@@ -592,14 +592,14 @@ export default function SubscribePage() {
               <div className="relative p-7">
                 {/* Identity Sigil Overlay */}
                 <div className="absolute top-0 right-0 w-32 h-32 bg-accent/5 blur-3xl rounded-full translate-x-10 -translate-y-10" />
-                
+
                 <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-6 relative z-10">
                   <div className="flex items-center gap-4 sm:gap-5">
                     <div className="relative flex-shrink-0">
-                      <motion.div 
+                      <motion.div
                         animate={{ scale: [1, 1.15, 1], opacity: [0.3, 0.1, 0.3] }}
                         transition={{ duration: 4, repeat: Infinity }}
-                        className="absolute -inset-3 bg-accent/20 blur-xl rounded-full" 
+                        className="absolute -inset-3 bg-accent/20 blur-xl rounded-full"
                       />
                       <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl bg-gradient-to-br from-indigo-500 to-violet-600 flex items-center justify-center text-[22px] sm:text-[24px] font-black text-white shadow-glow-subtle ring-2 ring-white/10">
                         {selectedPerson?.name[0].toUpperCase() ?? '👤'}
@@ -620,7 +620,7 @@ export default function SubscribePage() {
                       </div>
                     </div>
                   </div>
-                  
+
                   <div className="sm:text-right border-l-2 sm:border-l-0 sm:border-r-0 border-accent/10 sm:border-transparent pl-4 sm:pl-0">
                     <p className="text-[9px] font-black t-text-muted opacity-30 uppercase tracking-[0.2em] mb-1.5">Timeline</p>
                     <div className="bg-border/10 rounded-xl px-3 py-1.5 ring-1 ring-border/5 inline-block sm:block">
@@ -664,18 +664,18 @@ export default function SubscribePage() {
                   { icon: '🌙', val: mealCounts.dinner, label: 'Restorative', color: 'from-indigo-400/20 to-violet-500/10', text: 'text-indigo-400' }
                 ].map((m, i) => (
                   <div key={i} className={`relative rounded-3xl p-4 border transition-all duration-500 group overflow-hidden
-                    ${m.val > 0 
-                      ? `surface-liquid border-accent/20 ring-1 ring-accent/10 shadow-sm` 
+                    ${m.val > 0
+                      ? `surface-liquid border-accent/20 ring-1 ring-accent/10 shadow-sm`
                       : 'opacity-30 grayscale border-border/10 bg-border/5'}`}>
-                    
+
                     {m.val > 0 && <div className={`absolute inset-0 bg-gradient-to-br ${m.color} opacity-40`} />}
-                    
+
                     <div className="relative z-10 flex flex-col items-center text-center space-y-2">
-                       <span className="text-[20px] drop-shadow-md transform group-hover:scale-110 transition-transform">{m.icon}</span>
-                       <div>
-                         <p className="text-[18px] font-black t-text-primary leading-none tabular-nums">{m.val}</p>
-                         <p className={`text-[8px] font-black uppercase tracking-wider mt-1.5 ${m.text} opacity-60`}>{m.label}</p>
-                       </div>
+                      <span className="text-[20px] drop-shadow-md transform group-hover:scale-110 transition-transform">{m.icon}</span>
+                      <div>
+                        <p className="text-[18px] font-black t-text-primary leading-none tabular-nums">{m.val}</p>
+                        <p className={`text-[8px] font-black uppercase tracking-wider mt-1.5 ${m.text} opacity-60`}>{m.label}</p>
+                      </div>
                     </div>
                   </div>
                 ))}
@@ -701,7 +701,7 @@ export default function SubscribePage() {
           {/* Fiscal Manifest: Receipt of Honor */}
           <section className="animate-glass surface-liquid ring-1 ring-border/15 rounded-[2.5rem] overflow-hidden shadow-zenith relative">
             <div className="absolute top-0 left-0 w-full h-2 bg-gradient-to-b from-accent/5 to-transparent" />
-            
+
             <div className="p-7 space-y-6">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2.5">
@@ -754,7 +754,7 @@ export default function SubscribePage() {
 
                 {/* Savings Ribbon of Honor */}
                 {(snapshot.discount_total + snapshot.promo_discount + snapshot.wallet_applied) > 0 && (
-                  <motion.div 
+                  <motion.div
                     initial={{ scale: 0.95, opacity: 0 }}
                     animate={{ scale: 1, opacity: 1 }}
                     className="bg-teal-500/5 border border-teal-500/10 rounded-2xl p-3 flex items-center justify-between"
@@ -870,18 +870,18 @@ export default function SubscribePage() {
           {/* Payment Zenith: The Focus Pill */}
           <div className="relative pt-6">
             <div className="absolute inset-x-0 -top-10 h-20 bg-gradient-to-t from-bg-primary via-bg-primary/80 to-transparent z-0 pointer-events-none" />
-            
+
             <div className="relative z-10 space-y-4">
               <button
                 onClick={() => { haptics.impact('heavy'); createSub.mutate(); }}
                 disabled={createSub.isPending}
                 className={`group relative w-full py-5 rounded-[1.8rem] font-black text-[17px] tracking-tight overflow-hidden transition-all duration-300 active:scale-[0.97]
-                  ${createSub.isPending 
-                    ? 'bg-border/10 cursor-not-allowed' 
+                  ${createSub.isPending
+                    ? 'bg-border/10 cursor-not-allowed'
                     : 'bg-accent hover:brightness-110 shadow-glow-subtle text-white'}`}
               >
                 <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000" />
-                
+
                 <div className="relative flex items-center justify-center gap-3">
                   {createSub.isPending ? (
                     <>
@@ -898,7 +898,7 @@ export default function SubscribePage() {
                   )}
                 </div>
               </button>
-              
+
               <p className="text-center text-[10px] t-text-muted font-medium opacity-30 leading-relaxed px-8">
                 By activating this covenant you agree to our{' '}
                 <Link to="/terms" className="underline opacity-60 hover:opacity-100 transition-opacity">Manifesto & Terms</Link>

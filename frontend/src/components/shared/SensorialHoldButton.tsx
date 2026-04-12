@@ -86,7 +86,7 @@ export default function SensorialHoldButton({
         onTouchStart={startHold}
         onTouchEnd={() => stopHold(false)}
         className={`
-          w-full relative py-5 px-8 rounded-3xl font-black text-[11px] uppercase tracking-[0.25em] transition-all overflow-hidden
+          w-full relative py-5 px-8 rounded-3xl font-black text-[11px] uppercase tracking-[0.25em] transition-all overflow-hidden select-none
           ${isHolding ? 'scale-[0.98] brightness-110 shadow-inner' : 'hover:scale-[1.01]'}
           ${variant === 'danger' ? 'text-red-500 border border-red-500/20' : 'text-accent border border-accent/20'}
           bg-white/5 backdrop-blur-sm

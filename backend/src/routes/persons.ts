@@ -46,7 +46,9 @@ router.patch('/:id', requireUser, validate(personSchema.partial()), async (req, 
     .returning('*');
 
   const { emitEvent, DomainEvent } = await import('../jobs/events');
-  await emitEvent(DomainEvent.PERSON_UPDATED, { person_id: updated.id });
+  emitEvent(DomainEvent.PERSON_UPDATED, { person_id: updated.id }).catch(err => {
+    console.error('[person.updated] Event manifestation drift:', err);
+  });
 
   res.json(updated);
 });

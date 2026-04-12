@@ -512,10 +512,10 @@ export default function ProfilePage() {
               </div>
 
               {/* Active plans */}
-              <Link to="/"
+              <Link to="/subscribe"
                 className="flex items-center gap-3 p-4 hover:bg-bg-subtle/50 transition-colors group active:scale-[0.98]">
                 <div className="w-9 h-9 rounded-xl bg-indigo-500/10 flex items-center justify-center flex-shrink-0
-                  group-hover:scale-105 transition-transform">
+                  group-hover:scale-105 transition-transform group-hover:rotate-3">
                   <svg className="w-[17px] h-[17px] text-indigo-400" fill="none" viewBox="0 0 24 24"
                     stroke="currentColor" strokeWidth={2}>
                     <path strokeLinecap="round" strokeLinejoin="round"
@@ -534,10 +534,19 @@ export default function ProfilePage() {
                     {activeSubsCount === 0 ? 'Tap to subscribe' : 'View dashboard'}
                   </p>
                 </div>
-                <svg className="w-3 h-3 t-text-muted opacity-20 group-hover:opacity-50 flex-shrink-0 transition-opacity"
-                  fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
-                </svg>
+                <div className="relative">
+                  <motion.div 
+                    animate={{ x: [0, 4, 0] }}
+                    transition={{ repeat: Infinity, duration: 1.5 }}
+                    className="group-hover:text-indigo-400 transition-colors"
+                  >
+                    <svg className="w-3.5 h-3.5 t-text-muted opacity-20 group-hover:opacity-100 flex-shrink-0"
+                      fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+                    </svg>
+                  </motion.div>
+                  <div className="absolute inset-0 bg-indigo-500/20 blur-md opacity-0 group-hover:opacity-100 rounded-full transition-opacity" />
+                </div>
               </Link>
 
               {/* Referrals */}
@@ -714,7 +723,7 @@ export default function ProfilePage() {
 
         {/* Delivery Address Vault */}
         <section id="address-vault" className="animate-glass" style={{ animationDelay: '0.2s' }}>
-          <AddressVault />
+          <AddressVault onUpdate={refresh} />
         </section>
 
         {/* User security — Diamond Shield Link */}
