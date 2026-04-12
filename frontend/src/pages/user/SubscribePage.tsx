@@ -443,7 +443,7 @@ export default function SubscribePage() {
               min={minDate}
               value={startDate}
               onChange={e => setStartDate(e.target.value)}
-              className="w-full bg-bg-secondary border border-border/10 px-6 py-5 rounded-[1.5rem] t-text-primary text-2xl font-black tracking-tight focus:ring-accent focus:border-accent/40 transition-all shadow-glass-sm"
+              className="w-full bg-bg-card border border-border/35 px-6 py-5 rounded-[1.5rem] t-text-primary text-2xl font-black tracking-tight focus:outline-none focus:ring-2 focus:ring-accent/40 focus:border-accent/40 transition-all shadow-glass-sm"
             />
           </section>
 
@@ -539,7 +539,7 @@ export default function SubscribePage() {
             <h3 className="text-[11px] font-semibold t-text-muted uppercase tracking-widest">Your meals</h3>
             <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-none">
               {snapshot.per_day.filter(d => d.meal_count > 0).map(d => (
-                <div key={d.date} className="surface-glass px-4 py-3 rounded-2xl min-w-[120px] flex-shrink-0 space-y-1.5 border border-white/5">
+                <div key={d.date} className="surface-glass px-4 py-3 rounded-2xl min-w-[120px] flex-shrink-0 space-y-1.5 ring-1 ring-border/20">
                   <p className="text-[13px] font-bold t-text-primary">
                     {new Date(d.date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}
                   </p>
@@ -555,7 +555,7 @@ export default function SubscribePage() {
           </section>
 
           {/* Price breakdown */}
-          <section className="space-y-2.5 pt-2 border-t border-white/8 animate-glass">
+          <section className="space-y-2.5 pt-2 border-t border-border/20 animate-glass">
             <div className="flex justify-between items-center text-[13px]">
               <span className="t-text-muted">Subtotal</span>
               <span className="t-text-primary font-semibold tabular-nums">{formatRupees(snapshot.base_total)}</span>
@@ -590,7 +590,7 @@ export default function SubscribePage() {
                 </span>
                 <button
                   onClick={() => { setPromoResult(null); setPromoCode(''); setPromoInput(''); }}
-                  className="text-white/30 hover:text-white/60 transition-colors text-lg leading-none"
+                  className="t-text-muted hover:t-text-secondary transition-colors text-lg leading-none"
                 >×</button>
               </div>
             ) : (
@@ -601,9 +601,9 @@ export default function SubscribePage() {
                   value={promoInput}
                   onChange={e => setPromoInput(e.target.value.toUpperCase())}
                   onKeyDown={e => e.key === 'Enter' && applyPromo()}
-                  className="flex-1 bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-[13px]
-                    text-text-primary placeholder:text-text-muted/20
-                    focus:outline-none focus:border-accent/40 transition-colors"
+                  className="flex-1 bg-bg-card ring-1 ring-border/30 rounded-xl px-4 py-3 text-[13px]
+                    t-text-primary placeholder:text-text-muted/40
+                    focus:outline-none focus:ring-2 focus:ring-accent/40 transition-all"
                 />
                 <button
                   onClick={applyPromo}
@@ -620,9 +620,9 @@ export default function SubscribePage() {
           {/* Wallet toggle */}
           {(walletData?.balance ?? 0) > 0 && (
             <section className="animate-glass">
-              <div className="surface-glass px-4 py-4 rounded-2xl flex items-center gap-4 border border-white/5">
+              <div className="surface-glass px-4 py-4 rounded-2xl flex items-center gap-4 ring-1 ring-border/20">
                 <div className="flex-1 min-w-0">
-                  <p className="text-[13px] font-semibold text-white">Use wallet balance</p>
+                  <p className="text-[13px] font-semibold t-text-primary">Use wallet balance</p>
                   <p className="text-[11px] text-accent font-bold mt-0.5">
                     {formatRupees(walletData!.balance)} available
                   </p>
@@ -642,14 +642,14 @@ export default function SubscribePage() {
           )}
 
           {/* Total + confirm button */}
-          <section className="surface-liquid p-6 space-y-5 rounded-2xl border border-white/10 shadow-elite animate-glass">
+          <section className="surface-liquid p-6 space-y-5 rounded-2xl ring-1 ring-border/20 shadow-elite animate-glass">
             <div className="flex justify-between items-center">
               <div>
-                <p className="text-[11px] text-white/40 font-medium">Total to pay</p>
+                <p className="text-[11px] t-text-muted font-medium">Total to pay</p>
                 <PriceTicker value={snapshot.final_total} className="!text-[32px] text-accent" />
               </div>
               <div className="text-right">
-                <p className="text-[10px] text-white/20 font-medium">🔒 Razorpay secured</p>
+                <p className="text-[10px] t-text-muted font-medium">🔒 Razorpay secured</p>
               </div>
             </div>
             <button
@@ -672,16 +672,16 @@ export default function SubscribePage() {
   if (step === 'processing') {
     return (
       <div className="min-h-screen flex items-center justify-center p-8 bg-bg-primary">
-        <div className="surface-elevated py-16 px-10 text-center max-w-sm w-full space-y-8 rounded-[2rem] shadow-elite relative z-10">
+        <div className="surface-liquid py-16 px-10 text-center max-w-sm w-full space-y-8 rounded-[2rem] shadow-elite ring-1 ring-border/20 relative z-10">
           {/* Spinner */}
           <div className="flex justify-center">
-            <div className="w-12 h-12 rounded-full border-2 border-white/10 border-t-accent animate-spin" />
+            <div className="w-12 h-12 rounded-full border-2 border-border/20 border-t-accent animate-spin" />
           </div>
           <div className="space-y-2">
-            <h2 className="text-[20px] font-black text-white">Confirming your order…</h2>
-            <p className="text-[12px] text-white/35">Please don't close this tab</p>
+            <h2 className="text-[20px] font-black t-text-primary">Confirming your order…</h2>
+            <p className="text-[12px] t-text-muted">Please don't close this tab</p>
           </div>
-          <div className="w-full h-1 bg-white/5 rounded-full overflow-hidden">
+          <div className="w-full h-1 bg-border/15 rounded-full overflow-hidden">
             <div className="h-full bg-accent animate-[progressBar_3s_ease-in-out_infinite]" />
           </div>
         </div>
@@ -696,7 +696,7 @@ export default function SubscribePage() {
         <div className="absolute top-0 left-0 w-full h-full pointer-events-none">
           <div className="absolute top-[5%] left-[5%] w-[60rem] h-[60rem] bg-accent/20 blur-[200px] rounded-full animate-mesh" />
         </div>
-        <div className="relative surface-liquid py-12 px-8 text-center max-w-sm w-full space-y-8 rounded-[2rem] shadow-elite border border-white/10">
+        <div className="relative surface-liquid py-12 px-8 text-center max-w-sm w-full space-y-8 rounded-[2rem] shadow-elite ring-1 ring-border/20">
           {/* Check mark */}
           <div className="flex justify-center">
             <div className="w-16 h-16 rounded-full bg-accent/15 border border-accent/30 flex items-center justify-center">
@@ -707,19 +707,19 @@ export default function SubscribePage() {
           </div>
 
           <div className="space-y-2">
-            <h2 className="text-[28px] font-black text-white leading-tight">Order confirmed!</h2>
-            <p className="text-[13px] text-white/40">Your meals are all set. See you tomorrow.</p>
+            <h2 className="text-[28px] font-black t-text-primary leading-tight">Order confirmed!</h2>
+            <p className="text-[13px] t-text-muted">Your meals are all set. See you tomorrow.</p>
           </div>
 
           {/* Date range */}
           <div className="grid grid-cols-2 gap-3">
-            <div className="bg-white/[0.05] rounded-2xl p-4 text-left">
-              <p className="text-[9px] font-semibold text-white/30 uppercase tracking-widest mb-1">Starts</p>
-              <p className="text-[14px] font-bold text-white">{fmtDate(startDate)}</p>
+            <div className="bg-bg-subtle rounded-2xl p-4 text-left ring-1 ring-border/15">
+              <p className="text-[9px] font-semibold t-text-muted uppercase tracking-widest mb-1">Starts</p>
+              <p className="text-[14px] font-bold t-text-primary">{fmtDate(startDate)}</p>
             </div>
-            <div className="bg-white/[0.05] rounded-2xl p-4 text-right">
-              <p className="text-[9px] font-semibold text-white/30 uppercase tracking-widest mb-1">Ends</p>
-              <p className="text-[14px] font-bold text-white">{fmtDate(days[days.length - 1]?.date ?? startDate)}</p>
+            <div className="bg-bg-subtle rounded-2xl p-4 text-right ring-1 ring-border/15">
+              <p className="text-[9px] font-semibold t-text-muted uppercase tracking-widest mb-1">Ends</p>
+              <p className="text-[14px] font-bold t-text-primary">{fmtDate(days[days.length - 1]?.date ?? startDate)}</p>
             </div>
           </div>
 
@@ -749,7 +749,7 @@ function SuccessCountdown({ onDone }: { onDone: () => void }) {
       >
         Go to Dashboard →
       </button>
-      <p className="text-[11px] text-white/20">Redirecting in {count}s</p>
+      <p className="text-[11px] t-text-muted opacity-50">Redirecting in {count}s</p>
     </div>
   );
 }
