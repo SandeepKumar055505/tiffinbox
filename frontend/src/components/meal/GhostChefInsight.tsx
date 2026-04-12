@@ -1,32 +1,28 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { haptics } from '../../context/SensorialContext';
 
 const INSIGHTS = [
-  "A 14-day genesis allows the metabolism to find its sovereign rhythm.",
-  "Pairing protein-dense lunches with lighter evening drafts maximizes daily vitality.",
-  "Gourmet healthy life is a covenant between your palate and your future.",
-  "Your current selection pattern suggests a high-performance lifestyle anchor.",
-  "Consistency is the ultimate culinary luxury. You've secured 100% of it.",
-  "Rotating your protein anchors prevents palette fatigue and ensures metabolic diversity."
+  "You can skip any meal before its cutoff time — no charge for skipped meals.",
+  "Streaks unlock rewards at 7, 14, and 30 days. Keep your plan active to earn them.",
+  "Tap the swap icon on any meal to pick a different dish for that day.",
+  "Deselect all 3 meals for a day to mark it as a full day-off.",
+  "Breakfast cutoff: 10 pm the night before. Lunch: 8 am. Dinner: 2 pm.",
+  "Your wallet balance is applied automatically at checkout.",
 ];
 
 const STATUS_INSIGHTS: Record<string, string[]> = {
   preparing: [
-    "The kitchen is at peak velocity. Your vitality is being crafted right now.",
-    "Artisanal precision takes time. Your next cycle is reaching its thermal zenith.",
-    "The Chef is balancing the spice profile to match your ancestral heritage."
+    "Your meal is being freshly prepared right now.",
+    "Good food takes a little care — it's almost ready!",
   ],
   out_for_delivery: [
-    "Your nourishment is in transit. Maintain a state of presence as it arrives.",
-    "The logistics flow is synchronized. Your gourmet draft is moments away.",
-    "🛵 The final mile is being conquered. Prepare your space for the sacrament."
+    "Your meal is on its way. Keep your OTP ready for the delivery person.",
+    "Almost there! Your delivery is just a few minutes away.",
   ],
   delivered: [
-    "The covenant is fulfilled. May this nourishment expand your potential.",
-    "Your vitality has arrived. Remember: mindless eating is the enemy of sovereignty.",
-    "A perfect delivery cycle completed. Your streak momentum is undeniable."
-  ]
+    "Enjoy your meal! Drop a quick rating — it helps us a lot.",
+    "Delivered! Your feedback helps us serve you better every day.",
+  ],
 };
 
 interface Props {
@@ -35,36 +31,31 @@ interface Props {
 
 export const GhostChefInsight: React.FC<Props> = ({ status }) => {
   const [index, setIndex] = useState(0);
-
   const activePool = (status && STATUS_INSIGHTS[status]) ? STATUS_INSIGHTS[status] : INSIGHTS;
 
   useEffect(() => {
     const timer = setInterval(() => {
-      setIndex(prev => {
-        const next = (prev + 1) % activePool.length;
-        haptics.light();
-        return next;
-      });
+      setIndex(prev => (prev + 1) % activePool.length);
     }, 8000);
     return () => clearInterval(timer);
   }, [activePool]);
 
   return (
-    <div className="relative h-12 overflow-hidden flex items-center justify-center">
+    <div className="relative h-10 overflow-hidden flex items-center justify-center">
       <AnimatePresence mode="wait">
         <motion.div
           key={index}
-          initial={{ y: 20, opacity: 0 }}
+          initial={{ y: 12, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
-          exit={{ y: -20, opacity: 0 }}
-          transition={{ duration: 1, ease: [0.16, 1, 0.3, 1] }}
-          className="absolute inset-0 flex items-center justify-center text-center"
+          exit={{ y: -12, opacity: 0 }}
+          transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
+          className="absolute inset-0 flex items-center justify-center text-center px-2"
         >
-          <div className="flex items-center gap-4">
-             <span className="text-xl">🧑‍🍳</span>
-             <p className="text-[10px] sm:text-[12px] font-medium italic opacity-60 tracking-tightest">
-               “{INSIGHTS[index]}”
-             </p>
+          <div className="flex items-center gap-3">
+            <span className="text-base leading-none flex-shrink-0">🧑‍🍳</span>
+            <p className="text-[11px] sm:text-[12px] font-medium text-white/50 leading-snug text-left">
+              {activePool[index]}
+            </p>
           </div>
         </motion.div>
       </AnimatePresence>

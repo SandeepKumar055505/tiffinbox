@@ -25,17 +25,17 @@ interface PromoResult { code: string; description: string; discount_type: 'flat'
 type Step = 'setup' | 'grid' | 'checkout' | 'processing' | 'success';
 
 const PLAN_OPTIONS = [
-  { days: 1 as const, label: '1-Day Genesis', desc: 'Try it out', badge: null },
-  { days: 7 as const, label: '7-Day Orbit', desc: 'Save ₹70–140', badge: null },
-  { days: 14 as const, label: '14-Day Covenant', desc: 'Save ₹140–280', badge: 'Popular' },
+  { days: 1 as const, label: '1 Day', desc: 'Try a meal', badge: null },
+  { days: 7 as const, label: '1 Week', desc: 'Save up to ₹140', badge: null },
+  { days: 14 as const, label: '2 Weeks', desc: 'Save up to ₹280', badge: 'Popular' },
 ];
 
 const PHASE_CONFIG = {
-  setup: { color: 'rgba(20, 184, 166, 0.15)', name: 'I. Genesis' },
-  grid: { color: 'rgba(249, 115, 22, 0.12)', name: 'II. The Canvas' },
-  checkout: { color: 'rgba(99, 102, 241, 0.15)', name: 'III. The Covenant' },
-  processing: { color: 'rgba(20, 184, 166, 0.1)', name: 'IV. Anchor' },
-  success: { color: 'rgba(20, 184, 166, 0.2)', name: 'V. Fulfillment' },
+  setup: { color: 'rgba(20, 184, 166, 0.15)', name: 'Step 1 of 3' },
+  grid: { color: 'rgba(249, 115, 22, 0.12)', name: 'Step 2 of 3' },
+  checkout: { color: 'rgba(99, 102, 241, 0.15)', name: 'Step 3 of 3' },
+  processing: { color: 'rgba(20, 184, 166, 0.1)', name: 'Processing' },
+  success: { color: 'rgba(20, 184, 166, 0.2)', name: 'Confirmed' },
 };
 
 const PATTERN_OPTIONS = [
@@ -69,9 +69,9 @@ export default function SubscribePage() {
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [gourmetError, setGourmetError] = useState<{ title: string; message: string } | null>(null);
 
-  const { data: addresses = [] } = useQuery({ 
-    queryKey: ['addresses'], 
-    queryFn: () => api.get('/addresses').then(r => r.data) 
+  const { data: addresses = [] } = useQuery({
+    queryKey: ['addresses'],
+    queryFn: () => api.get('/addresses').then(r => r.data)
   });
 
   const { data: persons = [] } = useQuery<Person[]>({ queryKey: ['persons'], queryFn: () => personsApi.list().then(r => r.data) });
@@ -81,7 +81,7 @@ export default function SubscribePage() {
   // Project Diamond: Shadow Draft Sync
   const wizardState = { personId, planDays, pattern, startDate, days, selectedAddressId };
   useWizardPersist(
-    wizardState, 
+    wizardState,
     step === 'setup' || step === 'grid' || step === 'checkout', // Enable during config
     (recovered) => {
       if (!recovered) return;
@@ -98,7 +98,7 @@ export default function SubscribePage() {
   useEffect(() => {
     if (step !== 'grid') return;
     const dates = buildDateRange(startDate, planDays, pattern);
-    
+
     setDays(dates.map(date => {
       const dow = new Date(date).getDay();
       const menuForDay = weekMenu[dow];
@@ -204,8 +204,8 @@ export default function SubscribePage() {
       const Razorpay = (window as any).Razorpay;
       if (!Razorpay) {
         sensorial.showError({
-          title: 'SDK Synchronization',
-          message: 'Our secure payment bridge is momentarily out of sync. A quick refresh should restore the connection.'
+          title: 'Payment unavailable',
+          message: 'The payment window couldn\'t load. Please refresh the page and try again.'
         });
         setStep('checkout');
         return;
@@ -229,8 +229,8 @@ export default function SubscribePage() {
           } catch {
             setStep('checkout');
             sensorial.showError({
-              title: 'Verification Drift',
-              message: 'Your payment was successful, but our auditors are verifying the details. Please contact support if your plan isn’t active soon.'
+              title: "Payment received",
+              message: "Your payment went through, but we're still confirming your plan. If it's not active in a few minutes, please contact support."
             });
           }
         },
@@ -246,16 +246,16 @@ export default function SubscribePage() {
   }
 
   const renderHeader = (title: string, subtitle: string) => (
-    <header className="space-y-4 pt-10 sm:pt-14 mb-12 sm:mb-16 text-center relative z-10 px-4">
-      <div className="flex items-center justify-center gap-4 mb-2 animate-glass">
-         <div className="w-1.5 h-1.5 bg-accent rounded-full animate-pulse shadow-glow-subtle" />
-         <span className="text-label-caps !text-accent font-black !text-[11px] sm:!text-[13px] tracking-[0.5em] uppercase opacity-70">
-           {PHASE_CONFIG[step as keyof typeof PHASE_CONFIG]?.name || 'Project Diamond'}
-         </span>
-         <div className="w-1.5 h-1.5 bg-accent rounded-full animate-pulse shadow-glow-subtle" />
-      </div>
-      <h1 className="text-h1 !text-5xl sm:!text-[80px] tracking-[calc(var(--tracking-tightest)*2)] font-black leading-none animate-glass">{title}</h1>
-      <p className="text-body-lg !text-sm sm:!text-xl opacity-30 font-medium tracking-tight italic animate-glass" style={{ animationDelay: '0.1s' }}>{subtitle}</p>
+    <header className="space-y-3 pt-8 sm:pt-12 mb-8 sm:mb-10 text-center relative z-10 px-4">
+      <span className="inline-block text-[11px] font-semibold text-accent/60 uppercase tracking-widest">
+        {PHASE_CONFIG[step as keyof typeof PHASE_CONFIG]?.name || ''}
+      </span>
+      <h1 className="text-[36px] sm:text-[52px] font-black leading-none tracking-tight text-white animate-glass">
+        {title}
+      </h1>
+      <p className="text-[13px] sm:text-[15px] text-white/40 font-medium animate-glass" style={{ animationDelay: '0.08s' }}>
+        {subtitle}
+      </p>
     </header>
   );
 
@@ -271,13 +271,14 @@ export default function SubscribePage() {
         </div>
 
         <div className="max-w-xl mx-auto space-y-12 sm:space-y-20 relative z-10">
-          {renderHeader("Genesis Stage", "Anchor your health identity and logistics.")}
+          {renderHeader("Start your plan", "Tell us who's eating and when.")}
 
           <LiquidProgressBar currentStep={1} totalSteps={3} />
 
           <section className="space-y-6 animate-glass" style={{ animationDelay: '0.1s' }}>
             <div className="flex items-center gap-5 px-1">
               <h3 className="text-label-caps !text-[11px] !opacity-50 font-semibold whitespace-nowrap">Who is this for?</h3>
+
               <div className="h-px flex-1 bg-border/20" />
             </div>
             {persons.length === 0 && (
@@ -320,7 +321,7 @@ export default function SubscribePage() {
 
           <section className="space-y-6 animate-glass" style={{ animationDelay: '0.15s' }}>
             <div className="flex items-center gap-5 px-1">
-              <h3 className="text-label-caps !text-[11px] !opacity-50 font-semibold whitespace-nowrap">Plan Duration</h3>
+              <h3 className="text-label-caps !text-[11px] !opacity-50 font-semibold whitespace-nowrap">How long?</h3>
               <div className="h-px flex-1 bg-border/20" />
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
@@ -328,14 +329,24 @@ export default function SubscribePage() {
                 <button
                   key={opt.days}
                   onClick={() => { setPlanDays(opt.days); haptics.success(); }}
-                  className={`surface-glass p-6 text-center relative transition-all duration-700 group rounded-[2rem] border-white/5 ring-1 ring-white/10 ${planDays === opt.days ? 'bg-accent/10 !border-accent shadow-elite scale-[1.05]' : 'hover:bg-bg-secondary/40'}`}
+                  className={`surface-glass p-4 sm:p-5 text-center relative transition-all duration-300
+                    rounded-[1.75rem] border ring-1 active:scale-[0.97]
+                    ${planDays === opt.days
+                      ? 'bg-accent/10 border-accent/50 ring-accent/20 shadow-elite'
+                      : 'border-white/5 ring-white/5 hover:bg-white/5'}`}
                 >
                   {opt.badge && (
-                    <span className="absolute -top-3 left-1/2 -translate-x-1/2 bg-accent text-white text-[8px] font-black px-3 py-1.5 rounded-full shadow-elite border border-white/20 uppercase tracking-widest">{opt.badge}</span>
+                    <span className="absolute -top-2.5 left-1/2 -translate-x-1/2 bg-accent text-white
+                      text-[9px] font-black px-3 py-1 rounded-full uppercase tracking-wider">
+                      {opt.badge}
+                    </span>
                   )}
-                  <div className="space-y-1">
-                    <p className={`text-h1 !text-3xl transition-all duration-700 ${planDays === opt.days ? 'text-accent font-black scale-110' : 'opacity-40'}`}>{opt.days}</p>
-                    <p className="text-label-caps !text-[9px] opacity-40 font-bold uppercase tracking-widest">{opt.label}</p>
+                  <div className="space-y-1 pt-1">
+                    <p className={`text-[22px] font-black leading-none transition-colors
+                      ${planDays === opt.days ? 'text-accent' : 'text-white/70'}`}>
+                      {opt.label}
+                    </p>
+                    <p className="text-[10px] text-white/35 font-medium">{opt.desc}</p>
                   </div>
                 </button>
               ))}
@@ -344,7 +355,7 @@ export default function SubscribePage() {
 
           <section className="space-y-6 animate-glass" style={{ animationDelay: '0.2s' }}>
             <div className="flex items-center gap-5 px-1">
-              <h3 className="text-label-caps !text-[11px] !opacity-50 font-semibold whitespace-nowrap">Schedule Pattern</h3>
+              <h3 className="text-label-caps !text-[11px] !opacity-50 font-semibold whitespace-nowrap">Delivery days</h3>
               <div className="h-px flex-1 bg-border/20" />
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
@@ -362,7 +373,7 @@ export default function SubscribePage() {
 
           <section className="space-y-6 animate-glass" style={{ animationDelay: '0.25s' }}>
             <div className="flex items-center gap-5 px-1">
-              <h3 className="text-label-caps !text-[11px] !opacity-50 font-semibold whitespace-nowrap">Start Date</h3>
+              <h3 className="text-label-caps !text-[11px] !opacity-50 font-semibold whitespace-nowrap">Start from</h3>
               <div className="h-px flex-1 bg-border/20" />
             </div>
             <input
@@ -376,7 +387,7 @@ export default function SubscribePage() {
 
           <section className="space-y-6 animate-glass" style={{ animationDelay: '0.28s' }}>
             <div className="flex items-center gap-5 px-1">
-              <h3 className="text-label-caps !text-[11px] !opacity-50 font-semibold whitespace-nowrap">Delivery Location</h3>
+              <h3 className="text-label-caps !text-[11px] !opacity-50 font-semibold whitespace-nowrap">Deliver to</h3>
               <div className="h-px flex-1 bg-border/20" />
             </div>
             <div className="grid grid-cols-1 gap-3">
@@ -401,9 +412,9 @@ export default function SubscribePage() {
           <button
             onClick={() => { setStep('grid'); haptics.confirm(); }}
             disabled={!personId || !selectedAddressId}
-            className="btn-primary w-full !py-6 !text-xl !rounded-[2rem] shadow-glow-subtle font-black uppercase tracking-[0.2em]"
+            className="btn-primary w-full !py-5 !text-[15px] !rounded-2xl shadow-glow-subtle font-bold"
           >
-            Customize Selection →
+            Choose meals →
           </button>
         </div>
       </div>
@@ -416,12 +427,13 @@ export default function SubscribePage() {
         <div className="absolute top-0 left-0 w-full h-full pointer-events-none transition-opacity duration-[3000ms]">
           <div className="absolute top-[-5%] right-[-10%] w-[60rem] h-[60rem] bg-orange-500/10 blur-[200px] rounded-full animate-mesh" />
         </div>
-        <div className="max-w-2xl mx-auto px-6 space-y-8 relative z-10 pb-32">
-          {renderHeader("The Canvas", "Curate your unique culinary narrative.")}
+        <div className="max-w-2xl mx-auto px-4 sm:px-6 space-y-6 relative z-10 pb-28">
+          {renderHeader("Pick your meals", "Tap to include or skip. Swap any dish with the ↕ icon.")}
           <MealGrid days={days} weekMenu={weekMenu} planDays={planDays} maxDayOffs={planDays <= 7 ? 1 : 2} mealPrices={mealPrices} onChange={setDays} />
-          <PriceBar snapshot={snapshot} planDays={planDays} onNext={() => setShowConfirmModal(true)} />
-          <SelectionConfirmModal isOpen={showConfirmModal} onConfirm={() => { setShowConfirmModal(false); setStep('checkout'); }} onCancel={() => setShowConfirmModal(false)} snapshot={snapshot} planDays={planDays} />
         </div>
+        {/* Fixed bottom bar — always visible while scrolling */}
+        <PriceBar snapshot={snapshot} planDays={planDays} onNext={() => setShowConfirmModal(true)} />
+        <SelectionConfirmModal isOpen={showConfirmModal} onConfirm={() => { setShowConfirmModal(false); setStep('checkout'); }} onCancel={() => setShowConfirmModal(false)} snapshot={snapshot} planDays={planDays} />
       </div>
     );
   }
@@ -433,48 +445,137 @@ export default function SubscribePage() {
           <div className="absolute bottom-[-10%] left-[-10%] w-[60rem] h-[60rem] bg-indigo-500/10 blur-[250px] rounded-full animate-mesh" />
         </div>
         <div className="max-w-2xl mx-auto px-6 space-y-8 relative z-10 pb-20">
-          {renderHeader("The Covenant", "Seal your commitment to world-class life.")}
+          {renderHeader("Review & Pay", "Check your order and confirm payment.")}
           <LiquidProgressBar currentStep={3} totalSteps={3} />
 
-          <section className="space-y-4 animate-glass">
-            <h3 className="text-label-caps !text-[11px] font-black opacity-30 uppercase">Gourmet Selection</h3>
-            <div className="flex gap-4 overflow-x-auto pb-4 pt-2 scrollbar-none">
+          {/* Day-by-day meal summary */}
+          <section className="space-y-3 animate-glass">
+            <h3 className="text-[11px] font-semibold text-white/35 uppercase tracking-widest">Your meals</h3>
+            <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-none">
               {snapshot.per_day.filter(d => d.meal_count > 0).map(d => (
-                <div key={d.date} className="surface-glass p-5 rounded-[1.5rem] min-w-[180px] space-y-3">
-                   <p className="text-h3 !text-2xl font-black">{new Date(d.date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}</p>
-                   <p className="text-[10px] font-black text-accent">{formatRupees(d.subtotal)}</p>
+                <div key={d.date} className="surface-glass px-4 py-3 rounded-2xl min-w-[120px] flex-shrink-0 space-y-1.5 border border-white/5">
+                  <p className="text-[13px] font-bold text-white">
+                    {new Date(d.date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}
+                  </p>
+                  <p className="text-[10px] text-white/40">
+                    {d.meal_count} meal{d.meal_count !== 1 ? 's' : ''}
+                  </p>
+                  <p className="text-[12px] font-bold text-accent tabular-nums">
+                    {formatRupees(d.subtotal)}
+                  </p>
                 </div>
               ))}
             </div>
           </section>
 
-          <footer className="space-y-4 pt-4 border-t border-white/10">
-            <div className="flex justify-between items-center px-2">
-              <span className="text-label-caps !text-sm opacity-40 font-bold">Subtotal</span>
-              <PriceTicker value={snapshot.base_total} />
+          {/* Price breakdown */}
+          <section className="space-y-2.5 pt-2 border-t border-white/8 animate-glass">
+            <div className="flex justify-between items-center text-[13px]">
+              <span className="text-white/40">Subtotal</span>
+              <span className="text-white/70 font-semibold tabular-nums">{formatRupees(snapshot.base_total)}</span>
             </div>
             {snapshot.discount_total > 0 && (
-              <div className="flex justify-between items-center px-2 text-accent">
-                <span className="text-label-caps !text-[11px] font-black uppercase">Plan Discount</span>
-                <PriceTicker value={snapshot.discount_total} />
+              <div className="flex justify-between items-center text-[13px]">
+                <span className="text-accent/80">Plan discount</span>
+                <span className="text-accent font-bold tabular-nums">−{formatRupees(snapshot.discount_total)}</span>
               </div>
             )}
-          </footer>
-
-          <section className="surface-liquid p-8 space-y-8 rounded-[2rem] border-white/10 shadow-elite relative overflow-hidden">
-            <div className="flex justify-between items-end sm:items-center">
-              <div>
-                <p className="text-label-caps !text-[10px] !text-accent font-black uppercase">Grand Total</p>
-                <p className="text-[10px] font-bold opacity-20 uppercase italic">Industrial-Grade Security Enabled</p>
+            {snapshot.promo_discount > 0 && (
+              <div className="flex justify-between items-center text-[13px]">
+                <span className="text-accent/80">Promo code</span>
+                <span className="text-accent font-bold tabular-nums">−{formatRupees(snapshot.promo_discount)}</span>
               </div>
-              <PriceTicker value={snapshot.final_total} className="text-h1 !text-6xl text-accent" />
+            )}
+            {snapshot.wallet_applied > 0 && (
+              <div className="flex justify-between items-center text-[13px]">
+                <span className="text-orange-400/80">Wallet credit</span>
+                <span className="text-orange-400 font-bold tabular-nums">−{formatRupees(snapshot.wallet_applied)}</span>
+              </div>
+            )}
+          </section>
+
+          {/* Promo code input */}
+          <section className="space-y-3 animate-glass">
+            <h3 className="text-[11px] font-semibold text-white/35 uppercase tracking-widest">Promo code</h3>
+            {promoResult ? (
+              <div className="flex items-center gap-3 surface-glass px-4 py-3 rounded-2xl border border-accent/20">
+                <span className="text-[12px] text-accent font-semibold flex-1">
+                  {promoResult.code} — {promoResult.description}
+                </span>
+                <button
+                  onClick={() => { setPromoResult(null); setPromoCode(''); setPromoInput(''); }}
+                  className="text-white/30 hover:text-white/60 transition-colors text-lg leading-none"
+                >×</button>
+              </div>
+            ) : (
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  placeholder="Enter promo code"
+                  value={promoInput}
+                  onChange={e => setPromoInput(e.target.value.toUpperCase())}
+                  onKeyDown={e => e.key === 'Enter' && applyPromo()}
+                  className="flex-1 bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-[13px]
+                    text-white placeholder:text-white/20
+                    focus:outline-none focus:border-accent/40 transition-colors"
+                />
+                <button
+                  onClick={applyPromo}
+                  disabled={promoLoading || !promoInput.trim()}
+                  className="px-4 py-3 bg-accent/10 hover:bg-accent/20 text-accent rounded-xl
+                    text-[12px] font-bold transition-colors disabled:opacity-30 whitespace-nowrap"
+                >
+                  {promoLoading ? '…' : 'Apply'}
+                </button>
+              </div>
+            )}
+          </section>
+
+          {/* Wallet toggle */}
+          {(walletData?.balance ?? 0) > 0 && (
+            <section className="animate-glass">
+              <div className="surface-glass px-4 py-4 rounded-2xl flex items-center gap-4 border border-white/5">
+                <div className="flex-1 min-w-0">
+                  <p className="text-[13px] font-semibold text-white">Use wallet balance</p>
+                  <p className="text-[11px] text-accent font-bold mt-0.5">
+                    {formatRupees(walletData!.balance)} available
+                  </p>
+                </div>
+                <button
+                  onClick={() => setApplyWallet(!applyWallet)}
+                  className={`w-12 h-6 rounded-full transition-colors duration-300 relative flex-shrink-0
+                    ${applyWallet ? 'bg-accent' : 'bg-white/15'}`}
+                >
+                  <div className={`w-5 h-5 rounded-full bg-white shadow-sm absolute top-0.5
+                    transition-transform duration-300
+                    ${applyWallet ? 'translate-x-6' : 'translate-x-0.5'}`}
+                  />
+                </button>
+              </div>
+            </section>
+          )}
+
+          {/* Total + confirm button */}
+          <section className="surface-liquid p-6 space-y-5 rounded-2xl border border-white/10 shadow-elite animate-glass">
+            <div className="flex justify-between items-center">
+              <div>
+                <p className="text-[11px] text-white/40 font-medium">Total to pay</p>
+                <PriceTicker value={snapshot.final_total} className="!text-[32px] text-accent" />
+              </div>
+              <div className="text-right">
+                <p className="text-[10px] text-white/20 font-medium">🔒 Razorpay secured</p>
+              </div>
             </div>
-            <button 
-              onClick={() => { haptics.impact('heavy'); createSub.mutate(); }} 
-              disabled={createSub.isPending} 
-              className="btn-primary w-full !py-6 !text-2xl !rounded-[2rem] shadow-elite font-black uppercase tracking-tighter"
+            <button
+              onClick={() => { haptics.impact('heavy'); createSub.mutate(); }}
+              disabled={createSub.isPending}
+              className="btn-primary w-full !py-4 !text-[16px] !rounded-2xl shadow-elite font-bold"
             >
-              {createSub.isPending ? 'Securing Selection…' : 'Activate Subscription →'}
+              {createSub.isPending
+                ? 'Processing…'
+                : snapshot.final_total === 0
+                  ? 'Start plan — No charge →'
+                  : `Pay ${formatRupees(snapshot.final_total)} →`}
             </button>
           </section>
         </div>
@@ -485,30 +586,57 @@ export default function SubscribePage() {
   if (step === 'processing') {
     return (
       <div className="min-h-screen flex items-center justify-center p-8 bg-bg-primary">
-        <div className="surface-elevated py-16 px-10 text-center max-w-sm w-full space-y-10 rounded-[2rem] shadow-elite relative z-10">
-          <h2 className="text-h1 !text-2xl font-black">Chef's Prep Tunnel</h2>
-          <div className="w-full h-2 bg-white/5 rounded-full overflow-hidden">
+        <div className="surface-elevated py-16 px-10 text-center max-w-sm w-full space-y-8 rounded-[2rem] shadow-elite relative z-10">
+          {/* Spinner */}
+          <div className="flex justify-center">
+            <div className="w-12 h-12 rounded-full border-2 border-white/10 border-t-accent animate-spin" />
+          </div>
+          <div className="space-y-2">
+            <h2 className="text-[20px] font-black text-white">Confirming your order…</h2>
+            <p className="text-[12px] text-white/35">Please don't close this tab</p>
+          </div>
+          <div className="w-full h-1 bg-white/5 rounded-full overflow-hidden">
             <div className="h-full bg-accent animate-[progressBar_3s_ease-in-out_infinite]" />
           </div>
-          <p className="text-[10px] font-black opacity-20 uppercase tracking-widest">DO NOT REFRESH</p>
         </div>
       </div>
     );
   }
 
   if (step === 'success') {
+    const fmtDate = (d: string) => new Date(d).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
     return (
       <div className="min-h-screen flex items-center justify-center p-8 bg-bg-primary relative overflow-hidden">
         <div className="absolute top-0 left-0 w-full h-full pointer-events-none">
           <div className="absolute top-[5%] left-[5%] w-[60rem] h-[60rem] bg-accent/20 blur-[200px] rounded-full animate-mesh" />
         </div>
-        <div className="relative surface-liquid py-12 px-10 text-center max-w-2xl w-full space-y-12 rounded-[2rem] shadow-elite border-white/10">
-          <h2 className="text-h1 !text-6xl font-black">Success.</h2>
-          <p className="text-label-caps !text-accent font-black uppercase">Culinary Vow Activated</p>
-          <div className="grid grid-cols-2 gap-12 bg-accent/5 p-8 rounded-[3rem]">
-            <div className="text-left"><p className="text-label-caps opacity-30">GENESIS</p><p className="text-h3 !text-2xl font-black">{startDate}</p></div>
-            <div className="text-right"><p className="text-label-caps opacity-30">HORIZON</p><p className="text-h3 !text-2xl font-black">{days[days.length-1]?.date}</p></div>
+        <div className="relative surface-liquid py-12 px-8 text-center max-w-sm w-full space-y-8 rounded-[2rem] shadow-elite border border-white/10">
+          {/* Check mark */}
+          <div className="flex justify-center">
+            <div className="w-16 h-16 rounded-full bg-accent/15 border border-accent/30 flex items-center justify-center">
+              <svg className="w-8 h-8 text-accent" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+              </svg>
+            </div>
           </div>
+
+          <div className="space-y-2">
+            <h2 className="text-[28px] font-black text-white leading-tight">Order confirmed!</h2>
+            <p className="text-[13px] text-white/40">Your meals are all set. See you tomorrow.</p>
+          </div>
+
+          {/* Date range */}
+          <div className="grid grid-cols-2 gap-3">
+            <div className="bg-white/[0.05] rounded-2xl p-4 text-left">
+              <p className="text-[9px] font-semibold text-white/30 uppercase tracking-widest mb-1">Starts</p>
+              <p className="text-[14px] font-bold text-white">{fmtDate(startDate)}</p>
+            </div>
+            <div className="bg-white/[0.05] rounded-2xl p-4 text-right">
+              <p className="text-[9px] font-semibold text-white/30 uppercase tracking-widest mb-1">Ends</p>
+              <p className="text-[14px] font-bold text-white">{fmtDate(days[days.length - 1]?.date ?? startDate)}</p>
+            </div>
+          </div>
+
           <SuccessCountdown onDone={() => navigate('/')} />
         </div>
         <SensorialStatusSpotlight isOpen={!!gourmetError} title={gourmetError?.title || ''} message={gourmetError?.message || ''} onClose={() => setGourmetError(null)} />
@@ -520,16 +648,22 @@ export default function SubscribePage() {
 }
 
 function SuccessCountdown({ onDone }: { onDone: () => void }) {
-  const [count, setCount] = useState(10);
+  const [count, setCount] = useState(5);
   useEffect(() => {
     if (count === 0) { onDone(); return; }
     const t = setTimeout(() => setCount(c => c - 1), 1000);
     return () => clearTimeout(t);
   }, [count, onDone]);
   return (
-    <div className="space-y-6">
-      <button onClick={onDone} className="btn-primary w-full !py-6 !text-2xl !rounded-[3rem] font-black uppercase">Go to Journey →</button>
-      <p className="text-label-caps opacity-30 text-[10px]">REDIRECT IN {count}S</p>
+    <div className="space-y-4">
+      <button
+        onClick={onDone}
+        className="w-full py-4 bg-accent hover:brightness-110 text-white font-bold
+          text-[15px] rounded-2xl transition-all duration-150 active:scale-95 shadow-glow-subtle"
+      >
+        Go to Dashboard →
+      </button>
+      <p className="text-[11px] text-white/20">Redirecting in {count}s</p>
     </div>
   );
 }
