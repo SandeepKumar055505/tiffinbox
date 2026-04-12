@@ -185,7 +185,10 @@ router.post(
     usage_limit: z.number().int().positive().optional(),
   })),
   async (req, res) => {
-    const [row] = await db('offers').insert({ ...req.body, code: req.body.code.toUpperCase() }).returning('*');
+    const code = req.body.code.toUpperCase();
+    const existing = await db('offers').where({ code }).first();
+    if (existing) return res.status(409).json({ error: `Promo code '${code}' already exists` });
+    const [row] = await db('offers').insert({ ...req.body, code }).returning('*');
     res.status(201).json(row);
   }
 );

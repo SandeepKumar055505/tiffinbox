@@ -63,6 +63,9 @@ require('express-async-errors');
 
 // ── Middleware (ORDER MATTERS — do not reorder) ───────────────────────────────
 
+// Remove fingerprinting header
+app.disable('x-powered-by');
+
 app.use(morgan(env.isDev ? 'dev' : 'combined'));
 
 // X-Request-ID telemetry
@@ -159,6 +162,11 @@ app.use('/api/admin/logistics', adminLogisticsRoutes);
 app.use('/api/admin/areas', adminAreaRoutes);
 app.use('/api/admin/narratives', adminNarrativeRoutes);
 app.use('/api/admin/notifications', adminNotificationRoutes);
+
+// ── 404 handler (must come after all routes) ─────────────────────────────────
+app.use((_req, res) => {
+  res.status(404).json({ error: 'Not Found' });
+});
 
 // ── Error handler ─────────────────────────────────────────────────────────────
 if (env.SENTRY_DSN) {

@@ -11,45 +11,32 @@ const router = Router();
  * Declarative control over delivery zones and priorities.
  */
 
-// GET /api/admin/areas — List all sovereign zones with settings
+// GET /api/admin/areas — List all sovereign zones
 router.get('/', requireAdmin, async (_req, res) => {
   const areas = await db('areas').orderBy('priority', 'desc');
   res.json(areas);
 });
 
-// POST /api/admin/areas/:id/settings — Update localized manifest
+// POST /api/admin/areas — Create a new delivery zone
 router.post(
-  '/:id/settings',
+  '/',
   requireAdmin,
   validate(z.object({
-    cutoff_time_override: z.string().optional(),
-    is_active: z.boolean().optional(),
-    delivery_slots_json: z.any().optional(),
+    name: z.string().min(1),
+    is_active: z.boolean().default(true),
+    priority: z.number().int().min(0).default(0),
+    notes: z.string().optional(),
   })),
   async (req, res) => {
-    const areaId = req.params.id;
-    const exists = await db('area_settings').where({ area_id: areaId }).first();
-    
-    if (exists) {
-      await db('area_settings')
-        .where({ area_id: areaId })
-        .update({ ...req.body, updated_at: db.fn.now() });
-    } else {
-      await db('area_settings').insert({
-        area_id: areaId,
-        ...req.body
-      });
-    }
-
+    const [area] = await db('areas').insert(req.body).returning('*');
     await db('audit_logs').insert({
       admin_id: req.adminId,
-      action: 'area.settings_update',
+      action: 'area.create',
       target_type: 'area',
-      target_id: parseInt(areaId),
+      target_id: area.id,
       after_value: JSON.stringify(req.body),
     });
-
-    res.json({ success: true });
+    res.status(201).json(area);
   }
 );
 

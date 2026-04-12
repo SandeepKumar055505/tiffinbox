@@ -11,15 +11,13 @@ router.get('/', requireAdmin, async (req, res) => {
 
   const ratings = await db('meal_ratings as mr')
     .join('meal_cells as mc', 'mc.id', 'mr.meal_cell_id')
-    .join('users as u', 'u.id', 'mc.user_id')
+    .join('users as u', 'u.id', 'mr.user_id')
     .join('meal_items as mi', 'mi.id', 'mc.item_id')
     .orderBy('mr.created_at', 'desc')
     .limit(limit)
     .offset(offset)
     .select(
       'mr.*',
-      'mc.meal_type',
-      'mc.date',
       'u.name as user_name',
       'mi.name as item_name'
     );
