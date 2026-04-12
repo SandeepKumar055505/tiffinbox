@@ -27,17 +27,18 @@ interface PromoResult { code: string; description: string; discount_type: 'flat'
 type Step = 'setup' | 'grid' | 'checkout' | 'processing' | 'success';
 
 const PLAN_OPTIONS = [
-  { days: 1 as const, label: '1 Day', desc: 'Try a meal', badge: null },
-  { days: 7 as const, label: '1 Week', desc: 'Save up to ₹140', badge: null },
-  { days: 14 as const, label: '2 Weeks', desc: 'Save up to ₹280', badge: 'Popular' },
+  { days: 1 as const, label: 'Single Ritual', desc: 'Try a gourmet meal', badge: null },
+  { days: 7 as const, label: 'Genesis Week', desc: 'Save up to ₹140', badge: null },
+  { days: 14 as const, label: 'Signature Evolution', desc: 'Save up to ₹280', badge: 'Popular' },
+  { days: 30 as const, label: 'Zenith Lifecycle', desc: 'The Diamond Standard', badge: 'Elite' },
 ];
 
 const PHASE_CONFIG = {
-  setup: { color: 'rgba(20, 184, 166, 0.15)', name: 'Step 1 of 3' },
-  grid: { color: 'rgba(249, 115, 22, 0.12)', name: 'Step 2 of 3' },
-  checkout: { color: 'rgba(99, 102, 241, 0.15)', name: 'Step 3 of 3' },
-  processing: { color: 'rgba(20, 184, 166, 0.1)', name: 'Processing' },
-  success: { color: 'rgba(20, 184, 166, 0.2)', name: 'Confirmed' },
+  setup: { color: 'rgba(20, 184, 166, 0.12)', name: 'Ritual Step 1 of 3' },
+  grid: { color: 'rgba(249, 115, 22, 0.1)', name: 'Flavor Selection' },
+  checkout: { color: 'rgba(99, 102, 241, 0.12)', name: 'Final Manifest' },
+  processing: { color: 'rgba(20, 184, 166, 0.08)', name: 'Synchronizing' },
+  success: { color: 'rgba(20, 184, 166, 0.15)', name: 'Manifest Complete' },
 };
 
 const PATTERN_OPTIONS = [
@@ -286,54 +287,64 @@ export default function SubscribePage() {
         <div className="max-w-xl mx-auto space-y-8 sm:space-y-15 relative z-10">
           {renderHeader("Start your plan", "Tell us who's eating and when.", () => navigate('/'))}
 
-          <LiquidProgressBar currentStep={1} totalSteps={3} />
-
-          <section className="space-y-3 animate-glass" style={{ animationDelay: '0.1s' }}>
+          <LiquidProgressBar currentStep={1} totalSteps={3} />          <section className="space-y-4 animate-glass" style={{ animationDelay: '0.1s' }}>
             <div className="flex items-center gap-5 px-1">
-              <h3 className="text-label-caps !text-[11px] !opacity-50 font-semibold whitespace-nowrap">Who is this for?</h3>
-
-              <div className="h-px flex-1 bg-border/20" />
+              <h3 className="text-label-caps !text-[11px] !opacity-50 font-black uppercase tracking-widest whitespace-nowrap">Manifest Identity</h3>
+              <div className="h-px flex-1 bg-border/15" />
             </div>
             {persons.length === 0 && (
-              <div className="surface-glass p-6 sm:p-8 text-center border-dashed border-2 rounded-2xl opacity-60">
-                <p className="text-body-sm italic">You haven't added any family members yet.</p>
-                <Link to="/profile" className="btn-ghost !text-accent font-bold mt-4 !px-4 !py-2 text-[10px]">Add Member →</Link>
+              <div className="surface-liquid p-8 text-center border border-dashed border-border/30 rounded-[2rem] opacity-60">
+                <p className="text-[14px] font-medium italic t-text-muted">You haven't initiated any family identities yet.</p>
+                <Link to="/profile" className="btn-ghost !text-accent font-black mt-5 !px-6 !py-2.5 text-[11px] uppercase tracking-widest bg-accent/5 rounded-xl">Initialize →</Link>
               </div>
             )}
-            <div className="grid grid-cols-1 gap-3">
+            <div className="grid grid-cols-1 gap-4">
               {persons.map(p => {
                 const sel = personId === p.id;
                 return (
                   <button
                     key={p.id}
                     onClick={() => { setPersonId(p.id); haptics.success(); }}
-                    className={`p-4 sm:p-5 text-left transition-all duration-200 rounded-2xl relative
+                    className={`p-5 text-left transition-all duration-300 rounded-[1.8rem] relative overflow-hidden group
                       ${sel
-                        ? 'ring-2 ring-accent/55 bg-accent/[0.08] shadow-[0_0_16px_rgba(20,184,166,0.12)]'
-                        : 'ring-1 ring-border bg-bg-card hover:bg-bg-subtle'}`}
+                        ? 'surface-liquid ring-2 ring-accent/40 shadow-glow-subtle'
+                        : 'surface-glass ring-1 ring-border/15 hover:ring-border/30 backdrop-blur-md'}`}
                   >
-                    <div className="flex items-center gap-4">
-                      <div className={`w-11 h-11 rounded-xl flex items-center justify-center text-lg font-black flex-shrink-0 transition-colors duration-200
-                        ${sel ? 'bg-gradient-to-br from-teal-400 to-cyan-400 text-white' : 'bg-bg-subtle text-text-muted'}`}>
+                    {sel && <div className="absolute top-0 right-0 w-32 h-32 bg-accent/5 blur-3xl" />}
+
+                    <div className="flex items-center gap-5 relative z-10">
+                      <div className={`w-14 h-14 rounded-[1.2rem] flex items-center justify-center text-[22px] font-black flex-shrink-0 transition-all duration-300
+                        ${sel ? 'bg-gradient-to-br from-teal-400 to-cyan-500 text-white shadow-lg scale-105' : 'bg-border/10 t-text-muted group-hover:bg-border/20'}`}>
                         {p.name[0].toUpperCase()}
                       </div>
-                      <div className="min-w-0 flex-1">
-                        <p className={`text-[15px] font-bold truncate transition-colors duration-200
-                          ${sel ? 'text-text-primary' : 'text-text-secondary'}`}>
+                      <div className="min-w-0 flex-1 space-y-1">
+                        <p className={`text-[17px] font-black tracking-tight leading-none transition-colors duration-300
+                          ${sel ? 't-text-primary' : 't-text-muted'}`}>
                           {p.name}
                         </p>
-                        <p className="text-[10px] text-text-muted mt-0.5 font-medium">
-                          {p.dietary_tag || 'No preference'}
-                        </p>
+                        <div className="flex items-center gap-2">
+                          <span className={`text-[9px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full
+                             ${p.dietary_tag === 'Veg' ? 'text-teal-400 bg-teal-500/10' : 'text-amber-400 bg-amber-500/10'}`}>
+                            {p.dietary_tag || 'Standard'}
+                          </span>
+                          {p.spice_level && (
+                            <span className="text-[9px] font-bold t-text-muted opacity-40 uppercase tracking-widest">
+                              {p.spice_level} Spice
+                            </span>
+                          )}
+                        </div>
                       </div>
                       {sel && (
-                        <span className="w-5 h-5 rounded-full bg-gradient-to-br from-teal-400 to-cyan-400
-                          flex items-center justify-center flex-shrink-0">
-                          <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24"
-                            stroke="currentColor" strokeWidth={3}>
+                        <motion.div
+                          initial={{ scale: 0.8, opacity: 0 }}
+                          animate={{ scale: 1, opacity: 1 }}
+                          className="w-7 h-7 rounded-full bg-accent flex items-center justify-center flex-shrink-0 shadow-glow-subtle"
+                        >
+                          <svg className="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24"
+                            stroke="currentColor" strokeWidth={3.5}>
                             <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
                           </svg>
-                        </span>
+                        </motion.div>
                       )}
                     </div>
                   </button>
@@ -342,48 +353,50 @@ export default function SubscribePage() {
             </div>
           </section>
 
-          <section className="space-y-3 animate-glass" style={{ animationDelay: '0.15s' }}>
+
+          <section className="space-y-4 animate-glass" style={{ animationDelay: '0.15s' }}>
             <div className="flex items-center gap-5 px-1">
-              <h3 className="text-label-caps !text-[11px] !opacity-50 font-semibold whitespace-nowrap">How long?</h3>
-              <div className="h-px flex-1 bg-border/20" />
+              <h3 className="text-label-caps !text-[11px] !opacity-50 font-black uppercase tracking-widest whitespace-nowrap">Plan Genesis</h3>
+              <div className="h-px flex-1 bg-border/15" />
             </div>
-            <div className="grid grid-cols-3 gap-2 sm:gap-3">
+            <div className="grid grid-cols-2 gap-3">
               {PLAN_OPTIONS.map(opt => {
                 const selected = planDays === opt.days;
                 return (
                   <button
                     key={opt.days}
                     onClick={() => { setPlanDays(opt.days); if (opt.days === 1) setPattern('full'); haptics.success(); }}
-                    className={`py-3 px-2 sm:p-4 text-center relative transition-all duration-200
-                      rounded-2xl active:scale-[0.97]
+                    className={`py-5 px-4 text-left relative transition-all duration-300
+                      rounded-[1.8rem] active:scale-[0.97] group overflow-hidden
                       ${selected
-                        ? 'ring-2 ring-accent/55 bg-accent/[0.08] shadow-[0_0_16px_rgba(20,184,166,0.12)]'
-                        : 'ring-1 ring-border bg-bg-card hover:bg-bg-subtle'}`}
+                        ? 'surface-liquid ring-2 ring-accent/40 shadow-glow-subtle'
+                        : 'surface-glass ring-1 ring-border/15 hover:ring-border/30'}`}
                   >
                     {opt.badge && (
-                      <span className="absolute -top-2 left-1/2 -translate-x-1/2
-                        bg-gradient-to-r from-teal-400 to-cyan-400 text-white
-                        text-[8px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wide">
+                      <span className={`absolute -top-1 -right-1
+                        bg-gradient-to-r ${opt.badge === 'Elite' ? 'from-indigo-500 to-violet-500' : 'from-teal-400 to-cyan-400'} 
+                        text-white text-[8px] font-black px-3 py-1 rounded-bl-xl uppercase tracking-[0.15em] shadow-sm z-20`}>
                         {opt.badge}
                       </span>
                     )}
-                    {selected && (
-                      <span className="absolute top-2 right-2 w-4 h-4 rounded-full
-                        bg-gradient-to-br from-teal-400 to-cyan-400
-                        flex items-center justify-center">
-                        <svg className="w-2.5 h-2.5 text-white" fill="none" viewBox="0 0 24 24"
-                          stroke="currentColor" strokeWidth={3}>
-                          <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                        </svg>
-                      </span>
-                    )}
-                    <div className="space-y-1">
-                      <p className={`text-[14px] sm:text-[18px] font-bold leading-none transition-colors duration-200
-                        ${selected ? 'text-accent' : 'text-text-secondary'}`}>
-                        {opt.label}
-                      </p>
-                      <p className={`text-[9px] sm:text-[10px] font-medium transition-colors duration-200 leading-snug
-                        ${selected ? 'text-accent/70' : 'text-text-muted'}`}>
+
+                    <div className="relative z-10 space-y-2">
+                      <div className="flex items-center justify-between">
+                        <p className={`text-[18px] font-black leading-none transition-colors duration-300
+                           ${selected ? 't-text-primary' : 't-text-muted'}`}>
+                          {opt.label}
+                        </p>
+                        {selected && (
+                          <div className="w-5 h-5 rounded-full bg-accent flex items-center justify-center shadow-lg">
+                            <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24"
+                              stroke="currentColor" strokeWidth={4}>
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                            </svg>
+                          </div>
+                        )}
+                      </div>
+                      <p className={`text-[11px] font-bold leading-tight transition-colors duration-300
+                         ${selected ? 'text-accent' : 'opacity-40 t-text-muted'}`}>
                         {opt.desc}
                       </p>
                     </div>
@@ -433,57 +446,72 @@ export default function SubscribePage() {
             </section>
           )}
 
-          <section className="space-y-3 animate-glass" style={{ animationDelay: '0.25s' }}>
-            <div className="flex items-center gap-5 px-1 border-t border-border/10">
-              <h3 className="text-label-caps !text-[11px] !opacity-50 font-semibold whitespace-nowrap">Start from</h3>
-              <div className="h-px flex-1 bg-border/20" />
+          <section className="space-y-4 animate-glass" style={{ animationDelay: '0.25s' }}>
+            <div className="flex items-center gap-5 px-1">
+              <h3 className="text-label-caps !text-[11px] !opacity-50 font-black uppercase tracking-widest whitespace-nowrap">Temporal Anchor</h3>
+              <div className="h-px flex-1 bg-border/15" />
             </div>
-            <input
-              type="date"
-              min={minDate}
-              value={startDate}
-              onChange={e => setStartDate(e.target.value)}
-              className="w-full bg-bg-card border border-border/35 px-6 py-5 rounded-[1.5rem] t-text-primary text-2xl font-black tracking-tight focus:outline-none focus:ring-2 focus:ring-accent/40 focus:border-accent/40 transition-all shadow-glass-sm"
-            />
+            <div className="surface-liquid rounded-[2rem] p-6 ring-1 ring-border/15 space-y-4 shadow-elite">
+              <div className="flex items-center gap-4">
+                <div className="w-10 h-10 rounded-xl bg-accent/10 flex items-center justify-center flex-shrink-0 text-[18px]">
+                  ⏳
+                </div>
+                <div className="flex-1">
+                  <p className="text-[13px] font-black t-text-primary leading-tight">Artisanal Preparation</p>
+                  <p className="text-[10px] t-text-muted font-medium mt-0.5">We require a 12h temporal window to craft your meals.</p>
+                </div>
+              </div>
+              <input
+                type="date"
+                min={minDate}
+                value={startDate}
+                onChange={e => setStartDate(e.target.value)}
+                className="w-full bg-border/5 border border-border/20 px-6 py-4 rounded-[1.2rem] t-text-primary text-[24px] font-black tracking-tighter focus:outline-none focus:ring-2 focus:ring-accent/40 transition-all tabular-nums"
+              />
+            </div>
           </section>
 
-          <section className="space-y-3 animate-glass" style={{ animationDelay: '0.28s' }}>
-            <div className="flex items-center gap-5 px-1 border-t border-border/10">
-              <h3 className="text-label-caps !text-[11px] !opacity-50 font-semibold whitespace-nowrap">Deliver to</h3>
-              <div className="h-px flex-1 bg-border/20" />
+          <section className="space-y-4 animate-glass" style={{ animationDelay: '0.28s' }}>
+            <div className="flex items-center gap-5 px-1">
+              <h3 className="text-label-caps !text-[11px] !opacity-50 font-black uppercase tracking-widest whitespace-nowrap">Logistic Anchor</h3>
+              <div className="h-px flex-1 bg-border/15" />
             </div>
-            <div className="grid grid-cols-1 gap-3">
+            <div className="grid grid-cols-1 gap-4">
               {addresses.map((addr: any) => {
                 const sel = selectedAddressId === addr.id;
                 return (
                   <button
                     key={addr.id}
                     onClick={() => { setSelectedAddressId(addr.id); haptics.success(); }}
-                    className={`p-4 text-left transition-all duration-200 rounded-2xl relative
+                    className={`p-5 text-left transition-all duration-300 rounded-[1.8rem] relative overflow-hidden group
                       ${sel
-                        ? 'ring-2 ring-accent/55 bg-accent/[0.08] shadow-[0_0_16px_rgba(20,184,166,0.12)]'
-                        : 'ring-1 ring-border bg-bg-card hover:bg-bg-subtle'}`}
+                        ? 'surface-liquid ring-2 ring-accent/40 shadow-glow-subtle'
+                        : 'surface-glass ring-1 ring-border/15 hover:ring-border/30'}`}
                   >
-                    <div className="flex items-center gap-4">
-                      <div className={`w-11 h-11 rounded-xl flex items-center justify-center text-lg flex-shrink-0 transition-colors duration-200
-                        ${sel ? 'bg-accent/10' : 'bg-bg-subtle'}`}>
+                    <div className="flex items-center gap-5 relative z-10">
+                      <div className={`w-12 h-12 rounded-[1rem] flex items-center justify-center text-[20px] flex-shrink-0 transition-all duration-300
+                        ${sel ? 'bg-accent/15 scale-105' : 'bg-border/10 opacity-30 group-hover:bg-border/20'}`}>
                         📍
                       </div>
                       <div className="flex-1 min-w-0">
-                        <p className={`text-[15px] font-bold truncate transition-colors duration-200
-                          ${sel ? 'text-text-primary' : 'text-text-secondary'}`}>
+                        <p className={`text-[16px] font-black tracking-tight leading-none mb-1 transition-colors duration-300
+                          ${sel ? 't-text-primary' : 't-text-muted'}`}>
                           {addr.label}
                         </p>
-                        <p className="text-[10px] text-text-muted mt-0.5 truncate">{addr.address}</p>
+                        <p className={`text-[11px] font-medium truncate opacity-40 transition-opacity
+                          ${sel ? 'opacity-70' : ''}`}>{addr.address}</p>
                       </div>
                       {sel && (
-                        <span className="w-5 h-5 rounded-full bg-gradient-to-br from-teal-400 to-cyan-400
-                          flex items-center justify-center flex-shrink-0">
-                          <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24"
-                            stroke="currentColor" strokeWidth={3}>
+                        <motion.div
+                          initial={{ scale: 0.8, opacity: 0 }}
+                          animate={{ scale: 1, opacity: 1 }}
+                          className="w-6 h-6 rounded-full bg-accent flex items-center justify-center flex-shrink-0"
+                        >
+                          <svg className="w-3.5 h-3.5 text-white" fill="none" viewBox="0 0 24 24"
+                            stroke="currentColor" strokeWidth={4}>
                             <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
                           </svg>
-                        </span>
+                        </motion.div>
                       )}
                     </div>
                   </button>
@@ -525,144 +553,296 @@ export default function SubscribePage() {
   }
 
   if (step === 'checkout') {
+    // Derived order context
+    const selectedPerson = persons.find(p => p.id === personId);
+    const selectedAddress = addresses.find((a: any) => a.id === selectedAddressId);
+    const activeDays = days.filter(d => d.meals.length > 0);
+    const skippedDays = days.length - activeDays.length;
+    const endDate = days[days.length - 1]?.date;
+    const mealCounts = {
+      breakfast: days.reduce((n, d) => n + (d.meals.includes('breakfast') ? 1 : 0), 0),
+      lunch: days.reduce((n, d) => n + (d.meals.includes('lunch') ? 1 : 0), 0),
+      dinner: days.reduce((n, d) => n + (d.meals.includes('dinner') ? 1 : 0), 0),
+    };
+    const totalMeals = mealCounts.breakfast + mealCounts.lunch + mealCounts.dinner;
+    const fmtD = (d: string) => new Date(d).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' });
+    const patternLabel: Record<string, string> = {
+      full: 'All 7 days/week',
+      no_sun: '6 days (no Sunday)',
+      weekdays: 'Weekdays only',
+    };
+    const savingsPct = snapshot.base_total > 0
+      ? Math.round((snapshot.discount_total / snapshot.base_total) * 100)
+      : 0;
+
     return (
-      <div className="bg-bg-primary text-text-primary p-4 sm:p-8 relative overflow-x-hidden transition-all duration-[3000ms]" style={{ background: `radial-gradient(circle at top right, ${PHASE_CONFIG.checkout.color}, transparent)` }}>
-        <div className="absolute top-0 left-0 w-full h-full pointer-events-none transition-opacity duration-[3000ms]">
+      <div className="bg-bg-primary text-text-primary p-4 sm:p-8 relative overflow-x-hidden transition-all duration-[3000ms]"
+        style={{ background: `radial-gradient(circle at top right, ${PHASE_CONFIG.checkout.color}, transparent)` }}>
+        <div className="absolute top-0 left-0 w-full h-full pointer-events-none">
           <div className="absolute bottom-[-10%] left-[-10%] w-[60rem] h-[60rem] bg-indigo-500/10 blur-[250px] rounded-full animate-mesh" />
         </div>
-        <div className="max-w-2xl mx-auto px-6 space-y-8 relative z-10 pb-44">
-          {renderHeader("Review & Pay", "Check your order and confirm payment.", () => setStep('grid'))}
+
+        <div className="max-w-2xl mx-auto px-4 sm:px-6 space-y-5 relative z-10 pb-44">
+          {renderHeader("Review & Pay", "Confirm your order before payment.", () => setStep('grid'))}
           <LiquidProgressBar currentStep={3} totalSteps={3} />
 
-          {/* Day-by-day meal summary */}
-          <section className="space-y-3 animate-glass">
-            <h3 className="text-[11px] font-semibold t-text-muted uppercase tracking-widest">Your meals</h3>
-            <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-none">
-              {snapshot.per_day.filter(d => d.meal_count > 0).map(d => (
-                <div key={d.date} className="surface-glass px-4 py-3 rounded-2xl min-w-[120px] flex-shrink-0 space-y-1.5 ring-1 ring-border/20">
-                  <p className="text-[13px] font-bold t-text-primary">
-                    {new Date(d.date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}
-                  </p>
-                  <p className="text-[10px] t-text-muted">
-                    {d.meal_count} meal{d.meal_count !== 1 ? 's' : ''}
-                  </p>
-                  <p className="text-[12px] font-bold text-accent tabular-nums">
-                    {formatRupees(d.subtotal)}
-                  </p>
-                </div>
-              ))}
-            </div>
-          </section>
-
-          {/* Price breakdown */}
-          <section className="space-y-2.5 pt-2 border-t border-border/20 animate-glass">
-            <div className="flex justify-between items-center text-[13px]">
-              <span className="t-text-muted">Subtotal</span>
-              <span className="t-text-primary font-semibold tabular-nums">{formatRupees(snapshot.base_total)}</span>
-            </div>
-            {snapshot.discount_total > 0 && (
-              <div className="flex justify-between items-center text-[13px]">
-                <span className="text-accent/80">Plan discount</span>
-                <span className="text-accent font-bold tabular-nums">−{formatRupees(snapshot.discount_total)}</span>
+          <section className="animate-glass surface-liquid ring-1 ring-border/15 rounded-[2.2rem] overflow-hidden shadow-elite">
+            {/* Manifest Header */}
+            <div className="flex items-center gap-4 px-6 py-6 border-b border-border/5 bg-accent/3">
+              <div className="w-12 h-12 rounded-[1.2rem] bg-gradient-to-br from-indigo-500/10 to-violet-500/10 flex items-center justify-center flex-shrink-0 text-[20px]">
+                🎯
               </div>
-            )}
-            {snapshot.promo_discount > 0 && (
-              <div className="flex justify-between items-center text-[13px]">
-                <span className="text-accent/80">Promo code</span>
-                <span className="text-accent font-bold tabular-nums">−{formatRupees(snapshot.promo_discount)}</span>
-              </div>
-            )}
-            {snapshot.wallet_applied > 0 && (
-              <div className="flex justify-between items-center text-[13px]">
-                <span className="text-orange-400/80">Wallet credit</span>
-                <span className="text-orange-400 font-bold tabular-nums">−{formatRupees(snapshot.wallet_applied)}</span>
-              </div>
-            )}
-          </section>
-
-          {/* Promo code input */}
-          <section className="space-y-3 animate-glass">
-            <h3 className="text-[11px] font-semibold t-text-muted uppercase tracking-widest">Promo code</h3>
-            {promoResult ? (
-              <div className="flex items-center gap-3 surface-glass px-4 py-3 rounded-2xl border border-accent/20">
-                <span className="text-[12px] text-accent font-semibold flex-1">
-                  {promoResult.code} — {promoResult.description}
-                </span>
-                <button
-                  onClick={() => { setPromoResult(null); setPromoCode(''); setPromoInput(''); }}
-                  className="t-text-muted hover:t-text-secondary transition-colors text-lg leading-none"
-                >×</button>
-              </div>
-            ) : (
-              <div className="flex gap-2">
-                <input
-                  type="text"
-                  placeholder="Enter promo code"
-                  value={promoInput}
-                  onChange={e => setPromoInput(e.target.value.toUpperCase())}
-                  onKeyDown={e => e.key === 'Enter' && applyPromo()}
-                  className="flex-1 bg-bg-card ring-1 ring-border/30 rounded-xl px-4 py-3 text-[13px]
-                    t-text-primary placeholder:text-text-muted/40
-                    focus:outline-none focus:ring-2 focus:ring-accent/40 transition-all"
-                />
-                <button
-                  onClick={applyPromo}
-                  disabled={promoLoading || !promoInput.trim()}
-                  className="px-4 py-3 bg-accent/10 hover:bg-accent/20 text-accent rounded-xl
-                    text-[12px] font-bold transition-colors disabled:opacity-30 whitespace-nowrap"
-                >
-                  {promoLoading ? '…' : 'Apply'}
-                </button>
-              </div>
-            )}
-          </section>
-
-          {/* Wallet toggle */}
-          {(walletData?.balance ?? 0) > 0 && (
-            <section className="animate-glass">
-              <div className="surface-glass px-4 py-4 rounded-2xl flex items-center gap-4 ring-1 ring-border/20">
-                <div className="flex-1 min-w-0">
-                  <p className="text-[13px] font-semibold t-text-primary">Use wallet balance</p>
-                  <p className="text-[11px] text-accent font-bold mt-0.5">
-                    {formatRupees(walletData!.balance)} available
+              <div className="flex-1 min-w-0">
+                <p className="text-[17px] font-black t-text-primary leading-tight truncate">
+                  {selectedPerson?.name ?? 'Identity'}
+                </p>
+                <div className="flex items-center gap-2 mt-1">
+                  <span className={`text-[9px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full
+                    ${selectedPerson?.dietary_tag === 'Veg' ? 'text-teal-400 bg-teal-500/10' : 'text-amber-400 bg-amber-500/10'}`}>
+                    {selectedPerson?.dietary_tag || 'Standard'}
+                  </span>
+                  <p className="text-[9px] t-text-muted font-bold opacity-30 uppercase tracking-[0.2em] whitespace-nowrap">
+                    {planDays} Day Lifecycle
                   </p>
                 </div>
-                <button
-                  onClick={() => setApplyWallet(!applyWallet)}
-                  className={`w-12 h-6 rounded-full transition-colors duration-300 relative flex-shrink-0
-                    ${applyWallet ? 'bg-accent' : 'bg-white/15'}`}
-                >
-                  <div className={`w-5 h-5 rounded-full bg-white shadow-sm absolute top-0.5
-                    transition-transform duration-300
-                    ${applyWallet ? 'translate-x-6' : 'translate-x-0.5'}`}
-                  />
-                </button>
-              </div>
-            </section>
-          )}
-
-          {/* Total + confirm button */}
-          <section className="surface-liquid p-6 space-y-5 rounded-2xl ring-1 ring-border/20 shadow-elite animate-glass">
-            <div className="flex justify-between items-center">
-              <div>
-                <p className="text-[11px] t-text-muted font-medium">Total to pay</p>
-                <PriceTicker value={snapshot.final_total} className="!text-[32px] text-accent" />
               </div>
               <div className="text-right">
-                <p className="text-[10px] t-text-muted font-medium">🔒 Razorpay secured</p>
+                <p className="text-[10px] font-black t-text-muted opacity-30 uppercase tracking-[0.2em] mb-1">Timeline</p>
+                <p className="text-[12px] font-black t-text-primary tabular-nums">
+                  {fmtD(startDate)} → {fmtD(endDate || startDate)}
+                </p>
               </div>
             </div>
-            <button
-              onClick={() => { haptics.impact('heavy'); createSub.mutate(); }}
-              disabled={createSub.isPending}
-              className="btn-primary w-full !py-4 !text-[16px] !rounded-2xl shadow-elite font-bold"
-            >
-              {createSub.isPending
-                ? 'Processing…'
-                : snapshot.final_total === 0
-                  ? 'Start plan — No charge →'
-                  : `Pay ${formatRupees(snapshot.final_total)} →`}
-            </button>
+
+            {/* Logical Coordinates */}
+            <div className="flex items-center gap-3 px-6 py-4 bg-border/3">
+              <div className="w-8 h-8 rounded-xl bg-indigo-500/10 flex items-center justify-center flex-shrink-0 text-[14px]">📍</div>
+              <p className="text-[12px] font-bold t-text-primary truncate flex-1">
+                {selectedAddress?.label ?? 'Delivery anchor'}
+                <span className="font-medium opacity-40 ml-2">— {selectedAddress?.address ?? 'Coordinates unknown'}</span>
+              </p>
+            </div>
+
+            {/* Meal Configuration breakdown */}
+            <div className="px-6 py-5 bg-bg-primary/5 border-t border-border/10">
+              <div className="flex items-center justify-between gap-4">
+                <div className="flex gap-2">
+                  {[
+                    { icon: '☕', val: mealCounts.breakfast, label: 'Early' },
+                    { icon: '🍱', val: mealCounts.lunch, label: 'Mid' },
+                    { icon: '🌙', val: mealCounts.dinner, label: 'Late' }
+                  ].map((m, i) => (
+                    <div key={i} className={`px-3 py-2 rounded-2xl flex flex-col items-center gap-1 group transition-all duration-300
+                        ${m.val > 0 ? 'bg-accent/10 ring-1 ring-accent/20' : 'opacity-20 bg-border/5'}`}>
+                      <span className="text-[14px]">{m.icon}</span>
+                      <span className={`text-[12px] font-black tabular-nums transition-colors
+                          ${m.val > 0 ? 'text-accent' : 't-text-muted'}`}>{m.val}</span>
+                    </div>
+                  ))}
+                </div>
+
+                <div className="flex-1 text-right space-y-1">
+                  <p className="text-[10px] font-black t-text-muted opacity-40 uppercase tracking-[0.15em]">Gourmet Allocation</p>
+                  <div className="flex items-center justify-end gap-2">
+                    <p className="text-[14px] font-black t-text-primary tabular-nums tracking-tighter">{totalMeals} Units</p>
+                    <button
+                      onClick={() => { haptics.impact('medium'); setStep('grid'); }}
+                      className="w-8 h-8 rounded-full bg-border/10 flex items-center justify-center hover:bg-accent/10 transition-colors shadow-sm"
+                    >
+                      <svg className="w-4 h-4 t-text-muted" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                      </svg>
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          {/* Price manifest */}
+          <section className="animate-glass surface-liquid ring-1 ring-border/15 rounded-[1.8rem] overflow-hidden">
+            <div className="px-6 py-5 space-y-4">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-lg bg-accent/10 flex items-center justify-center text-[14px]">💳</div>
+                <h4 className="text-[14px] font-black t-text-primary tracking-tight">Fiscal Breakdown</h4>
+              </div>
+
+              <div className="space-y-3 t-text-muted">
+                <div className="flex justify-between items-center px-1">
+                  <p className="text-[13px] font-bold opacity-60">Base Plan Value</p>
+                  <p className="text-[14px] font-black t-text-primary tabular-nums">{formatRupees(snapshot.base_total)}</p>
+                </div>
+
+                {snapshot.discount_total > 0 && (
+                  <div className="flex justify-between items-center px-1">
+                    <div className="flex items-center gap-2">
+                      <p className="text-[13px] font-bold text-teal-400">Plan Genesis Discount</p>
+                      {savingsPct > 0 && (
+                        <span className="text-[9px] font-black text-white bg-teal-500 px-1.5 py-0.5 rounded-full shadow-sm">
+                          {savingsPct}% OFF
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-[14px] font-black text-teal-400 tabular-nums">−{formatRupees(snapshot.discount_total)}</p>
+                  </div>
+                )}
+
+                {snapshot.promo_discount > 0 && (
+                  <div className="flex justify-between items-center px-1">
+                    <p className="text-[13px] font-bold text-accent">Manifest Voucher</p>
+                    <p className="text-[14px] font-black text-accent tabular-nums">−{formatRupees(snapshot.promo_discount)}</p>
+                  </div>
+                )}
+
+                {snapshot.wallet_applied > 0 && (
+                  <div className="flex justify-between items-center px-1">
+                    <p className="text-[13px] font-bold text-violet-400">Vault Credit Applied</p>
+                    <p className="text-[14px] font-black text-violet-400 tabular-nums">−{formatRupees(snapshot.wallet_applied)}</p>
+                  </div>
+                )}
+
+                <div className="pt-2 border-t border-border/10 flex justify-between items-end">
+                  <div>
+                    <p className="text-[9px] font-black opacity-30 uppercase tracking-[0.2em] mb-1">Covenant Amount</p>
+                    <PriceTicker value={snapshot.final_total} className="!text-[32px] font-black t-text-primary tracking-tighter" />
+                  </div>
+                  {(snapshot.discount_total + snapshot.promo_discount + snapshot.wallet_applied) > 0 && (
+                    <div className="text-right">
+                      <div className="bg-teal-500/10 px-3 py-1.5 rounded-xl border border-teal-500/20 inline-flex items-center gap-2">
+                        <span className="text-[14px] animate-pulse">✨</span>
+                        <p className="text-[10px] font-black text-teal-400 uppercase tracking-widest leading-none">
+                          Saving {formatRupees(snapshot.discount_total + snapshot.promo_discount + snapshot.wallet_applied)}
+                        </p>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          </section>
+
+          {/* Ritual Controls: Promo & Wallet */}
+          <section className="space-y-4 animate-glass" style={{ animationDelay: '0.15s' }}>
+            {!promoResult ? (
+              <div className="space-y-3">
+                <div className="flex gap-2 p-1.5 surface-glass rounded-2xl ring-1 ring-border/20 group hover:ring-accent/40 transition-all">
+                  <input
+                    type="text"
+                    placeholder="Manifest Code"
+                    value={promoInput}
+                    onChange={e => setPromoInput(e.target.value.toUpperCase())}
+                    onKeyDown={e => e.key === 'Enter' && applyPromo()}
+                    className="flex-1 bg-transparent px-4 py-3 text-[14px] font-bold t-text-primary placeholder:opacity-30 focus:outline-none"
+                  />
+                  <button
+                    onClick={applyPromo}
+                    disabled={promoLoading || !promoInput.trim()}
+                    className="bg-accent text-white px-3 rounded-xl font-bold text-[12px] shadow-glow-subtle active:scale-95 transition-all disabled:opacity-30 disabled:grayscale"
+                  >
+                    {promoLoading ? '⏳' : 'Manifest'}
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <motion.div
+                initial={{ scale: 0.98, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                className="surface-liquid p-5 rounded-[2rem] flex items-center justify-between ring-2 ring-accent/30 shadow-glow-subtle group"
+              >
+                <div className="flex items-center gap-4">
+                  <div className="w-10 h-10 rounded-xl bg-accent text-white flex items-center justify-center text-[18px] shadow-lg">🎁</div>
+                  <div>
+                    <p className="text-[14px] font-black text-accent leading-none">{promoResult.code}</p>
+                    <p className="text-[10px] font-medium text-accent opacity-60 mt-1">{promoResult.description}</p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => { haptics.impact('light'); setPromoResult(null); setPromoCode(''); setPromoInput(''); }}
+                  className="w-8 h-8 rounded-full bg-accent/10 flex items-center justify-center text-accent hover:bg-accent hover:text-white transition-all opacity-40 hover:opacity-100"
+                >
+                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </motion.div>
+            )}
+
+            {(walletData?.balance ?? 0) > 0 && (
+              <button
+                onClick={() => { haptics.impact('medium'); setApplyWallet(!applyWallet); }}
+                className={`w-full p-5 rounded-[2rem] flex items-center justify-between transition-all duration-300 relative overflow-hidden
+                  ${applyWallet
+                    ? 'surface-liquid ring-2 ring-violet-500/30'
+                    : 'surface-glass ring-1 ring-border/15 opacity-60 grayscale-[0.5]'}`}
+              >
+                {applyWallet && <div className="absolute top-0 right-0 w-24 h-24 bg-violet-500/5 blur-2xl" />}
+                <div className="flex items-center gap-4 relative z-10">
+                  <div className={`w-11 h-11 rounded-xl flex items-center justify-center text-[18px] transition-all
+                    ${applyWallet ? 'bg-violet-500 text-white shadow-lg scale-105' : 'bg-border/10'}`}>💳</div>
+                  <div className="text-left">
+                    <p className={`text-[14px] font-black leading-none ${applyWallet ? 't-text-primary' : 't-text-muted'}`}>Vault Credits</p>
+                    <p className={`text-[11px] mt-1 font-bold ${applyWallet ? 'text-violet-400' : 'opacity-40 t-text-muted'}`}>
+                      {formatRupees(walletData!.balance)} available
+                    </p>
+                  </div>
+                </div>
+                <div className={`w-12 h-6 rounded-full relative transition-colors duration-500 p-1 flex-shrink-0
+                  ${applyWallet ? 'bg-violet-500' : 'bg-border/20'}`}>
+                  <motion.div
+                    animate={{ x: applyWallet ? 24 : 0 }}
+                    transition={{ type: 'spring', stiffness: 400, damping: 30 }}
+                    className="w-4 h-4 bg-white rounded-full shadow-md"
+                  />
+                </div>
+              </button>
+            )}
+          </section>
+
+          {/* Security Ritual & Final Action */}
+          <section className="animate-glass surface-liquid ring-1 ring-border/20 rounded-[2.2rem] overflow-hidden shadow-elite space-y-px">
+            <div className="flex items-center justify-between px-7 pt-6 pb-4">
+              <div className="space-y-1">
+                <p className="text-[10px] font-black uppercase tracking-[0.2em] t-text-muted opacity-40">Total Covenant Value</p>
+                <PriceTicker value={snapshot.final_total} className="!text-[38px] text-accent tracking-tighter" />
+                {snapshot.final_total === 0 && (
+                  <div className="bg-teal-500/10 px-2 py-0.5 rounded-lg inline-block">
+                    <p className="text-[9px] text-teal-400 font-black uppercase tracking-widest">Fully Covered</p>
+                  </div>
+                )}
+              </div>
+              <div className="text-right space-y-1.5 opacity-50">
+                <div className="flex items-center gap-1.5 justify-end t-text-primary">
+                  <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                  </svg>
+                  <span className="text-[10px] font-black uppercase tracking-wider">Vault Secured</span>
+                </div>
+                <p className="text-[9px] font-bold t-text-muted uppercase tracking-widest">UPI · Card · Net</p>
+              </div>
+            </div>
+
+            <div className="px-6 pb-6">
+              <button
+                onClick={() => { haptics.impact('heavy'); createSub.mutate(); }}
+                disabled={createSub.isPending}
+                className="btn-primary w-full !py-5 !text-[17px] !rounded-[1.4rem] shadow-glow-subtle font-black
+                  disabled:opacity-40 active:scale-[0.97] transition-all relative overflow-hidden group"
+              >
+                <div className="absolute top-0 left-0 w-full h-full bg-gradient-to-r from-white/0 via-white/10 to-white/0 -translate-x-full group-hover:translate-x-full transition-transform duration-1000" />
+                {createSub.isPending
+                  ? <div className="flex items-center justify-center gap-3">
+                    <div className="w-5 h-5 rounded-full border-2 border-white/30 border-t-white animate-spin" />
+                    <span>Synchronizing…</span>
+                  </div>
+                  : snapshot.final_total === 0
+                    ? 'Begin Journey →'
+                    : `Pay ${formatRupees(snapshot.final_total)} →`}
+              </button>
+              <p className="text-center text-[10px] t-text-muted font-medium opacity-30 mt-4 leading-relaxed">
+                By initiating this ritual you agree to our{' '}
+                <Link to="/terms" className="underline opacity-60 hover:opacity-100 transition-opacity">Manifesto & Terms</Link>
+              </p>
+            </div>
           </section>
         </div>
       </div>
@@ -694,32 +874,43 @@ export default function SubscribePage() {
     return (
       <div className="min-h-screen flex items-center justify-center p-8 bg-bg-primary relative overflow-hidden">
         <div className="absolute top-0 left-0 w-full h-full pointer-events-none">
-          <div className="absolute top-[5%] left-[5%] w-[60rem] h-[60rem] bg-accent/20 blur-[200px] rounded-full animate-mesh" />
+          <div className="absolute top-[-20%] right-[-20%] w-[80rem] h-[80rem] bg-accent/20 blur-[250px] rounded-full animate-mesh opacity-40" />
+          <div className="absolute bottom-[-10%] left-[-10%] w-[60rem] h-[60rem] bg-violet-500/10 blur-[200px] rounded-full animate-mesh" />
         </div>
-        <div className="relative surface-liquid py-12 px-8 text-center max-w-sm w-full space-y-8 rounded-[2rem] shadow-elite ring-1 ring-border/20">
-          {/* Check mark */}
-          <div className="flex justify-center">
-            <div className="w-16 h-16 rounded-full bg-accent/15 border border-accent/30 flex items-center justify-center">
-              <svg className="w-8 h-8 text-accent" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+
+        <div className="relative surface-liquid py-14 px-10 text-center max-w-sm w-full space-y-10 rounded-[3rem] shadow-elite ring-1 ring-border/20">
+          <motion.div
+            initial={{ scale: 0.5, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            transition={{ type: 'spring', damping: 15 }}
+            className="flex justify-center"
+          >
+            <div className="w-20 h-20 rounded-[2rem] bg-accent/15 border border-accent/20 flex items-center justify-center shadow-glow-subtle relative overflow-hidden">
+              <div className="absolute inset-0 bg-gradient-to-br from-accent/10 to-transparent" />
+              <svg className="w-10 h-10 text-accent relative z-10" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                <motion.path
+                  initial={{ pathLength: 0 }}
+                  animate={{ pathLength: 1 }}
+                  transition={{ duration: 0.8, delay: 0.2 }}
+                  strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7"
+                />
               </svg>
             </div>
+          </motion.div>
+
+          <div className="space-y-3">
+            <h2 className="text-[32px] font-black t-text-primary leading-[1.1] tracking-tighter">Manifest Complete!</h2>
+            <p className="text-[14px] font-medium t-text-muted opacity-60 leading-relaxed">Your culinary ritual is now synchronized. See you at sunrise.</p>
           </div>
 
-          <div className="space-y-2">
-            <h2 className="text-[28px] font-black t-text-primary leading-tight">Order confirmed!</h2>
-            <p className="text-[13px] t-text-muted">Your meals are all set. See you tomorrow.</p>
-          </div>
-
-          {/* Date range */}
-          <div className="grid grid-cols-2 gap-3">
-            <div className="bg-bg-subtle rounded-2xl p-4 text-left ring-1 ring-border/15">
-              <p className="text-[9px] font-semibold t-text-muted uppercase tracking-widest mb-1">Starts</p>
-              <p className="text-[14px] font-bold t-text-primary">{fmtDate(startDate)}</p>
+          <div className="grid grid-cols-2 gap-4">
+            <div className="surface-glass rounded-[1.8rem] p-5 text-left ring-1 ring-border/15">
+              <p className="text-[9px] font-black t-text-muted uppercase tracking-[0.2em] mb-2 opacity-40">Genesis</p>
+              <p className="text-[15px] font-black t-text-primary tabular-nums">{fmtDate(startDate)}</p>
             </div>
-            <div className="bg-bg-subtle rounded-2xl p-4 text-right ring-1 ring-border/15">
-              <p className="text-[9px] font-semibold t-text-muted uppercase tracking-widest mb-1">Ends</p>
-              <p className="text-[14px] font-bold t-text-primary">{fmtDate(days[days.length - 1]?.date ?? startDate)}</p>
+            <div className="surface-glass rounded-[1.8rem] p-5 text-left ring-1 ring-border/15">
+              <p className="text-[9px] font-black t-text-muted uppercase tracking-[0.2em] mb-2 opacity-40">Covenant Ends</p>
+              <p className="text-[15px] font-black t-text-primary tabular-nums">{fmtDate(days[days.length - 1]?.date ?? startDate)}</p>
             </div>
           </div>
 
