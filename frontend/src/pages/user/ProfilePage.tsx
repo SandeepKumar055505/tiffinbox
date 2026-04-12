@@ -10,6 +10,8 @@ import api from '../../services/api';
 import { formatRupees } from '../../utils/pricing';
 import { useSensorial, haptics } from '../../context/SensorialContext';
 import AddressVault from '../../components/user/AddressVault';
+import DiamondBadge from '../../components/user/DiamondBadge';
+import SensorialHoldButton from '../../components/shared/SensorialHoldButton';
 
 type SpiceLevel = 'mild' | 'medium' | 'hot';
 interface IPersonForm { 
@@ -151,23 +153,42 @@ export default function ProfilePage() {
           </button>
         </header>
 
-        {/* Profile Health Bar (Diamond Standard) */}
-        <div className="surface-liquid p-6 rounded-3xl border border-white/5 space-y-4 shadow-elite">
-          <div className="flex justify-between items-center px-1">
-            <p className="text-[10px] font-black uppercase tracking-widest opacity-40">Profile Health</p>
-            <p className="text-[10px] font-black uppercase tracking-widest text-accent">{healthScore}% Complete</p>
+        {/* Profile Health Overhaul (Diamond Zenith) */}
+        <div className={`relative p-8 rounded-[2.5rem] border border-white/5 space-y-4 shadow-elite overflow-hidden transition-all duration-700 ${healthScore === 100 ? 'holographic-card ring-2 ring-accent/30' : 'surface-liquid'}`}>
+          {healthScore === 100 && (
+            <div className="absolute -top-4 -right-4 z-20 scale-75 sm:scale-100">
+               <DiamondBadge />
+            </div>
+          )}
+          
+          <div className="flex justify-between items-center px-1 relative z-10">
+            <p className="text-[10px] font-black uppercase tracking-[0.2em] opacity-40">Profile Health</p>
+            <p className={`text-[11px] font-black uppercase tracking-widest ${healthScore === 100 ? 'text-teal-500 font-black' : 'text-accent'}`}>
+              {healthScore === 100 ? '✨ Diamond Certified' : `${healthScore}% Complete`}
+            </p>
           </div>
-          <div className="h-2 w-full bg-white/5 rounded-full overflow-hidden">
+          
+          <div className="h-4 w-full bg-white/5 rounded-full overflow-hidden relative z-10 p-1">
             <div 
-              className="h-full bg-accent transition-all duration-1000 shadow-glow-subtle"
+              className={`h-full rounded-full transition-all duration-[1.5s] ease-out shadow-glow-accent ${healthScore === 100 ? 'status-mercury' : 'bg-accent'}`}
               style={{ width: `${healthScore}%` }}
             />
           </div>
-          {healthScore < 100 && (
-            <p className="text-[10px] opacity-40 font-bold italic px-1">
-              ✨ {healthScore < 50 ? 'Add a phone number to reach 50%' : 'Complete your delivery address to hit 100%!'}
-            </p>
-          )}
+          
+          <div className="relative z-10">
+            {healthScore < 100 ? (
+              <p className="text-[10px] opacity-40 font-bold italic px-1">
+                ✨ {healthScore < 50 ? 'Add a phone number to reach 50%' : 'Complete your delivery address to hit 100%!'}
+              </p>
+            ) : (
+              <div className="pt-2 animate-in fade-in slide-in-from-bottom-1 duration-1000">
+                <p className="text-[11px] font-black uppercase tracking-widest text-teal-500/80">Sovereign Identity Secured</p>
+                <p className="text-[10px] opacity-40 font-medium leading-relaxed mt-1">
+                  Your gourmet presence is optimized for the Diamond Circle. Seamless deliveries unlocked.
+                </p>
+              </div>
+            )}
+          </div>
         </div>
 
         {/* User Profile (Apple Music / iOS Style) */}
@@ -424,26 +445,15 @@ export default function ProfilePage() {
         {/* Danger zone */}
         <section className="pt-12 pb-20 animate-glass" style={{ animationDelay: '0.4s' }}>
           <div className="px-6 space-y-6">
-             <button 
-               onClick={async () => {
-                 if (await sensorial.confirm({
-                   title: 'Terminal Wipe?',
-                   message: 'This will immediately anonymize your gourmet profile. This action is irreversible and permanent.',
-                   confirmText: 'Begin Wipe',
-                   type: 'danger'
-                 })) {
-                   deleteAccount.mutate();
-                 }
-               }}
-               disabled={deleteAccount.isPending}
-               className="w-full py-5 text-[11px] font-black uppercase tracking-[0.25em] text-red-500/30 hover:text-red-500 transition-all border border-dashed border-red-500/10 hover:border-red-500/40 rounded-3xl group"
-             >
-               {deleteAccount.isPending ? 'Finalizing...' : 'Close Account & Wipe Trace'}
-             </button>
-             <div className="text-center space-y-2">
-               <p className="text-[9px] opacity-20 font-black uppercase tracking-[0.3em]">TiffinBox Diamond Framework • 2026</p>
-               <p className="text-[8px] opacity-10 italic">Proudly serving fresh home-cooked health.</p>
-             </div>
+              <SensorialHoldButton 
+                text="Begin Wipe Trace & Depart"
+                completeText="Anonymizing Identity..."
+                onComplete={() => deleteAccount.mutate()}
+              />
+              <div className="text-center space-y-2 mt-8">
+                <p className="text-[9px] opacity-20 font-black uppercase tracking-[0.3em]">TiffinBox Diamond Framework • 2026</p>
+                <p className="text-[8px] opacity-10 italic">Proudly serving fresh home-cooked health.</p>
+              </div>
           </div>
         </section>
       </div>
