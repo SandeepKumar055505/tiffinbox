@@ -88,11 +88,14 @@ const ALLOWED_ORIGINS = [
 
 const corsOptions: cors.CorsOptions = {
   origin: (origin, cb) => {
-    if (!origin || env.isDev || ALLOWED_ORIGINS.includes(origin)) return cb(null, true);
-    // Allow all Render subdomains and custom domains
-    if (origin.endsWith('.mytiffinpoint.com') || origin.endsWith('.onrender.com')) return cb(null, true);
+    const isAllowed = !origin || env.isDev || 
+      ALLOWED_ORIGINS.includes(origin) || 
+      /\.mytiffinpoint\.com$/.test(origin) || 
+      /\.onrender\.com$/.test(origin);
+
+    if (isAllowed) return cb(null, true);
     
-    console.warn(`[CORS Shield] Blocked origin: ${origin}`);
+    console.warn(`[CORS PULSE] Blocked: "${origin}" — Add this to ALLOWED_ORIGINS if valid.`);
     return cb(new Error(`CORS blocked for origin: ${origin}`));
   },
   credentials: true,
@@ -183,7 +186,12 @@ app.use(async (err: any, req: express.Request, res: express.Response, _next: exp
 
   // Guarantee CORS headers even on error responses
   const origin = req.headers.origin;
-  if (origin && (env.isDev || ALLOWED_ORIGINS.includes(origin) || origin.endsWith('.mytiffinpoint.com') || origin.endsWith('.onrender.com'))) {
+  const isAllowed = !origin || env.isDev || 
+    ALLOWED_ORIGINS.includes(origin) || 
+    /\.mytiffinpoint\.com$/.test(origin) || 
+    /\.onrender\.com$/.test(origin);
+
+  if (origin && isAllowed) {
     res.setHeader('Access-Control-Allow-Origin', origin);
     res.setHeader('Access-Control-Allow-Credentials', 'true');
   }
