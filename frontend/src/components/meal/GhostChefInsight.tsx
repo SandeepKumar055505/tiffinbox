@@ -53,10 +53,10 @@ export const GhostChefInsight: React.FC<GhostChefInsightProps> = ({ status }) =>
 
   const activePool = useMemo(() => {
     if (status && STATUS_INSIGHTS[status]) {
-      return STATUS_INSIGHTS[status].map(text => ({ 
-        text, 
-        category: 'LOGISTICS' as InsightCategory, 
-        persona: 'Status Update' 
+      return STATUS_INSIGHTS[status].map(text => ({
+        text,
+        category: 'LOGISTICS' as InsightCategory,
+        persona: 'Status Update'
       }));
     }
     return INSIGHTS;
@@ -78,13 +78,13 @@ export const GhostChefInsight: React.FC<GhostChefInsightProps> = ({ status }) =>
   };
 
   return (
-    <div 
+    <div
       onClick={handleNext}
       className={`
         relative group cursor-pointer overflow-hidden transition-all duration-700
         rounded-[1.5rem] border py-4 px-6
-        ${isDark 
-          ? 'bg-black/20 border-white/5 shadow-glow-sm hover:border-white/10' 
+        ${isDark
+          ? 'bg-black/20 border-white/5 shadow-glow-sm hover:border-white/10'
           : 'bg-white/40 backdrop-blur-3xl border-white/60 shadow-xl hover:border-white hover:bg-white/50'
         }
       `}
