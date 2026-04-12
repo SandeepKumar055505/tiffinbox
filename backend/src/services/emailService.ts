@@ -7,9 +7,11 @@ const transporter = enabled
   ? nodemailer.createTransport({
       service: 'gmail',
       auth: { user: env.GMAIL_USER, pass: env.GMAIL_APP_PASSWORD },
-      pool: true,          // reuse connections
+      pool: true,             // reuse connections
       maxConnections: 3,
-      socketTimeout: 10000, // 10s socket timeout
+      connectionTimeout: 8000, // 8s to establish TCP connection
+      greetingTimeout: 8000,   // 8s to receive SMTP greeting
+      socketTimeout: 10000,    // 10s inactivity timeout
     })
   : null;
 
@@ -35,13 +37,25 @@ async function send(to: string, subject: string, html: string): Promise<void> {
     throw new Error('Email service not configured (GMAIL_USER / GMAIL_APP_PASSWORD missing)');
   }
 
-  const attempt = async () =>
-    transporter.sendMail({
-      from: `TiffinBox <${env.GMAIL_USER}>`,
-      to,
-      subject,
-      html,
-    });
+  const SEND_TIMEOUT_MS = 12_000; // hard ceiling — nodemailer timeouts can drift
+
+  const withTimeout = (p: Promise<any>) =>
+    Promise.race([
+      p,
+      new Promise<never>((_, reject) =>
+        setTimeout(() => reject(Object.assign(new Error('Email send timed out'), { code: 'ETIMEDOUT' })), SEND_TIMEOUT_MS)
+      ),
+    ]);
+
+  const attempt = () =>
+    withTimeout(
+      transporter.sendMail({
+        from: `TiffinBox <${env.GMAIL_USER}>`,
+        to,
+        subject,
+        html,
+      })
+    );
 
   try {
     await attempt();
@@ -51,7 +65,7 @@ async function send(to: string, subject: string, html: string): Promise<void> {
       firstErr.code === 'ECONNECTION' ||
       firstErr.code === 'ETIMEDOUT' ||
       firstErr.code === 'ECONNRESET' ||
-      firstErr.responseCode >= 500;
+      (firstErr.responseCode && firstErr.responseCode >= 500);
 
     if (isTransient) {
       await new Promise(r => setTimeout(r, 1000));
