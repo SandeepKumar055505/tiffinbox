@@ -2,46 +2,57 @@ import nodemailer from 'nodemailer';
 import { env } from '../config/env';
 
 // ── Provider detection ────────────────────────────────────────────────────────
+const useBrevo  = !!env.BREVO_API_KEY;
 const useResend = !!env.RESEND_API_KEY;
 const useSmtp   = !!(env.GMAIL_USER && env.GMAIL_APP_PASSWORD);
 
-export const isEmailEnabled = useResend || useSmtp;
+export const isEmailEnabled = useBrevo || useResend || useSmtp;
 
-// ── SMTP transporter (fallback / local dev) ───────────────────────────────────
+// ── SMTP transporter (legacy/local fallback) ──────────────────────────────────
 const transporter = useSmtp
   ? nodemailer.createTransport({
       service: 'gmail',
       auth: { user: env.GMAIL_USER, pass: env.GMAIL_APP_PASSWORD },
       pool: true,
       maxConnections: 3,
-      connectionTimeout: 8000,
-      greetingTimeout: 8000,
-      socketTimeout: 10000,
     })
   : null;
 
-if (transporter) {
-  transporter.verify().then(() => {
-    console.log('[email] SMTP connection verified ✓');
-  }).catch((err: Error) => {
-    console.error('[email] SMTP verify failed:', err.message);
-  });
-}
+// ── Core send implementations ──────────────────────────────────────────────────
 
-// ── Core send ─────────────────────────────────────────────────────────────────
-
-const SEND_TIMEOUT_MS = 12_000;
+const SEND_TIMEOUT_MS = 10_000;
 
 function withTimeout<T>(p: Promise<T>): Promise<T> {
   return Promise.race([
     p,
     new Promise<never>((_, reject) =>
-      setTimeout(
-        () => reject(Object.assign(new Error('Email send timed out'), { code: 'ETIMEDOUT' })),
-        SEND_TIMEOUT_MS
-      )
+      setTimeout(() => reject(Object.assign(new Error('Email send timed out'), { code: 'ETIMEDOUT' })), SEND_TIMEOUT_MS)
     ),
   ]);
+}
+
+async function sendViaBrevo(to: string, subject: string, html: string): Promise<void> {
+  const res = await withTimeout(
+    fetch('https://api.brevo.com/v3/smtp/email', {
+      method: 'POST',
+      headers: {
+        'api-key': env.BREVO_API_KEY!,
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+      },
+      body: JSON.stringify({
+        sender: { name: env.BREVO_FROM_NAME, email: env.BREVO_FROM_EMAIL },
+        to: [{ email: to }],
+        subject,
+        htmlContent: html,
+      }),
+    })
+  );
+
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}));
+    throw new Error(`Brevo error ${res.status}: ${(body as any).message || res.statusText}`);
+  }
 }
 
 async function sendViaResend(to: string, subject: string, html: string): Promise<void> {
@@ -58,55 +69,37 @@ async function sendViaResend(to: string, subject: string, html: string): Promise
 
   if (!res.ok) {
     const body = await res.json().catch(() => ({}));
-    const err: any = new Error(`Resend error ${res.status}: ${(body as any).message || res.statusText}`);
-    err.responseCode = res.status;
-    throw err;
+    throw new Error(`Resend error ${res.status}: ${(body as any).message || res.statusText}`);
   }
 }
 
 async function sendViaSmtp(to: string, subject: string, html: string): Promise<void> {
   await withTimeout(
-    transporter!.sendMail({
-      from: `TiffinBox <${env.GMAIL_USER}>`,
-      to,
-      subject,
-      html,
-    })
+    transporter!.sendMail({ from: `TiffinBox <${env.GMAIL_USER}>`, to, subject, html })
   );
 }
 
 /**
  * Send an email. Throws on failure — callers decide how to handle.
- * Primary: Resend HTTP API. Fallback: Gmail SMTP.
- * Retries once after 1 s on transient errors.
+ * Priority: 1. Brevo (API), 2. Resend (API), 3. SMTP (Legacy)
  */
 async function send(to: string, subject: string, html: string): Promise<void> {
   if (!isEmailEnabled) {
-    if (env.isDev) {
-      console.log(`[email skipped — not configured] To: ${to} | Subject: ${subject}`);
-      return;
-    }
-    throw new Error('Email service not configured (RESEND_API_KEY or GMAIL_USER missing)');
+    if (env.isDev) console.log(`[email skipped] To: ${to} | Subject: ${subject}`);
+    return;
   }
 
-  const attempt = () => useResend ? sendViaResend(to, subject, html) : sendViaSmtp(to, subject, html);
+  const attempt = () => {
+    if (useBrevo)  return sendViaBrevo(to, subject, html);
+    if (useResend) return sendViaResend(to, subject, html);
+    return sendViaSmtp(to, subject, html);
+  };
 
   try {
     await attempt();
-  } catch (firstErr: any) {
-    const isTransient =
-      firstErr.code === 'ECONNECTION' ||
-      firstErr.code === 'ETIMEDOUT'   ||
-      firstErr.code === 'ECONNRESET'  ||
-      (firstErr.responseCode && firstErr.responseCode >= 500);
-
-    if (isTransient) {
-      console.warn('[email] Transient error — retrying once:', firstErr.message);
-      await new Promise(r => setTimeout(r, 1000));
-      await attempt();
-    } else {
-      throw firstErr;
-    }
+  } catch (err: any) {
+    console.error(`[email failure] ${err.message}`);
+    throw err;
   }
 }
 

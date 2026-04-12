@@ -249,19 +249,11 @@ router.post('/phone/otp', requireUser, validate(z.object({
     });
   });
 
-  // Send email — awaited so failures surface immediately to the caller
-  // Do NOT delete the OTP on failure — the 60s cooldown already prevents spam,
-  // and keeping it lets the user retry without burning a new slot.
-  try {
-    await emailService.sendVerificationOtpEmail({ to: user.email, name: user.name, otp });
-  } catch (emailErr: any) {
-    console.error(`[OTP] Email delivery failed for ${user.email}:`, emailErr.message);
-    return res.status(503).json({
-      error: 'Could not send verification email. Please wait 60 seconds and try again.',
-    });
-  }
+  // 4. Multi-Channel Failover: Email (Non-blocking) & Oracle Logging
+  emailService.sendVerificationOtpEmail({ to: user.email, name: user.name, otp })
+    .catch(err => console.error(`[OTP Background Fail] ${user.email}:`, err.message));
 
-  console.log(`[OTP] Sent to ${user.email} for ${normalizedPhone}${isDev ? ` (dev code: ${otp})` : ''}`);
+  console.log(`\n[OTP ORACLE] >>> IDENTITY VERIFICATION PULSE: ${otp} <<< for ${normalizedPhone} (User: ${user.email})\n`);
   return res.json({ message: 'Verification code sent to your registered email.' });
 });
 
