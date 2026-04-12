@@ -5,6 +5,7 @@ import { haptics } from '../../context/SensorialContext';
 import DishSwapModal from './DishSwapModal';
 import { GhostChefInsight } from './GhostChefInsight';
 import { MealType, MealItem, DaySelection } from '../../types';
+import { useTheme } from '../../context/ThemeContext';
 
 interface MenuEntry {
   default: MealItem;
@@ -32,6 +33,7 @@ function getDayOffCount(days: DaySelection[]): number {
 }
 
 export default function MealGrid({ days, weekMenu, planDays, maxDayOffs, mealPrices, onChange }: MealGridProps) {
+  const { isDark } = useTheme();
   const [swapModal, setSwapModal] = useState<{ date: string; mealType: MealType } | null>(null);
   const dayOffCount = getDayOffCount(days);
 
@@ -89,19 +91,21 @@ export default function MealGrid({ days, weekMenu, planDays, maxDayOffs, mealPri
       {/* Legend + skip counter */}
       <div className="flex items-center justify-between px-1">
         <div className="flex items-center gap-4">
-          <span className="flex items-center gap-1.5 text-[10px] text-white/40 font-medium">
+          <span className={`flex items-center gap-1.5 text-[10px] font-medium
+            ${isDark ? 'text-white/40' : 'text-indigo-950/50'}`}>
             <span className="w-2 h-2 rounded-full bg-accent inline-block" />
             Included
           </span>
-          <span className="flex items-center gap-1.5 text-[10px] text-white/30 font-medium">
-            <span className="w-2 h-2 rounded-full border border-white/20 inline-block" />
+          <span className={`flex items-center gap-1.5 text-[10px] font-medium
+            ${isDark ? 'text-white/30' : 'text-indigo-950/40'}`}>
+            <span className="w-2 h-2 rounded-full border border-current opacity-20 inline-block" />
             Skipped
           </span>
         </div>
         <span className={`text-[10px] font-semibold px-2.5 py-1 rounded-full transition-colors
           ${skipsLeft === 0
             ? 'bg-orange-500/10 text-orange-400'
-            : 'text-white/30'}`}>
+            : isDark ? 'text-white/30' : 'text-indigo-950/40'}`}>
           {skipsLeft === 0 ? 'Day-off limit reached' : `${skipsLeft} day-off${skipsLeft !== 1 ? 's' : ''} left`}
         </span>
       </div>
@@ -123,14 +127,18 @@ export default function MealGrid({ days, weekMenu, planDays, maxDayOffs, mealPri
             >
               <div className="grid gap-2" style={{ gridTemplateColumns: '48px repeat(3, 1fr)' }}>
                 {/* Date column */}
-                <div className="flex flex-col justify-center items-center rounded-2xl bg-white/[0.03] border border-white/[0.05] py-2">
-                  <span className="text-[8px] font-semibold text-white/30 uppercase tracking-wide leading-none">
+                <div className={`flex flex-col justify-center items-center rounded-2xl border py-2
+                  ${isDark ? 'bg-white/[0.03] border-white/[0.05]' : 'bg-indigo-950/[0.03] border-indigo-900/5'}`}>
+                  <span className={`text-[8px] font-semibold uppercase tracking-wide leading-none
+                    ${isDark ? 'text-white/30' : 'text-indigo-950/40'}`}>
                     {DAY_NAMES[dow]}
                   </span>
-                  <span className="text-[16px] font-black text-white leading-tight mt-0.5">
+                  <span className={`text-[16px] font-black leading-tight mt-0.5
+                    ${isDark ? 'text-white' : 'text-indigo-950/90'}`}>
                     {dateNum}
                   </span>
-                  <span className="text-[8px] font-medium text-white/30 leading-none">
+                  <span className={`text-[8px] font-medium leading-none
+                    ${isDark ? 'text-white/30' : 'text-indigo-950/40'}`}>
                     {month}
                   </span>
                 </div>
@@ -155,7 +163,7 @@ export default function MealGrid({ days, weekMenu, planDays, maxDayOffs, mealPri
                         select-none transition-colors duration-200 border
                         ${included
                           ? 'bg-accent/[0.13] border-accent/40'
-                          : 'bg-white/[0.03] border-white/[0.06] active:bg-white/[0.07]'
+                          : isDark ? 'bg-white/[0.03] border-white/[0.06] active:bg-white/[0.07]' : 'bg-indigo-950/[0.03] border-indigo-900/5 active:bg-indigo-950/[0.06]'
                         }
                         ${blocked ? 'opacity-25 cursor-not-allowed' : ''}`}
                     >
@@ -164,7 +172,7 @@ export default function MealGrid({ days, weekMenu, planDays, maxDayOffs, mealPri
                         <span className="text-[13px] leading-none">{MEAL_ICONS[mealType]}</span>
                         <div className={`w-3.5 h-3.5 rounded-full flex items-center justify-center
                           transition-all duration-200 flex-shrink-0
-                          ${included ? 'bg-accent' : 'border border-white/20'}`}>
+                          ${included ? 'bg-accent' : isDark ? 'border border-white/20' : 'border border-indigo-900/20'}`}>
                           {included && (
                             <svg className="w-2 h-2 text-white" fill="none" viewBox="0 0 24 24"
                               stroke="currentColor" strokeWidth={3.5}>
@@ -176,14 +184,18 @@ export default function MealGrid({ days, weekMenu, planDays, maxDayOffs, mealPri
 
                       {/* Dish name */}
                       <p className={`text-[10px] font-semibold leading-tight line-clamp-2 flex-1
-                        ${included ? 'text-white' : 'text-white/25'}`}>
+                        ${included
+                          ? isDark ? 'text-white' : 'text-indigo-950/90'
+                          : isDark ? 'text-white/25' : 'text-indigo-950/30'}`}>
                         {item?.name || MEAL_SHORT[mealType]}
                       </p>
 
                       {/* Bottom: price + swap */}
                       <div className="flex items-center justify-between gap-1">
                         <span className={`text-[9px] font-bold tabular-nums leading-none
-                          ${included ? 'text-accent/70' : 'text-white/20'}`}>
+                          ${included
+                            ? isDark ? 'text-accent/70' : 'text-accent/80'
+                            : isDark ? 'text-white/20' : 'text-indigo-950/25'}`}>
                           {formatRupees(mealPrices[mealType])}
                         </span>
 
@@ -195,11 +207,12 @@ export default function MealGrid({ days, weekMenu, planDays, maxDayOffs, mealPri
                               haptics.confirm();
                             }}
                             title="Change dish"
-                            className="w-6 h-6 rounded-full flex items-center justify-center
-                              bg-white/10 hover:bg-white/20 transition-colors flex-shrink-0"
+                            className={`w-6 h-6 rounded-full flex items-center justify-center
+                              transition-colors flex-shrink-0
+                              ${isDark ? 'bg-white/10 hover:bg-white/20' : 'bg-indigo-950/10 hover:bg-indigo-950/20'}`}
                           >
                             {/* Up-down swap arrows */}
-                            <svg className="w-3 h-3 text-white/60" fill="none" viewBox="0 0 24 24"
+                            <svg className={`w-3 h-3 ${isDark ? 'text-white/60' : 'text-indigo-950/70'}`} fill="none" viewBox="0 0 24 24"
                               stroke="currentColor" strokeWidth={2.5}>
                               <path strokeLinecap="round" strokeLinejoin="round"
                                 d="M7 16V4m0 0L3 8m4-4l4 4M17 8v12m0 0l4-4m-4 4l-4-4" />

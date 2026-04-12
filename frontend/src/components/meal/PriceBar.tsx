@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { PriceSnapshot } from '../../types';
 import { formatRupees } from '../../utils/pricing';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useTheme } from '../../context/ThemeContext';
 
 interface Props {
   snapshot: PriceSnapshot;
@@ -11,6 +12,7 @@ interface Props {
 }
 
 export default function PriceBar({ snapshot, planDays, onNext, loading }: Props) {
+  const { isDark } = useTheme();
   const [expanded, setExpanded] = useState(true);
   const activeDays = snapshot.per_day.filter(d => d.meal_count > 0).length;
   const totalMeals = snapshot.per_day.reduce((s, d) => s + d.meal_count, 0);
@@ -22,7 +24,8 @@ export default function PriceBar({ snapshot, planDays, onNext, loading }: Props)
     // <div className="fixed bottom-0 left-0 right-0 z-40 px-3 sm:px-4 pb-3 pt-1">
     <div className="max-w-lg mx-auto sm:max-w-2xl">
       <motion.div
-        className="glass rounded-2xl shadow-elite ring-1 ring-white/10 overflow-hidden"
+        className={`glass rounded-2xl shadow-elite ring-1 overflow-hidden
+          ${isDark ? 'ring-white/10' : 'ring-indigo-900/10'}`}
         layout
         transition={{ duration: 0.2, ease: [0.4, 0, 0.2, 1] }}
       >
@@ -37,12 +40,14 @@ export default function PriceBar({ snapshot, planDays, onNext, loading }: Props)
               transition={{ duration: 0.22, ease: [0.4, 0, 0.2, 1] }}
               className="overflow-hidden"
             >
-              <div className="px-4 pt-3.5 pb-2.5 border-b border-white/[0.07] space-y-2">
+              <div className={`px-4 pt-3.5 pb-2.5 border-b space-y-2
+                ${isDark ? 'border-white/[0.07]' : 'border-indigo-900/10'}`}>
                 <div className="flex justify-between text-[11px]">
-                  <span className="text-white/40">
+                  <span className={isDark ? 'text-white/40' : 'text-indigo-950/50'}>
                     {activeDays} day{activeDays !== 1 ? 's' : ''} · {totalMeals} meal{totalMeals !== 1 ? 's' : ''}
                   </span>
-                  <span className="text-white/55 font-semibold tabular-nums">
+                  <span className={`font-semibold tabular-nums
+                    ${isDark ? 'text-white/55' : 'text-indigo-950/70'}`}>
                     {formatRupees(snapshot.base_total)}
                   </span>
                 </div>
@@ -84,14 +89,16 @@ export default function PriceBar({ snapshot, planDays, onNext, loading }: Props)
             disabled={!hasBreakdown}
           >
             <div className="min-w-0">
-              <p className="text-[10px] text-white/40 font-medium leading-none mb-1">To pay</p>
+              <p className={`text-[10px] font-medium leading-none mb-1
+                ${isDark ? 'text-white/40' : 'text-indigo-950/50'}`}>To pay</p>
               <p className="text-[22px] font-black text-accent leading-none tabular-nums">
                 {formatRupees(snapshot.final_total)}
               </p>
             </div>
             {hasBreakdown && (
               <svg
-                className={`w-4 h-4 text-white/25 flex-shrink-0 transition-transform duration-200
+                className={`w-4 h-4 flex-shrink-0 transition-transform duration-200
+                    ${isDark ? 'text-white/25' : 'text-indigo-950/30'}
                     ${expanded ? 'rotate-180' : ''}`}
                 fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}
               >

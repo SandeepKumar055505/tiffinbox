@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { db } from '../config/db';
+import { normalizeDbPrice } from '../utils/pricing';
 
 const router = Router();
 
@@ -18,7 +19,7 @@ router.get('/public', async (_req, res) => {
   const discountTable: Record<number, Record<number, number>> = {};
   for (const row of discounts) {
     if (!discountTable[row.plan_days]) discountTable[row.plan_days] = {};
-    discountTable[row.plan_days][row.meals_per_day] = row.discount_amount * 100;
+    discountTable[row.plan_days][row.meals_per_day] = normalizeDbPrice(row.discount_amount);
   }
 
   res.json({
