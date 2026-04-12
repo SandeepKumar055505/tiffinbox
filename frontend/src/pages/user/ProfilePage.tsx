@@ -2,7 +2,7 @@ import React, { useState, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Link, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ChevronDown } from 'lucide-react';
+import { ChevronDown, Plus, Pencil, Trash2, Users, X } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useToast } from '../../context/ToastContext';
 import FlavorMeter from '../../components/user/FlavorMeter';
@@ -15,19 +15,29 @@ import AddressVault from '../../components/user/AddressVault';
 import DiamondBadge from '../../components/user/DiamondBadge';
 import SensorialHoldButton from '../../components/shared/SensorialHoldButton';
 
+const PERSON_COLORS = [
+  'from-teal-400 to-cyan-500',
+  'from-violet-400 to-purple-500',
+  'from-rose-400 to-pink-500',
+  'from-amber-400 to-orange-500',
+  'from-blue-400 to-indigo-500',
+];
+
+const SPICE_LABEL: Record<string, string> = { mild: '🌶 Mild', medium: '🌶🌶 Medium', hot: '🌶🌶🌶 Hot' };
+
 type SpiceLevel = 'mild' | 'medium' | 'hot';
-interface IPersonForm { 
-  name: string; 
-  dietary_tag: string; 
-  allergies: string[]; 
-  spice_level: SpiceLevel; 
-  notes: string; 
+interface IPersonForm {
+  name: string;
+  dietary_tag: string;
+  allergies: string[];
+  spice_level: SpiceLevel;
+  notes: string;
 }
 const BLANK: IPersonForm = {
-  name: '', 
-  dietary_tag: 'Veg', 
-  allergies: [], 
-  spice_level: 'medium', 
+  name: '',
+  dietary_tag: 'Veg',
+  allergies: [],
+  spice_level: 'medium',
   notes: '',
 };
 
@@ -37,7 +47,7 @@ export default function ProfilePage() {
   const sensorial = useSensorial();
   const navigate = useNavigate();
   const qc = useQueryClient();
-  
+
   const [form, setForm] = useState<IPersonForm>(BLANK);
   const [editing, setEditing] = useState<number | null>(null);
   const [showForm, setShowForm] = useState(false);
@@ -91,7 +101,7 @@ export default function ProfilePage() {
 
   const healthScore = useMemo(() =>
     setupSteps.reduce((acc, s) => acc + (s.done ? s.points : 0), 0),
-  [setupSteps]);
+    [setupSteps]);
 
   const completedCount = setupSteps.filter(s => s.done).length;
   const totalPoints = setupSteps.reduce((acc, s) => acc + s.points, 0);
@@ -193,12 +203,12 @@ export default function ProfilePage() {
 
   function startEdit(p: Person) {
     haptics.impact('light');
-    setForm({ 
-      name: p.name, 
-      dietary_tag: p.dietary_tag || 'Veg', 
-      allergies: p.allergies, 
-      spice_level: p.spice_level, 
-      notes: p.notes || '' 
+    setForm({
+      name: p.name,
+      dietary_tag: p.dietary_tag || 'Veg',
+      allergies: p.allergies,
+      spice_level: p.spice_level,
+      notes: p.notes || ''
     });
     setEditing(p.id);
     setShowForm(false);
@@ -213,7 +223,7 @@ export default function ProfilePage() {
             <h1 className="text-h1 !text-[34px] font-extrabold tracking-tight">Account</h1>
             <p className="text-[10px] font-black uppercase tracking-widest opacity-40">TiffinBox v1.0.4</p>
           </div>
-          <button 
+          <button
             onClick={async () => {
               if (await sensorial.confirm({
                 title: 'Exit Portal?',
@@ -223,7 +233,7 @@ export default function ProfilePage() {
               })) {
                 logout();
               }
-            }} 
+            }}
             className="text-red-500 font-black text-[10px] uppercase tracking-[0.2em] bg-red-500/5 px-6 py-2.5 rounded-2xl mb-1 hover:bg-red-500/10 transition-all active:scale-95 shadow-glow-rose/10"
           >
             Exit Portal
@@ -554,89 +564,149 @@ export default function ProfilePage() {
         </section>
 
         {/* Persons */}
-        <section className="space-y-4 animate-glass" style={{ animationDelay: '0.1s' }}>
-          <div className="flex items-center justify-between px-4 pb-2">
-            <h3 className="text-label-caps !text-[12px] !opacity-50 font-bold uppercase tracking-widest flex-1">Family Members</h3>
+        <section className="space-y-3 animate-glass" style={{ animationDelay: '0.1s' }}>
+          {/* Header */}
+          <div className="flex items-center justify-between px-1">
+            <div className="flex items-center gap-2">
+              <h3 className="text-label-caps !text-[12px] !opacity-50 font-bold uppercase tracking-widest">
+                Family Members
+              </h3>
+              {persons.length > 0 && (
+                <span className="text-[9px] font-black text-accent bg-accent/10 px-2 py-0.5 rounded-full tabular-nums">
+                  {persons.length}
+                </span>
+              )}
+            </div>
             {!showForm && editing === null && (
               <button
-                onClick={() => { setForm(BLANK); setShowForm(true); }}
-                className="text-[11px] font-bold text-accent uppercase tracking-widest hover:opacity-80"
+                onClick={() => { setForm(BLANK); setShowForm(true); haptics.light(); }}
+                className="flex items-center gap-1 text-[11px] font-bold text-accent bg-accent/10
+                  hover:bg-accent/20 px-4 py-2 rounded-xl transition-all active:scale-95"
               >
-                Add
+                <Plus size={13} strokeWidth={2.5} />
+                Add New
               </button>
             )}
           </div>
 
-          {(showForm || editing !== null) && (
-            <div className="animate-glass">
-              <MemberForm
-                form={form}
-                setForm={setForm}
-                editing={editing}
-                onCancel={() => { setShowForm(false); setEditing(null); }}
-                onSubmit={() => editing ? update.mutate({ id: editing }) : create.mutate()}
-                loading={editing ? update.isPending : create.isPending}
-                title={editing ? 'Edit Member' : 'New Member'}
-              />
-            </div>
-          )}
+          {/* Inline form */}
+          <AnimatePresence initial={false}>
+            {(showForm || editing !== null) && (
+              <motion.div
+                initial={{ opacity: 0, y: -6 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -6 }}
+                transition={{ duration: 0.2 }}
+              >
+                <MemberForm
+                  form={form}
+                  setForm={setForm}
+                  editing={editing}
+                  onCancel={() => { setShowForm(false); setEditing(null); }}
+                  onSubmit={() => editing ? update.mutate({ id: editing }) : create.mutate()}
+                  loading={editing ? update.isPending : create.isPending}
+                  title={editing ? 'Edit member' : 'New member'}
+                />
+              </motion.div>
+            )}
+          </AnimatePresence>
 
-          {persons.length > 0 && !showForm && (
-            <div className="surface-glass rounded-[2rem] overflow-hidden divide-y divide-border/10 border border-white/5 shadow-sm">
-              {persons.map(p => (
-                <div key={p.id} className="p-4 sm:p-5 flex items-center justify-between gap-4 hover:bg-bg-secondary/40 transition-colors">
-                  <div className="flex items-center gap-4 flex-1 min-w-0">
-                    <div className="w-12 h-12 rounded-2xl bg-accent/10 flex items-center justify-center text-lg text-accent shrink-0 font-black">
+          {/* Person cards */}
+          {persons.length > 0 && !showForm && editing === null && (
+            <div className="space-y-2">
+              {persons.map((p, idx) => {
+                const personStreak = (streaks as any[]).find((s: any) => s.person_id === p.id)?.current_streak ?? 0;
+                const color = PERSON_COLORS[idx % PERSON_COLORS.length];
+                return (
+                  <div key={p.id}
+                    className="surface-glass ring-1 ring-border/15 rounded-[1.5rem] p-4
+                      flex items-center gap-4 hover:ring-border/30 transition-all duration-200">
+                    {/* Gradient avatar */}
+                    <div className={`w-12 h-12 rounded-[1rem] bg-gradient-to-br ${color}
+                      flex items-center justify-center text-white font-black text-[18px]
+                      flex-shrink-0 shadow-sm`}>
                       {p.name[0].toUpperCase()}
                     </div>
-                    <div className="min-w-0 space-y-0.5">
-                      <p className="text-lg font-bold truncate text-gray-900">{p.name}</p>
-                      <div className="flex gap-2 flex-wrap items-center">
-                        <span className="inline-flex items-center rounded-full bg-orange-50 px-2.5 py-0.5 text-[10px] font-black uppercase tracking-widest text-orange-600 border border-orange-100/50">
+
+                    {/* Info */}
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <p className="text-[15px] font-bold t-text-primary leading-tight truncate">{p.name}</p>
+                        {personStreak >= 3 && (
+                          <span className="text-[9px] font-black text-amber-400 bg-amber-500/10
+                            px-1.5 py-0.5 rounded-full flex-shrink-0">
+                            🔥 {personStreak}d
+                          </span>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-2 mt-1 flex-wrap">
+                        <span className="text-[9px] font-bold t-text-muted bg-bg-subtle
+                          ring-1 ring-border/20 px-2 py-0.5 rounded-full">
                           {p.dietary_tag}
                         </span>
-                        <span className="text-[10px] font-black uppercase tracking-widest opacity-30 px-1">{p.spice_level} Spice</span>
+                        <span className="text-[9px] font-medium t-text-muted opacity-45">
+                          {SPICE_LABEL[p.spice_level] ?? p.spice_level}
+                        </span>
+                        {p.notes && (
+                          <span className="text-[9px] t-text-muted opacity-35 truncate max-w-[110px] italic">
+                            {p.notes}
+                          </span>
+                        )}
                       </div>
                     </div>
+
+                    {/* Action buttons */}
+                    <div className="flex items-center gap-1 flex-shrink-0">
+                      <button
+                        onClick={() => startEdit(p)}
+                        className="w-8 h-8 rounded-xl bg-border/10 hover:bg-accent/10
+                          flex items-center justify-center transition-all t-text-muted hover:text-accent"
+                        title="Edit"
+                      >
+                        <Pencil size={13} />
+                      </button>
+                      <button
+                        onClick={async () => {
+                          if (await sensorial.confirm({
+                            title: 'Remove member?',
+                            message: `${p.name} will be removed from your plan. This cannot be undone.`,
+                            confirmText: 'Remove',
+                            type: 'danger',
+                          })) {
+                            remove.mutate(p.id);
+                            showToast(`${p.name} removed.`, 'success');
+                          }
+                        }}
+                        className="w-8 h-8 rounded-xl bg-border/10 hover:bg-red-500/10
+                          flex items-center justify-center transition-all t-text-muted hover:text-red-500"
+                        title="Remove"
+                      >
+                        <Trash2 size={13} />
+                      </button>
+                    </div>
                   </div>
-                  <div className="flex gap-4 shrink-0 px-2">
-                    <button onClick={() => startEdit(p)} className="text-[10px] font-black uppercase tracking-widest text-accent hover:scale-105 transition-all">Edit</button>
-                    <button 
-                      onClick={async () => {
-                        if (await sensorial.confirm({
-                          title: 'Remove Choice?',
-                          message: `Are you sure you want to remove ${p.name} from your boutique circle?`,
-                          confirmText: 'Remove',
-                          type: 'danger'
-                        })) {
-                          remove.mutate(p.id);
-                          showToast(`${p.name} has left the circle.`, 'success');
-                        }
-                      }} 
-                      className="text-[10px] font-black uppercase tracking-widest text-red-500 hover:scale-105 transition-all"
-                    >
-                      Remove
-                    </button>
-                  </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
 
+          {/* Empty state */}
           {persons.length === 0 && !showForm && (
-            <div className="surface-liquid p-12 text-center rounded-[2.5rem] border border-white/5 space-y-6">
-              <div className="text-5xl grayscale opacity-20">👪</div>
-              <div className="space-y-2">
-                <h3 className="text-xl font-black tracking-tight">Expand the Circle</h3>
-                <p className="text-sm opacity-40 leading-relaxed max-w-[240px] mx-auto font-medium">
-                  Add family members to customize their spice levels and diet.
+            <div className="surface-glass ring-1 ring-border/15 rounded-[2rem] p-8 text-center space-y-4">
+              <div className="w-14 h-14 rounded-2xl bg-accent/8 flex items-center justify-center mx-auto">
+                <Users size={24} className="text-accent/40" />
+              </div>
+              <div className="space-y-1.5">
+                <p className="text-[16px] font-black t-text-primary">No members yet</p>
+                <p className="text-[12px] t-text-muted leading-relaxed max-w-[220px] mx-auto">
+                  Add family members to set dietary preferences and spice levels for each person.
                 </p>
               </div>
               <button
-                onClick={() => setShowForm(true)}
-                className="btn-primary !py-3 !px-8 !rounded-2xl"
+                onClick={() => { setForm(BLANK); setShowForm(true); }}
+                className="btn-primary !py-2.5 !px-6 !rounded-xl !text-[13px]"
               >
-                Add Member
+                Add first member
               </button>
             </div>
           )}
@@ -651,8 +721,8 @@ export default function ProfilePage() {
         <section className="space-y-4 animate-glass" style={{ animationDelay: '0.25s' }}>
           <h3 className="text-label-caps !text-[12px] !opacity-50 font-bold uppercase tracking-widest pl-4">Account Security</h3>
           <div className="surface-glass rounded-3xl border border-white/5 overflow-hidden shadow-sm">
-            <Link 
-              to="/onboarding/phone" 
+            <Link
+              to="/onboarding/phone"
               className="p-6 flex items-center justify-between hover:bg-bg-secondary/40 transition-all group"
             >
               <div className="flex items-center gap-5">
@@ -679,7 +749,7 @@ export default function ProfilePage() {
           <h3 className="text-label-caps !text-[12px] !opacity-50 font-bold uppercase tracking-widest pl-4">Diamond Loop</h3>
           <div className="surface-liquid p-8 rounded-[2.5rem] border border-white/5 space-y-8 shadow-elite relative overflow-hidden">
             <div className="absolute top-0 right-0 w-32 h-32 bg-accent/5 blur-3xl pointer-events-none" />
-            
+
             <div className="flex items-center gap-5">
               <div className="flex-1 bg-bg-primary/50 rounded-[1.5rem] px-6 py-5 border border-white/5 group transition-all hover:border-accent/30">
                 <p className="text-[10px] opacity-40 font-black uppercase tracking-widest">Personal Referral Link</p>
@@ -697,10 +767,10 @@ export default function ProfilePage() {
                 📋
               </button>
             </div>
-            
+
             <div className="flex items-center gap-6 px-1">
               <div className="flex -space-x-3">
-                {[1,2,3,4].map(i => (
+                {[1, 2, 3, 4].map(i => (
                   <div key={i} className="w-10 h-10 rounded-full border-2 border-bg-primary bg-bg-secondary flex items-center justify-center text-sm shadow-xl relative z-[10] hover:z-20 transition-all hover:-translate-y-1">
                     {i === 1 ? '👤' : i === 2 ? '🥗' : i === 3 ? '🍲' : '✨'}
                   </div>
@@ -832,15 +902,15 @@ export default function ProfilePage() {
         {/* Danger zone */}
         <section className="pt-12 pb-20 animate-glass" style={{ animationDelay: '0.4s' }}>
           <div className="px-6 space-y-6">
-              <SensorialHoldButton 
-                text="Begin Wipe Trace & Depart"
-                completeText="Anonymizing Identity..."
-                onComplete={() => deleteAccount.mutate()}
-              />
-              <div className="text-center space-y-2 mt-8">
-                <p className="text-[9px] opacity-20 font-black uppercase tracking-[0.3em]">TiffinBox Diamond Framework • 2026</p>
-                <p className="text-[8px] opacity-10 italic">Proudly serving fresh home-cooked health.</p>
-              </div>
+            <SensorialHoldButton
+              text="Begin Wipe Trace & Depart"
+              completeText="Anonymizing Identity..."
+              onComplete={() => deleteAccount.mutate()}
+            />
+            <div className="text-center space-y-2 mt-8">
+              <p className="text-[9px] opacity-20 font-black uppercase tracking-[0.3em]">TiffinBox Diamond Framework • 2026</p>
+              <p className="text-[8px] opacity-10 italic">Proudly serving fresh home-cooked health.</p>
+            </div>
           </div>
         </section>
       </div>
@@ -855,7 +925,7 @@ const MemberForm = ({
   onSubmit,
   onCancel,
   loading,
-  title
+  title,
 }: {
   form: IPersonForm;
   setForm: React.Dispatch<React.SetStateAction<IPersonForm>>;
@@ -865,82 +935,106 @@ const MemberForm = ({
   loading: boolean;
   title: string;
 }) => {
-  const { config } = useAuth(); // Assuming config is exposed in AuthContext, or fetch here
+  const { config } = useAuth();
   const dietTags = (config as any)?.dietary_tags || ['Veg', 'Vegan', 'Non-Veg', 'Jain'];
 
   return (
-    <div className="surface-liquid p-8 sm:p-10 space-y-10 animate-glass rounded-[3rem] border border-white/10 shadow-elite relative overflow-hidden ring-glass">
-      <div className="absolute top-0 right-0 w-32 h-32 bg-accent/5 blur-3xl" />
-      
-      <div className="flex items-center justify-between pb-4 border-b border-white/5">
-        <h4 className="text-2xl font-black tracking-tight">{title}</h4>
-        <div className="text-[10px] font-black uppercase tracking-widest opacity-20">{editing ? 'ID#' + editing : 'New Member'}</div>
-      </div>
-      
-      <div className="space-y-3">
-        <p className="text-label-caps !text-[11px] !opacity-50 pl-1 font-semibold">Full Name</p>
-        <input
-          placeholder="e.g. Rahul Sharma"
-          value={form.name}
-          onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
-          className="w-full bg-white/40 border border-white/10 rounded-2xl py-5 px-6 text-xl font-bold focus:ring-4 focus:ring-accent/10 outline-none transition-all placeholder:opacity-20 shadow-inner"
-        />
+    <div className="surface-glass ring-1 ring-border/20 rounded-[1.8rem] overflow-hidden shadow-elite">
+      {/* Header */}
+      <div className="flex items-center justify-between px-5 py-4 border-b border-border/10">
+        <p className="text-[15px] font-black t-text-primary capitalize">{title}</p>
+        <button
+          onClick={onCancel}
+          className="w-8 h-8 rounded-xl bg-border/10 hover:bg-border/20 flex items-center
+            justify-center t-text-muted transition-all active:scale-90"
+        >
+          <X size={15} />
+        </button>
       </div>
 
-      <div className="space-y-4">
-        <p className="text-label-caps !text-[11px] !opacity-50 pl-1 font-semibold">Dietary Selection (Admin Managed)</p>
-        <div className="flex flex-wrap gap-2">
-          {dietTags.map((tag: string) => (
-            <button
-              key={tag}
-              onClick={() => setForm(f => ({ ...f, dietary_tag: tag }))}
-              className={`px-6 py-3 rounded-2xl text-[11px] font-black uppercase tracking-widest transition-all ${
-                form.dietary_tag === tag 
-                ? 'bg-accent text-white shadow-glow-subtle' 
-                : 'bg-white/5 text-gray-500 hover:bg-white/10'
-              }`}
-            >
-              {tag}
-            </button>
-          ))}
+      <div className="p-5 space-y-5">
+        {/* Name */}
+        <div className="space-y-1.5">
+          <label className="text-[10px] font-black uppercase tracking-wider t-text-muted opacity-50">Name</label>
+          <input
+            placeholder="e.g. Rahul Sharma"
+            value={form.name}
+            autoFocus
+            onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
+            className="w-full bg-bg-card ring-1 ring-border/30 rounded-xl py-3 px-4
+              text-[15px] font-semibold t-text-primary
+              focus:outline-none focus:ring-2 focus:ring-accent/40 transition-all
+              placeholder:text-text-muted/30"
+          />
         </div>
-      </div>
 
-      <div className="space-y-6">
-        <FlavorMeter
-          value={form.spice_level}
-          onChange={(level) => setForm(f => ({ ...f, spice_level: level }))}
-        />
-        <p className="text-[10px] opacity-30 italic font-bold text-center px-4">
-          Note: This preference is displayed to the kitchen to guide their seasoning depth.
-        </p>
-      </div>
+        {/* Diet */}
+        <div className="space-y-2">
+          <label className="text-[10px] font-black uppercase tracking-wider t-text-muted opacity-50">Diet</label>
+          <div className="flex flex-wrap gap-2">
+            {dietTags.map((tag: string) => (
+              <button
+                key={tag}
+                onClick={() => setForm(f => ({ ...f, dietary_tag: tag }))}
+                className={`px-4 py-2 rounded-xl text-[11px] font-bold transition-all active:scale-95 ${form.dietary_tag === tag
+                  ? 'bg-accent text-white shadow-glow-subtle'
+                  : 'bg-bg-subtle ring-1 ring-border/20 t-text-muted hover:ring-accent/30 hover:text-accent'
+                  }`}
+              >
+                {tag}
+              </button>
+            ))}
+          </div>
+        </div>
 
-      <div className="space-y-3">
-        <p className="text-label-caps !text-[11px] !opacity-50 pl-1 font-semibold">Gourmet Notes & Allergies</p>
-        <textarea
-          placeholder="e.g. No Peanuts, Extra Coriander..."
-          value={form.notes}
-          onChange={e => setForm(f => ({ ...f, notes: e.target.value }))}
-          rows={3}
-          className="w-full bg-white/40 border border-white/10 rounded-[2rem] p-6 text-base font-medium leading-relaxed focus:ring-4 focus:ring-accent/10 outline-none transition-all resize-none shadow-inner"
-        />
-      </div>
+        {/* Spice */}
+        <div className="space-y-2">
+          <label className="text-[10px] font-black uppercase tracking-wider t-text-muted opacity-50">
+            Spice preference
+          </label>
+          <FlavorMeter
+            value={form.spice_level}
+            onChange={level => setForm(f => ({ ...f, spice_level: level }))}
+          />
+          <p className="text-[9px] t-text-muted opacity-30 text-center">
+            Shared with the kitchen to guide seasoning.
+          </p>
+        </div>
 
-      <div className="flex flex-col gap-4 pt-6">
-        <button
-          onClick={() => { haptics.impact('medium'); onSubmit(); }}
-          disabled={!form.name.trim() || loading}
-          className="w-full rounded-[1.5rem] bg-gradient-to-r from-orange-500 to-amber-600 py-5 text-sm font-black uppercase tracking-[0.2em] text-white shadow-lg shadow-orange-200 transition-all hover:shadow-orange-300 active:scale-95 disabled:opacity-50"
-        >
-          {loading ? 'Simmering...' : editing ? 'Update Member' : 'Plat List Member'}
-        </button>
-        <button
-          onClick={() => { haptics.impact('light'); onCancel(); }}
-          className="text-[10px] font-black uppercase tracking-[0.3em] opacity-30 hover:opacity-100 transition-all py-2"
-        >
-          Discard Changes
-        </button>
+        {/* Notes */}
+        <div className="space-y-1.5">
+          <label className="text-[10px] font-black uppercase tracking-wider t-text-muted opacity-50">
+            Notes & allergies
+          </label>
+          <textarea
+            placeholder="e.g. No peanuts, extra coriander, less oil…"
+            value={form.notes}
+            onChange={e => setForm(f => ({ ...f, notes: e.target.value }))}
+            rows={2}
+            className="w-full bg-bg-card ring-1 ring-border/30 rounded-xl py-3 px-4
+              text-[13px] font-medium t-text-primary
+              focus:outline-none focus:ring-2 focus:ring-accent/40 transition-all
+              resize-none placeholder:text-text-muted/30"
+          />
+        </div>
+
+        {/* Actions */}
+        <div className="flex gap-2 pt-1">
+          <button
+            onClick={() => { haptics.impact('medium'); onSubmit(); }}
+            disabled={!form.name.trim() || loading}
+            className="flex-1 btn-primary !py-3 !rounded-xl !text-[13px] disabled:opacity-50"
+          >
+            {loading ? 'Saving…' : editing ? 'Save changes' : 'Add member'}
+          </button>
+          <button
+            onClick={() => { haptics.impact('light'); onCancel(); }}
+            className="px-5 py-3 rounded-xl bg-bg-subtle ring-1 ring-border/20 t-text-muted
+              text-[13px] font-semibold hover:ring-border/40 transition-all active:scale-95"
+          >
+            Cancel
+          </button>
+        </div>
       </div>
     </div>
   );
