@@ -147,7 +147,7 @@ app.use('/api/referrals', referralsRoutes);
 app.use('/api/vouchers', voucherRoutes);
 
 // ── Admin routes ──────────────────────────────────────────────────────────────
-app.use('/api/admin', adminDashboardRoutes);
+app.use('/api/admin/dashboard', adminDashboardRoutes);
 app.use('/api/admin/subscriptions', adminSubscriptionRoutes);
 app.use('/api/admin/skip', adminSkipRoutes);
 app.use('/api/admin/menu', adminMenuRoutes);

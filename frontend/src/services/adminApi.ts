@@ -5,7 +5,7 @@ export const adminAuth = {
 };
 
 export const adminDashboard = {
-  stats: () => api.get('/admin'),
+  stats: () => api.get('/admin/dashboard'),
   integrityCheck: () => api.get('/admin/dashboard/integrity-check'),
   // Ω.3: Logistics Command Enpoints
   manifest: (date?: string) => api.get('/admin/logistics/manifest', { params: { date } }),
@@ -17,13 +17,13 @@ export const adminDashboard = {
   }) => api.patch(`/admin/logistics/${id}/status`, data),
 
   // Legacy (Keeping for audit purposes during migration)
-  deliveryToday: (date?: string) => api.get('/admin/delivery/today', { params: { date } }),
+  deliveryToday: (date?: string) => api.get('/admin/dashboard/delivery/today', { params: { date } }),
   updateCellStatus: (id: number, status: string, note?: string) =>
-    api.patch(`/admin/delivery/cells/${id}`, { status, note }),
+    api.patch(`/admin/dashboard/delivery/cells/${id}`, { status, note }),
   bulkDeliver: (date: string, meal_type?: string) =>
-    api.post('/admin/delivery/bulk-deliver', { date, meal_type }),
+    api.post('/admin/dashboard/delivery/bulk-deliver', { date, meal_type }),
   refreshOtp: (id: number) =>
-    api.post(`/admin/delivery/cells/${id}/refresh-otp`),
+    api.post(`/admin/dashboard/delivery/cells/${id}/refresh-otp`),
 };
 
 export const adminSubscriptions = {
