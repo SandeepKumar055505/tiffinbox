@@ -1,0 +1,44 @@
+name: Keep API Alive
+
+# Pings the Render free-tier backend every 14 minutes so it never crosses the
+# 15-minute inactivity threshold that triggers a sleep/cold-start.
+# GitHub Actions cron is free for public repos (no service signup required).
+# Note: GitHub may delay scheduled runs by up to a few minutes under load —
+# using 14 min (not 15) gives a safe margin even with that delay.
+
+on:
+  schedule:
+    - cron: '*/14 * * * *'   # Runs at :00, :14, :28, :42, :56 every hour
+  workflow_dispatch:           # Manual trigger from GitHub Actions tab for testing
+
+jobs:
+  ping:
+    name: Ping health endpoint
+    runs-on: ubuntu-latest
+    timeout-minutes: 2         # Abort early if curl hangs — don't waste minutes
+
+    steps:
+      - name: Ping /api/health
+        run: |
+          HTTP_STATUS=$(curl \
+            --silent \
+            --max-time 30 \
+            --retry 2 \
+            --retry-delay 5 \
+            --output /dev/null \
+            --write-out "%{http_code}" \
+            https://tiffinbox-api.onrender.com/api/health)
+
+          echo "Response status: $HTTP_STATUS"
+
+          # 200 = awake and healthy
+          # 503 = still waking up (Render cold start in progress) — not a failure
+          # Anything else = log a warning but don't fail the workflow (avoids spam alerts)
+          if [ "$HTTP_STATUS" = "200" ]; then
+            echo "API is healthy."
+          elif [ "$HTTP_STATUS" = "503" ]; then
+            echo "API is waking up (503 cold start). Next ping will find it awake."
+          else
+            echo "Warning: unexpected status $HTTP_STATUS — check Render logs if this persists."
+            exit 1
+          fi
