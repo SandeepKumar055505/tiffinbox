@@ -52,7 +52,6 @@ import adminRatingsRoutes from './routes/admin/ratings';
 import adminReferralRoutes from './routes/admin/referrals';
 import adminUserRoutes from './routes/admin/users';
 import adminLogisticsRoutes from './routes/admin/logistics';
-import adminHolidayRoutes from './routes/admin/holidays';
 import adminAreaRoutes from './routes/admin/areas';
 import adminNarrativeRoutes from './routes/admin/narratives';
 import adminNotificationRoutes from './routes/admin/notifications';
@@ -62,17 +61,18 @@ const app = express();
 // Catch async errors in Express route handlers (Express 4 doesn't do this natively)
 require('express-async-errors');
 
-// ── Middleware ────────────────────────────────────────────────────────────────
+// ── Middleware (ORDER MATTERS — do not reorder) ───────────────────────────────
+
 app.use(morgan(env.isDev ? 'dev' : 'combined'));
 
-// Ω.9: X-Request-ID Telemetry (Best in the World Debugging)
+// X-Request-ID telemetry
 app.use((_req, res, next) => {
   const requestId = Math.random().toString(36).substring(2, 10).toUpperCase();
   res.setHeader('X-Request-ID', requestId);
   next();
 });
 
-// Allowed production origins — explicit whitelist for diamond-standard reliability
+// Allowed production origins — explicit whitelist
 const ALLOWED_ORIGINS = [
   'https://mytiffinpoint.com',
   'https://www.mytiffinpoint.com',
@@ -84,27 +84,48 @@ const ALLOWED_ORIGINS = [
 
 const corsOptions: cors.CorsOptions = {
   origin: (origin, cb) => {
-    // In dev, allow all. In prod, allow whitelist + null origin (native apps/postman)
-    if (!origin || env.isDev || ALLOWED_ORIGINS.includes(origin)) {
-      return cb(null, true);
-    }
-    // Subdomain wildcard support for custom partner deployments
-    if (origin.endsWith('.mytiffinpoint.com')) {
-      return cb(null, true);
-    }
+    if (!origin || env.isDev || ALLOWED_ORIGINS.includes(origin)) return cb(null, true);
+    if (origin.endsWith('.mytiffinpoint.com')) return cb(null, true);
     console.warn(`[CORS Shield] Blocked origin: ${origin}`);
     return cb(new Error(`CORS blocked for origin: ${origin}`));
   },
   credentials: true,
   methods: ['GET', 'HEAD', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'X-Request-ID'],
-  maxAge: 86400, // 24 hours — optimize preflight latency
+  maxAge: 86400,
 };
 
 app.use(cors(corsOptions));
 app.options('*', cors(corsOptions));
 
-// ── Registry Cleanup & Routes ──────────────────────────────────────────────────
+// ── Body parsers BEFORE routes ────────────────────────────────────────────────
+// Razorpay webhook needs the raw body for HMAC verification — must be before express.json()
+app.use('/api/payments/webhook', express.raw({ type: 'application/json' }));
+app.use(express.json({ limit: '1mb' }));
+app.use(express.urlencoded({ extended: true, limit: '1mb' }));
+
+// ── Maintenance mode BEFORE routes ────────────────────────────────────────────
+app.use((_req, res, next) => {
+  if (process.env.MAINTENANCE_MODE === 'true') {
+    return res.status(503).json({
+      error: 'Service Temporarily Unavailable',
+      message: 'TiffinBox is undergoing scheduled maintenance.',
+    });
+  }
+  next();
+});
+
+// ── Rate limiting BEFORE routes ───────────────────────────────────────────────
+app.use('/api/', rateLimit({ windowMs: 15 * 60 * 1000, max: 200, standardHeaders: true }));
+app.use('/api/auth/', rateLimit({ windowMs: 15 * 60 * 1000, max: 20, standardHeaders: true }));
+// Admin login rate limit — path matches the actual login route
+app.use('/api/auth/admin/login', rateLimit({ windowMs: 60 * 60 * 1000, max: 5, standardHeaders: true }));
+
+// ── Health Check ──────────────────────────────────────────────────────────────
+app.get('/api/health', (_req, res) => res.json({ status: 'ok', ts: new Date().toISOString() }));
+app.get('/', (_req, res) => res.json({ status: 'TiffinBox API Live', website: env.FRONTEND_URL }));
+
+// ── User routes ───────────────────────────────────────────────────────────────
 app.use('/api/config', configRoutes);
 app.use('/api/auth', authRoutes);
 app.use('/api/persons', personRoutes);
@@ -122,7 +143,7 @@ app.use('/api/ratings', ratingsRoutes);
 app.use('/api/referrals', referralsRoutes);
 app.use('/api/vouchers', voucherRoutes);
 
-// Admin routes
+// ── Admin routes ──────────────────────────────────────────────────────────────
 app.use('/api/admin', adminDashboardRoutes);
 app.use('/api/admin/subscriptions', adminSubscriptionRoutes);
 app.use('/api/admin/skip', adminSkipRoutes);
@@ -139,31 +160,6 @@ app.use('/api/admin/areas', adminAreaRoutes);
 app.use('/api/admin/narratives', adminNarrativeRoutes);
 app.use('/api/admin/notifications', adminNotificationRoutes);
 
-// Raw body for Razorpay webhook signature verification
-app.use('/api/payments/webhook', express.raw({ type: 'application/json' }));
-app.use(express.json({ limit: '1mb' }));
-app.use(express.urlencoded({ extended: true, limit: '1mb' }));
-
-// Maintenance Mode middleware
-app.use((_req, res, next) => {
-  if (process.env.MAINTENANCE_MODE === 'true') {
-    return res.status(503).json({ 
-      error: 'Service Temporarily Unavailable', 
-      message: 'TiffinBox is undergoing scheduled maintenance.' 
-    });
-  }
-  next();
-});
-
-// Rate limiting
-app.use('/api/', rateLimit({ windowMs: 15 * 60 * 1000, max: 200, standardHeaders: true }));
-app.use('/api/auth/', rateLimit({ windowMs: 15 * 60 * 1000, max: 20, standardHeaders: true }));
-app.use('/api/admin/login', rateLimit({ windowMs: 60 * 60 * 1000, max: 5, standardHeaders: true }));
-
-// ── Health Check ──────────────────────────────────────────────────────────────
-app.get('/api/health', (_req, res) => res.json({ status: 'ok', ts: new Date().toISOString() }));
-app.get('/', (_req, res) => res.json({ status: 'TiffinBox API Live', website: env.FRONTEND_URL }));
-
 // ── Error handler ─────────────────────────────────────────────────────────────
 if (env.SENTRY_DSN) {
   Sentry.setupExpressErrorHandler(app);
@@ -171,8 +167,8 @@ if (env.SENTRY_DSN) {
 
 app.use(async (err: any, req: express.Request, res: express.Response, _next: express.NextFunction) => {
   console.error(`[X-Request-ID: ${res.getHeader('X-Request-ID')}]`, err);
-  
-  // CORS Shield: Guarantee headers are present even in error states
+
+  // Guarantee CORS headers even on error responses
   const origin = req.headers.origin;
   if (origin && (env.isDev || ALLOWED_ORIGINS.includes(origin) || origin.endsWith('.mytiffinpoint.com'))) {
     res.setHeader('Access-Control-Allow-Origin', origin);
@@ -181,20 +177,19 @@ app.use(async (err: any, req: express.Request, res: express.Response, _next: exp
 
   const status = err.status || err.statusCode || 500;
   const errorKey = err.errorKey || (err.response?.data?.error_key);
-  
-  // Ω.6: Log Friction to Audit Logs
+
   if (status >= 400 && status < 500 && errorKey) {
     try {
       const { db } = await import('./config/db');
       await db('audit_logs').insert({
         action: `friction.${errorKey}`,
         target_type: 'user_request',
-        after_value: JSON.stringify({ 
-          url: req.url, 
-          method: req.method, 
-          status, 
+        after_value: JSON.stringify({
+          url: req.url,
+          method: req.method,
+          status,
           ip: req.ip,
-          requestId: res.getHeader('X-Request-ID')
+          requestId: res.getHeader('X-Request-ID'),
         }),
       });
     } catch (auditErr) {
@@ -202,10 +197,10 @@ app.use(async (err: any, req: express.Request, res: express.Response, _next: exp
     }
   }
 
-  res.status(status).json({ 
+  res.status(status).json({
     error: err.message || 'Internal server error',
     error_key: errorKey,
-    requestId: res.getHeader('X-Request-ID')
+    requestId: res.getHeader('X-Request-ID'),
   });
 });
 
@@ -213,9 +208,6 @@ async function main() {
   app.listen(env.PORT, '0.0.0.0', () => {
     console.log(`TiffinBox backend running on port ${env.PORT} (bound to 0.0.0.0)`);
   });
-  // Start pg-boss in background — don't block HTTP server startup.
-  // If the DB is temporarily unreachable (e.g. Neon cold start, DNS blip),
-  // the HTTP server stays alive and background jobs will be unavailable.
   startJobWorkers().catch(err => {
     console.error('[pg-boss] Failed to start background workers:', err.message);
     console.warn('[pg-boss] HTTP server is still running. Background jobs are DISABLED until restart.');

@@ -108,7 +108,7 @@ router.patch(
 router.get('/audit', requireAdmin, async (req, res) => {
   const limit = Math.min(parseInt(req.query.limit as string || '50', 10), 200);
   const logs = await db('audit_logs as al')
-    .join('admins as a', 'a.id', 'al.admin_id')
+    .leftJoin('admins as a', 'a.id', 'al.admin_id')
     .select('al.*', 'a.name as admin_name')
     .orderBy('al.created_at', 'desc')
     .limit(limit);

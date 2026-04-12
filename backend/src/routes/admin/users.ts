@@ -31,6 +31,85 @@ router.get('/', requireAdmin, async (req, res) => {
   res.json({ data: rows, total: parseInt(total as string), page: parseInt(page), limit });
 });
 
+// GET /api/admin/users/:id — Full user profile with subscriptions and wallet
+router.get('/:id', requireAdmin, async (req, res) => {
+  const user = await db('users').where({ id: req.params.id }).first();
+  if (!user) return res.status(404).json({ error: 'User not found' });
+
+  const [subscriptions, walletEntries, persons] = await Promise.all([
+    db('subscriptions').where({ user_id: req.params.id }).orderBy('created_at', 'desc').limit(10),
+    db('ledger_entries').where({ user_id: req.params.id }).orderBy('created_at', 'desc').limit(20),
+    db('persons').where({ user_id: req.params.id }).orderBy('created_at'),
+  ]);
+
+  const walletBalance = walletEntries.reduce((sum: number, e: any) =>
+    sum + (e.type === 'credit' ? e.amount : -e.amount), 0);
+
+  res.json({ ...user, subscriptions, wallet_balance: walletBalance, wallet_entries: walletEntries, persons });
+});
+
+// PATCH /api/admin/users/:id/status — Suspend or reactivate a user
+router.patch(
+  '/:id/status',
+  requireAdmin,
+  validate(z.object({
+    is_active: z.boolean(),
+    reason: z.string().optional(),
+  })),
+  async (req, res) => {
+    const user = await db('users').where({ id: req.params.id }).first();
+    if (!user) return res.status(404).json({ error: 'User not found' });
+
+    const [updated] = await db('users')
+      .where({ id: req.params.id })
+      .update({ is_active: req.body.is_active, updated_at: db.fn.now() })
+      .returning('*');
+
+    await db('audit_logs').insert({
+      admin_id: req.adminId,
+      action: req.body.is_active ? 'user.reactivate' : 'user.suspend',
+      target_type: 'user',
+      target_id: user.id,
+      before_value: JSON.stringify({ is_active: user.is_active }),
+      after_value: JSON.stringify({ is_active: req.body.is_active, reason: req.body.reason }),
+    });
+
+    res.json(updated);
+  }
+);
+
+// POST /api/admin/users/:id/wallet/gift — Credit wallet from admin panel
+router.post(
+  '/:id/wallet/gift',
+  requireAdmin,
+  validate(z.object({
+    amount: z.number().int().positive(),
+    description: z.string().min(1),
+  })),
+  async (req, res) => {
+    const user = await db('users').where({ id: req.params.id }).first();
+    if (!user) return res.status(404).json({ error: 'User not found' });
+
+    const [entry] = await db('ledger_entries').insert({
+      user_id: user.id,
+      type: 'credit',
+      amount: req.body.amount,
+      description: req.body.description,
+      source: 'admin_gift',
+    }).returning('*');
+
+    await db('audit_logs').insert({
+      admin_id: req.adminId,
+      action: 'wallet.gift',
+      target_type: 'user',
+      target_id: user.id,
+      after_value: JSON.stringify({ amount: req.body.amount, description: req.body.description }),
+    });
+
+    res.status(201).json(entry);
+  }
+);
+
 // PATCH /api/admin/users/:id — Update PII with Audit log
 router.patch(
   '/:id',

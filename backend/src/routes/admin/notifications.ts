@@ -1,11 +1,12 @@
 import { Router } from 'express';
 import { db } from '../../config/db';
 import { sendNotification, NotificationType } from '../../services/notificationService';
+import { requireAdmin } from '../../middleware/auth';
 
 const router = Router();
 
 // Get notification health stats
-router.get('/health', async (req, res) => {
+router.get('/health', requireAdmin, async (req, res) => {
   try {
     const totalSent = await db('notifications').count('id as cnt').first();
     const totalRead = await db('notifications').where('is_read', true).count('id as cnt').first();
@@ -21,7 +22,7 @@ router.get('/health', async (req, res) => {
 });
 
 // Broadcast notification manually to all users
-router.post('/broadcast', async (req, res) => {
+router.post('/broadcast', requireAdmin, async (req, res) => {
   const { title, message, target = 'all' } = req.body;
   
   if (!title || !message) {
@@ -43,7 +44,7 @@ router.post('/broadcast', async (req, res) => {
 
     // Ω.13: Manifest broadcast in pulse
     await db('audit_logs').insert({
-      admin_id: (req as any).user?.userId || null,
+      admin_id: req.adminId,
       action: 'notification.broadcast',
       target_type: 'system',
       after_value: JSON.stringify({ title, users_reached: users.length }),
