@@ -125,10 +125,12 @@ app.use((_req, res, next) => {
 });
 
 // ── Rate limiting BEFORE routes ───────────────────────────────────────────────
-app.use('/api/', rateLimit({ windowMs: 15 * 60 * 1000, max: 200, standardHeaders: true }));
-app.use('/api/auth/', rateLimit({ windowMs: 15 * 60 * 1000, max: 20, standardHeaders: true }));
-// Admin login rate limit — path matches the actual login route
-app.use('/api/auth/admin/login', rateLimit({ windowMs: 60 * 60 * 1000, max: 5, standardHeaders: true }));
+// General API limit — applies to all routes including /api/auth/me (profile read, called every page load)
+app.use('/api/', rateLimit({ windowMs: 15 * 60 * 1000, max: 300, standardHeaders: true, legacyHeaders: false }));
+// Strict limits ONLY on actual login/OTP endpoints — NOT on /api/auth/me
+app.use('/api/auth/google', rateLimit({ windowMs: 15 * 60 * 1000, max: 10, standardHeaders: true, legacyHeaders: false }));
+app.use('/api/auth/phone', rateLimit({ windowMs: 15 * 60 * 1000, max: 10, standardHeaders: true, legacyHeaders: false }));
+app.use('/api/auth/admin/login', rateLimit({ windowMs: 60 * 60 * 1000, max: 5, standardHeaders: true, legacyHeaders: false }));
 
 // ── Health Check ──────────────────────────────────────────────────────────────
 app.get('/api/health', (_req, res) => res.json({ status: 'ok', ts: new Date().toISOString() }));
@@ -151,7 +153,6 @@ app.use('/api/upload', uploadRoutes);
 app.use('/api/delivery', deliveryRoutes);
 app.use('/api/ratings', ratingsRoutes);
 app.use('/api/referrals', referralsRoutes);
-app.use('/api/vouchers', voucherRoutes);
 app.use('/api/vouchers', voucherRoutes);
 
 // ── Admin routes ──────────────────────────────────────────────────────────────

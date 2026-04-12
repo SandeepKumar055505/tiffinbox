@@ -165,6 +165,8 @@ router.get('/me', async (req, res) => {
       if (!admin) return res.status(404).json({ error: 'Admin not found' });
       return res.json({ id: admin.id, name: admin.name, email: admin.email, role: 'admin' });
     }
+    // Unrecognised token type — always send a response, never hang
+    return res.status(401).json({ error: 'Unauthorized' });
   } catch {
     res.status(401).json({ error: 'Unauthorized' });
   }
