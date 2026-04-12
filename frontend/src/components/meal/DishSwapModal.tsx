@@ -42,7 +42,7 @@ export default function DishSwapModal({
 
   return (
     <AnimatePresence>
-      <div className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center p-0 sm:p-4">
+      <div className="fixed inset-0 z-[500] flex items-center justify-center p-6">
         {/* The Sensory Backdrop */}
         <motion.div
           initial={{ opacity: 0 }}
@@ -55,25 +55,20 @@ export default function DishSwapModal({
 
         {/* The Sovereign Sheet */}
         <motion.div
-          initial={{ y: '100%', opacity: 0 }}
-          animate={{ y: 0, opacity: 1 }}
-          exit={{ y: '100%', opacity: 0 }}
-          transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+          initial={{ y: 40, opacity: 0, scale: 0.95 }}
+          animate={{ y: 0, opacity: 1, scale: 1 }}
+          exit={{ y: 20, opacity: 0, scale: 0.95 }}
+          transition={{ type: 'spring', damping: 28, stiffness: 220 }}
           className={`
             relative w-full max-w-lg overflow-hidden
-            rounded-t-[2.5rem] sm:rounded-[2.5rem]
-            shadow-2xl border-t sm:border
+            rounded-[2.5rem]
+            shadow-2xl border
             ${isDark 
               ? 'bg-zinc-900/90 border-white/5 shadow-black/50' 
               : 'bg-white/80 border-white shadow-indigo-900/10'
             }
           `}
         >
-          {/* Decorative Top Bar (Mobile) */}
-          <div className="sm:hidden flex justify-center pt-3 pb-1">
-            <div className={`w-12 h-1 rounded-full ${isDark ? 'bg-white/10' : 'bg-indigo-900/10'}`} />
-          </div>
-
           {/* Header Ritual */}
           <div className="flex items-start justify-between px-7 pt-6 pb-5">
             <div>
