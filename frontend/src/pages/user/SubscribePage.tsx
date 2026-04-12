@@ -14,11 +14,13 @@ import { PriceTicker } from '../../components/sensorial/PriceTicker';
 import { LiquidProgressBar } from '../../components/sensorial/LiquidProgressBar';
 import { CoinShower } from '../../components/sensorial/CoinShower';
 import { useSensorial, haptics } from '../../context/SensorialContext';
+import { useTheme } from '../../context/ThemeContext';
 import { SensorialStatusSpotlight } from '../../components/sensorial/SensorialStatusSpotlight';
 import { SelectionConfirmModal } from '../../components/meal/SelectionConfirmModal';
 import { translateToGourmet } from '../../utils/GourmetTranslator';
 import api from '../../services/api';
 import { motion, AnimatePresence } from 'framer-motion';
+import { ChevronLeft } from 'lucide-react';
 
 interface PromoResult { code: string; description: string; discount_type: 'flat' | 'percent'; value: number; min_order_amount?: number; }
 
@@ -49,6 +51,7 @@ export default function SubscribePage() {
   const navigate = useNavigate();
   const { mealPrices, discountTable } = usePublicConfig();
   const sensorial = useSensorial();
+  const { isDark } = useTheme();
 
   const [step, setStep] = useState<Step>('setup');
   const [personId, setPersonId] = useState<number | null>(null);
@@ -245,17 +248,27 @@ export default function SubscribePage() {
     }
   }
 
-  const renderHeader = (title: string, subtitle: string) => (
-    <header className="space-y-3 pt-8 sm:pt-12 mb-8 sm:mb-10 text-center relative z-10 px-4">
-      <span className="inline-block text-[11px] font-semibold text-accent/60 uppercase tracking-widest">
-        {PHASE_CONFIG[step as keyof typeof PHASE_CONFIG]?.name || ''}
-      </span>
-      <h1 className="text-[36px] sm:text-[52px] font-black leading-none tracking-tight text-white animate-glass">
-        {title}
-      </h1>
-      <p className="text-[13px] sm:text-[15px] text-white/40 font-medium animate-glass" style={{ animationDelay: '0.08s' }}>
-        {subtitle}
-      </p>
+  const renderHeader = (title: string, subtitle: string, onBack?: () => void) => (
+    <header className="pt-12 sm:pt-12 mb-8 sm:mb-5 relative z-10 px-4">
+      {onBack && (
+        <button
+          onClick={() => { onBack(); haptics.light(); }}
+          className="absolute left-0 top-8 sm:top-12 w-10 h-10 rounded-[1.2rem] surface-glass flex items-center justify-center t-text-muted hover:t-text-accent transition-all duration-300 z-50 border-white/5 active:scale-95 shadow-glass-sm"
+        >
+          <ChevronLeft size={20} strokeWidth={3} />
+        </button>
+      )}
+      <div className="text-center space-y-3">
+        <span className="inline-block text-[11px] font-semibold text-accent/60 uppercase tracking-widest">
+          {PHASE_CONFIG[step as keyof typeof PHASE_CONFIG]?.name || ''}
+        </span>
+        <h1 className="text-[36px] sm:text-[52px] font-black leading-none tracking-tight t-text-primary animate-glass">
+          {title}
+        </h1>
+        <p className="text-[13px] sm:text-[15px] t-text-muted font-medium animate-glass" style={{ animationDelay: '0.08s' }}>
+          {subtitle}
+        </p>
+      </div>
     </header>
   );
 
@@ -265,17 +278,17 @@ export default function SubscribePage() {
     const minDate = tomorrow.toISOString().split('T')[0];
 
     return (
-      <div className="min-h-screen bg-bg-primary text-text-primary p-4 sm:p-8 relative overflow-hidden transition-all duration-[3000ms]" style={{ background: `radial-gradient(circle at top right, ${PHASE_CONFIG.setup.color}, transparent)` }}>
+      <div className="min-h-screen bg-bg-primary text-text-primary p-4 sm:p-8 relative overflow-x-hidden transition-all duration-[3000ms]" style={{ background: `radial-gradient(circle at top right, ${PHASE_CONFIG.setup.color}, transparent)` }}>
         <div className="absolute top-0 left-0 w-full h-full pointer-events-none transition-opacity duration-[3000ms]">
           <div className="absolute top-[-15%] left-[-15%] w-[70rem] h-[70rem] bg-accent/5 blur-[250px] rounded-full animate-mesh" />
         </div>
 
-        <div className="max-w-xl mx-auto space-y-12 sm:space-y-20 relative z-10">
-          {renderHeader("Start your plan", "Tell us who's eating and when.")}
+        <div className="max-w-xl mx-auto space-y-8 sm:space-y-15 relative z-10">
+          {renderHeader("Start your plan", "Tell us who's eating and when.", () => navigate('/'))}
 
           <LiquidProgressBar currentStep={1} totalSteps={3} />
 
-          <section className="space-y-6 animate-glass" style={{ animationDelay: '0.1s' }}>
+          <section className="space-y-3 animate-glass" style={{ animationDelay: '0.1s' }}>
             <div className="flex items-center gap-5 px-1">
               <h3 className="text-label-caps !text-[11px] !opacity-50 font-semibold whitespace-nowrap">Who is this for?</h3>
 
@@ -288,91 +301,140 @@ export default function SubscribePage() {
               </div>
             )}
             <div className="grid grid-cols-1 gap-3">
-              {persons.map(p => (
-                <button
-                  key={p.id}
-                  onClick={() => { setPersonId(p.id); haptics.success(); }}
-                  className={`surface-glass p-4 sm:p-5 text-left transition-all duration-700 group rounded-[1.5rem] border-white/5 ring-1 ring-white/5 relative overflow-hidden ${personId === p.id ? 'bg-accent/10 !border-accent shadow-elite scale-[1.01]' : 'hover:bg-bg-secondary/40'}`}
-                >
-                  <div className="flex items-center gap-5">
-                    <div className={`w-12 h-12 rounded-[1.2rem] flex items-center justify-center text-xl transition-all duration-700 ${personId === p.id ? 'bg-accent text-white shadow-glow-subtle' : 'bg-accent/5 text-accent group-hover:scale-110'}`}>
-                      {p.name[0].toUpperCase()}
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <p className={`text-h3 !text-lg truncate font-black transition-colors ${personId === p.id ? 'text-accent' : ''}`}>{p.name}</p>
-                      <div className="flex items-center gap-2 mt-1">
-                        <span className="text-label-caps !text-[9px] opacity-40 font-bold uppercase tracking-widest">
-                          {p.dietary_tag || 'Gourmet Selection'}
-                        </span>
+              {persons.map(p => {
+                const sel = personId === p.id;
+                return (
+                  <button
+                    key={p.id}
+                    onClick={() => { setPersonId(p.id); haptics.success(); }}
+                    className={`p-4 sm:p-5 text-left transition-all duration-200 rounded-2xl relative
+                      ${sel
+                        ? 'ring-2 ring-accent/55 bg-accent/[0.08] shadow-[0_0_16px_rgba(20,184,166,0.12)]'
+                        : 'ring-1 ring-border bg-bg-card hover:bg-bg-subtle'}`}
+                  >
+                    <div className="flex items-center gap-4">
+                      <div className={`w-11 h-11 rounded-xl flex items-center justify-center text-lg font-black flex-shrink-0 transition-colors duration-200
+                        ${sel ? 'bg-gradient-to-br from-teal-400 to-cyan-400 text-white' : 'bg-bg-subtle text-text-muted'}`}>
+                        {p.name[0].toUpperCase()}
                       </div>
+                      <div className="min-w-0 flex-1">
+                        <p className={`text-[15px] font-bold truncate transition-colors duration-200
+                          ${sel ? 'text-text-primary' : 'text-text-secondary'}`}>
+                          {p.name}
+                        </p>
+                        <p className="text-[10px] text-text-muted mt-0.5 font-medium">
+                          {p.dietary_tag || 'No preference'}
+                        </p>
+                      </div>
+                      {sel && (
+                        <span className="w-5 h-5 rounded-full bg-gradient-to-br from-teal-400 to-cyan-400
+                          flex items-center justify-center flex-shrink-0">
+                          <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24"
+                            stroke="currentColor" strokeWidth={3}>
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                          </svg>
+                        </span>
+                      )}
                     </div>
-                    {personId === p.id && (
-                      <motion.div layoutId="selection-check" className="text-accent">
-                        <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
-                        </svg>
-                      </motion.div>
-                    )}
-                  </div>
-                </button>
-              ))}
+                  </button>
+                );
+              })}
             </div>
           </section>
 
-          <section className="space-y-6 animate-glass" style={{ animationDelay: '0.15s' }}>
+          <section className="space-y-3 animate-glass" style={{ animationDelay: '0.15s' }}>
             <div className="flex items-center gap-5 px-1">
               <h3 className="text-label-caps !text-[11px] !opacity-50 font-semibold whitespace-nowrap">How long?</h3>
               <div className="h-px flex-1 bg-border/20" />
             </div>
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
-              {PLAN_OPTIONS.map(opt => (
-                <button
-                  key={opt.days}
-                  onClick={() => { setPlanDays(opt.days); haptics.success(); }}
-                  className={`surface-glass p-4 sm:p-5 text-center relative transition-all duration-300
-                    rounded-[1.75rem] border ring-1 active:scale-[0.97]
-                    ${planDays === opt.days
-                      ? 'bg-accent/10 border-accent/50 ring-accent/20 shadow-elite'
-                      : 'border-white/5 ring-white/5 hover:bg-white/5'}`}
-                >
-                  {opt.badge && (
-                    <span className="absolute -top-2.5 left-1/2 -translate-x-1/2 bg-accent text-white
-                      text-[9px] font-black px-3 py-1 rounded-full uppercase tracking-wider">
-                      {opt.badge}
-                    </span>
-                  )}
-                  <div className="space-y-1 pt-1">
-                    <p className={`text-[22px] font-black leading-none transition-colors
-                      ${planDays === opt.days ? 'text-accent' : 'text-white/70'}`}>
-                      {opt.label}
-                    </p>
-                    <p className="text-[10px] text-white/35 font-medium">{opt.desc}</p>
-                  </div>
-                </button>
-              ))}
+            <div className="grid grid-cols-3 gap-2 sm:gap-3">
+              {PLAN_OPTIONS.map(opt => {
+                const selected = planDays === opt.days;
+                return (
+                  <button
+                    key={opt.days}
+                    onClick={() => { setPlanDays(opt.days); if (opt.days === 1) setPattern('full'); haptics.success(); }}
+                    className={`py-3 px-2 sm:p-4 text-center relative transition-all duration-200
+                      rounded-2xl active:scale-[0.97]
+                      ${selected
+                        ? 'ring-2 ring-accent/55 bg-accent/[0.08] shadow-[0_0_16px_rgba(20,184,166,0.12)]'
+                        : 'ring-1 ring-border bg-bg-card hover:bg-bg-subtle'}`}
+                  >
+                    {opt.badge && (
+                      <span className="absolute -top-2 left-1/2 -translate-x-1/2
+                        bg-gradient-to-r from-teal-400 to-cyan-400 text-white
+                        text-[8px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wide">
+                        {opt.badge}
+                      </span>
+                    )}
+                    {selected && (
+                      <span className="absolute top-2 right-2 w-4 h-4 rounded-full
+                        bg-gradient-to-br from-teal-400 to-cyan-400
+                        flex items-center justify-center">
+                        <svg className="w-2.5 h-2.5 text-white" fill="none" viewBox="0 0 24 24"
+                          stroke="currentColor" strokeWidth={3}>
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                        </svg>
+                      </span>
+                    )}
+                    <div className="space-y-1">
+                      <p className={`text-[14px] sm:text-[18px] font-bold leading-none transition-colors duration-200
+                        ${selected ? 'text-accent' : 'text-text-secondary'}`}>
+                        {opt.label}
+                      </p>
+                      <p className={`text-[9px] sm:text-[10px] font-medium transition-colors duration-200 leading-snug
+                        ${selected ? 'text-accent/70' : 'text-text-muted'}`}>
+                        {opt.desc}
+                      </p>
+                    </div>
+                  </button>
+                );
+              })}
             </div>
           </section>
 
-          <section className="space-y-6 animate-glass" style={{ animationDelay: '0.2s' }}>
-            <div className="flex items-center gap-5 px-1">
-              <h3 className="text-label-caps !text-[11px] !opacity-50 font-semibold whitespace-nowrap">Delivery days</h3>
-              <div className="h-px flex-1 bg-border/20" />
-            </div>
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-              {PATTERN_OPTIONS.map(opt => (
-                <button
-                  key={opt.value}
-                  onClick={() => { setPattern(opt.value); haptics.success(); }}
-                  className={`surface-glass p-5 transition-all duration-700 rounded-[1.5rem] border-white/5 ring-1 ring-white/5 ${pattern === opt.value ? 'bg-accent/10 !border-accent text-accent shadow-elite' : 'hover:bg-bg-secondary opacity-60'}`}
-                >
-                  <p className="text-label-caps !text-[10px] font-black tracking-widest uppercase text-center">{opt.label}</p>
-                </button>
-              ))}
-            </div>
-          </section>
+          {planDays !== 1 && (
+            <section className="space-y-3 animate-glass" style={{ animationDelay: '0.2s' }}>
+              <div className="flex items-center gap-5 px-1">
+                <h3 className="text-label-caps !text-[11px] !opacity-50 font-semibold whitespace-nowrap">Delivery days</h3>
+                <div className="h-px flex-1 bg-border/20" />
+              </div>
+              <div className="grid grid-cols-3 gap-2 sm:gap-3">
+                {PATTERN_OPTIONS.map(opt => {
+                  const sel = pattern === opt.value;
+                  return (
+                    <button
+                      key={opt.value}
+                      onClick={() => { setPattern(opt.value); haptics.success(); }}
+                      className={`py-3 px-2 sm:p-4 transition-all duration-200 rounded-2xl relative
+                        flex flex-col items-center gap-2 sm:flex-row sm:justify-between sm:gap-3
+                        ${sel
+                          ? 'ring-2 ring-accent/55 bg-accent/[0.08] shadow-[0_0_16px_rgba(20,184,166,0.12)]'
+                          : 'ring-1 ring-border bg-bg-card hover:bg-bg-subtle'}`}
+                    >
+                      <p className={`text-[9px] sm:text-[11px] font-semibold text-center sm:text-left leading-snug
+                        transition-colors duration-200
+                        ${sel ? 'text-accent' : 'text-text-muted'}`}>
+                        {opt.label}
+                      </p>
+                      {sel && (
+                        <span className="w-4 h-4 rounded-full bg-gradient-to-br from-teal-400 to-cyan-400
+                          flex items-center justify-center flex-shrink-0">
+                          <svg className="w-2.5 h-2.5 text-white" fill="none" viewBox="0 0 24 24"
+                            stroke="currentColor" strokeWidth={3}>
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                          </svg>
+                        </span>
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+            </section>
+          )}
 
-          <section className="space-y-6 animate-glass" style={{ animationDelay: '0.25s' }}>
-            <div className="flex items-center gap-5 px-1">
+          <section className="space-y-3 animate-glass" style={{ animationDelay: '0.25s' }}>
+            <div className="flex items-center gap-5 px-1 border-t border-border/10">
               <h3 className="text-label-caps !text-[11px] !opacity-50 font-semibold whitespace-nowrap">Start from</h3>
               <div className="h-px flex-1 bg-border/20" />
             </div>
@@ -381,31 +443,52 @@ export default function SubscribePage() {
               min={minDate}
               value={startDate}
               onChange={e => setStartDate(e.target.value)}
-              className="w-full bg-surface-glass border-none px-6 py-5 rounded-[1.5rem] text-h3 !text-lg focus:ring-accent"
+              className="w-full bg-bg-secondary border border-border/10 px-6 py-5 rounded-[1.5rem] t-text-primary text-2xl font-black tracking-tight focus:ring-accent focus:border-accent/40 transition-all shadow-glass-sm"
             />
           </section>
 
-          <section className="space-y-6 animate-glass" style={{ animationDelay: '0.28s' }}>
-            <div className="flex items-center gap-5 px-1">
+          <section className="space-y-3 animate-glass" style={{ animationDelay: '0.28s' }}>
+            <div className="flex items-center gap-5 px-1 border-t border-border/10">
               <h3 className="text-label-caps !text-[11px] !opacity-50 font-semibold whitespace-nowrap">Deliver to</h3>
               <div className="h-px flex-1 bg-border/20" />
             </div>
             <div className="grid grid-cols-1 gap-3">
-              {addresses.map((addr: any) => (
-                <button
-                  key={addr.id}
-                  onClick={() => { setSelectedAddressId(addr.id); haptics.success(); }}
-                  className={`surface-glass p-4 text-left transition-all duration-700 rounded-[1.5rem] border-white/5 ring-1 ring-white/5 relative overflow-hidden ${selectedAddressId === addr.id ? 'bg-accent/10 !border-accent shadow-elite' : 'hover:bg-bg-secondary/40'}`}
-                >
-                  <div className="flex items-center gap-5">
-                    <div className="w-12 h-12 rounded-[1.2rem] bg-accent/5 flex items-center justify-center text-xl">📍</div>
-                    <div className="flex-1">
-                      <p className="text-h3 !text-lg font-black">{addr.label}</p>
-                      <p className="text-label-caps !text-[10px] opacity-40">{addr.address}</p>
+              {addresses.map((addr: any) => {
+                const sel = selectedAddressId === addr.id;
+                return (
+                  <button
+                    key={addr.id}
+                    onClick={() => { setSelectedAddressId(addr.id); haptics.success(); }}
+                    className={`p-4 text-left transition-all duration-200 rounded-2xl relative
+                      ${sel
+                        ? 'ring-2 ring-accent/55 bg-accent/[0.08] shadow-[0_0_16px_rgba(20,184,166,0.12)]'
+                        : 'ring-1 ring-border bg-bg-card hover:bg-bg-subtle'}`}
+                  >
+                    <div className="flex items-center gap-4">
+                      <div className={`w-11 h-11 rounded-xl flex items-center justify-center text-lg flex-shrink-0 transition-colors duration-200
+                        ${sel ? 'bg-accent/10' : 'bg-bg-subtle'}`}>
+                        📍
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className={`text-[15px] font-bold truncate transition-colors duration-200
+                          ${sel ? 'text-text-primary' : 'text-text-secondary'}`}>
+                          {addr.label}
+                        </p>
+                        <p className="text-[10px] text-text-muted mt-0.5 truncate">{addr.address}</p>
+                      </div>
+                      {sel && (
+                        <span className="w-5 h-5 rounded-full bg-gradient-to-br from-teal-400 to-cyan-400
+                          flex items-center justify-center flex-shrink-0">
+                          <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24"
+                            stroke="currentColor" strokeWidth={3}>
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                          </svg>
+                        </span>
+                      )}
                     </div>
-                  </div>
-                </button>
-              ))}
+                  </button>
+                );
+              })}
             </div>
           </section>
 
@@ -423,12 +506,15 @@ export default function SubscribePage() {
 
   if (step === 'grid') {
     return (
-      <div className="min-h-screen bg-bg-primary text-text-primary p-4 sm:p-8 relative overflow-hidden transition-all duration-[3000ms]" style={{ background: `radial-gradient(circle at top right, ${PHASE_CONFIG.grid.color}, transparent)` }}>
+      <div className="min-h-screen bg-bg-primary text-text-primary p-2 sm:p-8 relative overflow-x-hidden transition-all duration-[3000ms]"
+        style={{ background: `radial-gradient(circle at top right, ${isDark ? 'rgba(251,113,133,0.10)' : 'rgba(56,189,248,0.10)'}, transparent)` }}>
         <div className="absolute top-0 left-0 w-full h-full pointer-events-none transition-opacity duration-[3000ms]">
-          <div className="absolute top-[-5%] right-[-10%] w-[60rem] h-[60rem] bg-orange-500/10 blur-[200px] rounded-full animate-mesh" />
+          <div className="absolute top-[-5%] right-[-10%] w-[60rem] h-[60rem] blur-[200px] rounded-full animate-mesh"
+            style={{ background: isDark ? 'rgba(251,113,133,0.06)' : 'rgba(56,189,248,0.07)' }} />
         </div>
-        <div className="max-w-2xl mx-auto px-4 sm:px-6 space-y-6 relative z-10 pb-28">
-          {renderHeader("Pick your meals", "Tap to include or skip. Swap any dish with the ↕ icon.")}
+        <div className="max-w-2xl mx-auto px-2 sm:px-2 space-y-6 relative z-10 pb-28">
+          {renderHeader("Pick your meals", "Tap to include or skip. Swap any dish with the ↕ icon.", () => setStep('setup'))}
+          <LiquidProgressBar currentStep={2} totalSteps={3} />
           <MealGrid days={days} weekMenu={weekMenu} planDays={planDays} maxDayOffs={planDays <= 7 ? 1 : 2} mealPrices={mealPrices} onChange={setDays} />
         </div>
         {/* Fixed bottom bar — always visible while scrolling */}
@@ -440,24 +526,24 @@ export default function SubscribePage() {
 
   if (step === 'checkout') {
     return (
-      <div className="min-h-screen bg-bg-primary text-text-primary p-4 sm:p-8 relative overflow-hidden transition-all duration-[3000ms]" style={{ background: `radial-gradient(circle at top right, ${PHASE_CONFIG.checkout.color}, transparent)` }}>
+      <div className="bg-bg-primary text-text-primary p-4 sm:p-8 relative overflow-x-hidden transition-all duration-[3000ms]" style={{ background: `radial-gradient(circle at top right, ${PHASE_CONFIG.checkout.color}, transparent)` }}>
         <div className="absolute top-0 left-0 w-full h-full pointer-events-none transition-opacity duration-[3000ms]">
           <div className="absolute bottom-[-10%] left-[-10%] w-[60rem] h-[60rem] bg-indigo-500/10 blur-[250px] rounded-full animate-mesh" />
         </div>
-        <div className="max-w-2xl mx-auto px-6 space-y-8 relative z-10 pb-20">
-          {renderHeader("Review & Pay", "Check your order and confirm payment.")}
+        <div className="max-w-2xl mx-auto px-6 space-y-8 relative z-10 pb-44">
+          {renderHeader("Review & Pay", "Check your order and confirm payment.", () => setStep('grid'))}
           <LiquidProgressBar currentStep={3} totalSteps={3} />
 
           {/* Day-by-day meal summary */}
           <section className="space-y-3 animate-glass">
-            <h3 className="text-[11px] font-semibold text-white/35 uppercase tracking-widest">Your meals</h3>
+            <h3 className="text-[11px] font-semibold t-text-muted uppercase tracking-widest">Your meals</h3>
             <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-none">
               {snapshot.per_day.filter(d => d.meal_count > 0).map(d => (
                 <div key={d.date} className="surface-glass px-4 py-3 rounded-2xl min-w-[120px] flex-shrink-0 space-y-1.5 border border-white/5">
-                  <p className="text-[13px] font-bold text-white">
+                  <p className="text-[13px] font-bold t-text-primary">
                     {new Date(d.date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}
                   </p>
-                  <p className="text-[10px] text-white/40">
+                  <p className="text-[10px] t-text-muted">
                     {d.meal_count} meal{d.meal_count !== 1 ? 's' : ''}
                   </p>
                   <p className="text-[12px] font-bold text-accent tabular-nums">
@@ -471,8 +557,8 @@ export default function SubscribePage() {
           {/* Price breakdown */}
           <section className="space-y-2.5 pt-2 border-t border-white/8 animate-glass">
             <div className="flex justify-between items-center text-[13px]">
-              <span className="text-white/40">Subtotal</span>
-              <span className="text-white/70 font-semibold tabular-nums">{formatRupees(snapshot.base_total)}</span>
+              <span className="t-text-muted">Subtotal</span>
+              <span className="t-text-primary font-semibold tabular-nums">{formatRupees(snapshot.base_total)}</span>
             </div>
             {snapshot.discount_total > 0 && (
               <div className="flex justify-between items-center text-[13px]">
@@ -496,7 +582,7 @@ export default function SubscribePage() {
 
           {/* Promo code input */}
           <section className="space-y-3 animate-glass">
-            <h3 className="text-[11px] font-semibold text-white/35 uppercase tracking-widest">Promo code</h3>
+            <h3 className="text-[11px] font-semibold t-text-muted uppercase tracking-widest">Promo code</h3>
             {promoResult ? (
               <div className="flex items-center gap-3 surface-glass px-4 py-3 rounded-2xl border border-accent/20">
                 <span className="text-[12px] text-accent font-semibold flex-1">
@@ -516,7 +602,7 @@ export default function SubscribePage() {
                   onChange={e => setPromoInput(e.target.value.toUpperCase())}
                   onKeyDown={e => e.key === 'Enter' && applyPromo()}
                   className="flex-1 bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-[13px]
-                    text-white placeholder:text-white/20
+                    text-text-primary placeholder:text-text-muted/20
                     focus:outline-none focus:border-accent/40 transition-colors"
                 />
                 <button
