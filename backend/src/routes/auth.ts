@@ -250,14 +250,14 @@ router.post('/phone/otp', requireUser, validate(z.object({
   });
 
   // Send email — awaited so failures surface immediately to the caller
+  // Do NOT delete the OTP on failure — the 60s cooldown already prevents spam,
+  // and keeping it lets the user retry without burning a new slot.
   try {
     await emailService.sendVerificationOtpEmail({ to: user.email, name: user.name, otp });
   } catch (emailErr: any) {
     console.error(`[OTP] Email delivery failed for ${user.email}:`, emailErr.message);
-    // OTP is in DB — delete it so it can't be misused without delivery
-    await db('phone_verifications').where({ phone: normalizedPhone, user_id: req.userId }).delete().catch(() => {});
     return res.status(503).json({
-      error: 'Could not deliver verification code. Please try again in a moment.',
+      error: 'Could not send verification email. Please wait 60 seconds and try again.',
     });
   }
 

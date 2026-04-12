@@ -27,6 +27,8 @@ export const env = {
   RAZORPAY_KEY_ID: process.env.RAZORPAY_KEY_ID!,
   RAZORPAY_KEY_SECRET: process.env.RAZORPAY_KEY_SECRET!,
   RAZORPAY_WEBHOOK_SECRET: process.env.RAZORPAY_WEBHOOK_SECRET || process.env.RAZORPAY_KEY_SECRET!,
+  RESEND_API_KEY: process.env.RESEND_API_KEY,
+  RESEND_FROM: process.env.RESEND_FROM || 'TiffinBox <noreply@mytiffinpoint.com>',
   GMAIL_USER: process.env.GMAIL_USER,
   GMAIL_APP_PASSWORD: process.env.GMAIL_APP_PASSWORD,
   FRONTEND_URL: process.env.FRONTEND_URL || 'https://mytiffinpoint.com',

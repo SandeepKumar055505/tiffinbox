@@ -1,80 +1,116 @@
 import nodemailer from 'nodemailer';
 import { env } from '../config/env';
 
-const enabled = !!(env.GMAIL_USER && env.GMAIL_APP_PASSWORD);
+// ── Provider detection ────────────────────────────────────────────────────────
+const useResend = !!env.RESEND_API_KEY;
+const useSmtp   = !!(env.GMAIL_USER && env.GMAIL_APP_PASSWORD);
 
-const transporter = enabled
+export const isEmailEnabled = useResend || useSmtp;
+
+// ── SMTP transporter (fallback / local dev) ───────────────────────────────────
+const transporter = useSmtp
   ? nodemailer.createTransport({
       service: 'gmail',
       auth: { user: env.GMAIL_USER, pass: env.GMAIL_APP_PASSWORD },
-      pool: true,             // reuse connections
+      pool: true,
       maxConnections: 3,
-      connectionTimeout: 8000, // 8s to establish TCP connection
-      greetingTimeout: 8000,   // 8s to receive SMTP greeting
-      socketTimeout: 10000,    // 10s inactivity timeout
+      connectionTimeout: 8000,
+      greetingTimeout: 8000,
+      socketTimeout: 10000,
     })
   : null;
 
-// Verify connection on startup (non-blocking — logs warn but doesn't crash)
 if (transporter) {
   transporter.verify().then(() => {
     console.log('[email] SMTP connection verified ✓');
   }).catch((err: Error) => {
-    console.error('[email] SMTP verify failed — emails will not send:', err.message);
+    console.error('[email] SMTP verify failed:', err.message);
   });
+}
+
+// ── Core send ─────────────────────────────────────────────────────────────────
+
+const SEND_TIMEOUT_MS = 12_000;
+
+function withTimeout<T>(p: Promise<T>): Promise<T> {
+  return Promise.race([
+    p,
+    new Promise<never>((_, reject) =>
+      setTimeout(
+        () => reject(Object.assign(new Error('Email send timed out'), { code: 'ETIMEDOUT' })),
+        SEND_TIMEOUT_MS
+      )
+    ),
+  ]);
+}
+
+async function sendViaResend(to: string, subject: string, html: string): Promise<void> {
+  const res = await withTimeout(
+    fetch('https://api.resend.com/emails', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${env.RESEND_API_KEY}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ from: env.RESEND_FROM, to, subject, html }),
+    })
+  );
+
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}));
+    const err: any = new Error(`Resend error ${res.status}: ${(body as any).message || res.statusText}`);
+    err.responseCode = res.status;
+    throw err;
+  }
+}
+
+async function sendViaSmtp(to: string, subject: string, html: string): Promise<void> {
+  await withTimeout(
+    transporter!.sendMail({
+      from: `TiffinBox <${env.GMAIL_USER}>`,
+      to,
+      subject,
+      html,
+    })
+  );
 }
 
 /**
  * Send an email. Throws on failure — callers decide how to handle.
- * Retries once after 1 s on transient network errors.
+ * Primary: Resend HTTP API. Fallback: Gmail SMTP.
+ * Retries once after 1 s on transient errors.
  */
 async function send(to: string, subject: string, html: string): Promise<void> {
-  if (!transporter) {
+  if (!isEmailEnabled) {
     if (env.isDev) {
-      console.log(`[email skipped — GMAIL not configured] To: ${to} | Subject: ${subject}`);
+      console.log(`[email skipped — not configured] To: ${to} | Subject: ${subject}`);
       return;
     }
-    throw new Error('Email service not configured (GMAIL_USER / GMAIL_APP_PASSWORD missing)');
+    throw new Error('Email service not configured (RESEND_API_KEY or GMAIL_USER missing)');
   }
 
-  const SEND_TIMEOUT_MS = 12_000; // hard ceiling — nodemailer timeouts can drift
-
-  const withTimeout = (p: Promise<any>) =>
-    Promise.race([
-      p,
-      new Promise<never>((_, reject) =>
-        setTimeout(() => reject(Object.assign(new Error('Email send timed out'), { code: 'ETIMEDOUT' })), SEND_TIMEOUT_MS)
-      ),
-    ]);
-
-  const attempt = () =>
-    withTimeout(
-      transporter.sendMail({
-        from: `TiffinBox <${env.GMAIL_USER}>`,
-        to,
-        subject,
-        html,
-      })
-    );
+  const attempt = () => useResend ? sendViaResend(to, subject, html) : sendViaSmtp(to, subject, html);
 
   try {
     await attempt();
   } catch (firstErr: any) {
-    // Retry once on transient network/timeout errors
     const isTransient =
       firstErr.code === 'ECONNECTION' ||
-      firstErr.code === 'ETIMEDOUT' ||
-      firstErr.code === 'ECONNRESET' ||
+      firstErr.code === 'ETIMEDOUT'   ||
+      firstErr.code === 'ECONNRESET'  ||
       (firstErr.responseCode && firstErr.responseCode >= 500);
 
     if (isTransient) {
+      console.warn('[email] Transient error — retrying once:', firstErr.message);
       await new Promise(r => setTimeout(r, 1000));
-      await attempt(); // throws if second attempt also fails
+      await attempt();
     } else {
-      throw firstErr; // auth errors, invalid address etc. — don't retry
+      throw firstErr;
     }
   }
 }
+
+// ── Email template wrapper ────────────────────────────────────────────────────
 
 function wrap(body: string): string {
   return `
@@ -214,5 +250,3 @@ export async function sendSupportReplyEmail(opts: {
   `);
   await send(opts.to, `Support Reply: ${opts.subject}`, html);
 }
-
-export const isEmailEnabled = enabled;
