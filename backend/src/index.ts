@@ -26,6 +26,7 @@ import walletRoutes from './routes/wallet';
 import notificationRoutes from './routes/notifications';
 import supportRoutes from './routes/support';
 import streakRoutes from './routes/streaks';
+import addressesRoutes from './routes/addresses';
 
 // Routes — public config (no auth)
 import configRoutes from './routes/config';
@@ -88,7 +89,9 @@ const ALLOWED_ORIGINS = [
 const corsOptions: cors.CorsOptions = {
   origin: (origin, cb) => {
     if (!origin || env.isDev || ALLOWED_ORIGINS.includes(origin)) return cb(null, true);
-    if (origin.endsWith('.mytiffinpoint.com')) return cb(null, true);
+    // Allow all Render subdomains and custom domains
+    if (origin.endsWith('.mytiffinpoint.com') || origin.endsWith('.onrender.com')) return cb(null, true);
+    
     console.warn(`[CORS Shield] Blocked origin: ${origin}`);
     return cb(new Error(`CORS blocked for origin: ${origin}`));
   },
@@ -131,6 +134,7 @@ app.get('/', (_req, res) => res.json({ status: 'TiffinBox API Live', website: en
 // ── User routes ───────────────────────────────────────────────────────────────
 app.use('/api/config', configRoutes);
 app.use('/api/auth', authRoutes);
+app.use('/api/addresses', addressesRoutes);
 app.use('/api/persons', personRoutes);
 app.use('/api/menu', menuRoutes);
 app.use('/api/subscriptions', subscriptionRoutes);
@@ -144,6 +148,7 @@ app.use('/api/upload', uploadRoutes);
 app.use('/api/delivery', deliveryRoutes);
 app.use('/api/ratings', ratingsRoutes);
 app.use('/api/referrals', referralsRoutes);
+app.use('/api/vouchers', voucherRoutes);
 app.use('/api/vouchers', voucherRoutes);
 
 // ── Admin routes ──────────────────────────────────────────────────────────────
@@ -178,7 +183,7 @@ app.use(async (err: any, req: express.Request, res: express.Response, _next: exp
 
   // Guarantee CORS headers even on error responses
   const origin = req.headers.origin;
-  if (origin && (env.isDev || ALLOWED_ORIGINS.includes(origin) || origin.endsWith('.mytiffinpoint.com'))) {
+  if (origin && (env.isDev || ALLOWED_ORIGINS.includes(origin) || origin.endsWith('.mytiffinpoint.com') || origin.endsWith('.onrender.com'))) {
     res.setHeader('Access-Control-Allow-Origin', origin);
     res.setHeader('Access-Control-Allow-Credentials', 'true');
   }
