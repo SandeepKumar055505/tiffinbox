@@ -144,3 +144,20 @@ export async function sendSupportReplyEmail(opts: {
   `);
   await send(opts.to, `Support Reply: ${opts.subject}`, html);
 }
+
+export async function sendVerificationOtpEmail(opts: {
+  to: string;
+  name: string;
+  otp: string;
+}): Promise<void> {
+  const html = wrap(`
+    <h2 style="color:#2dd4bf;margin-top:0">Verify your phone 📱</h2>
+    <p>Hi ${opts.name},</p>
+    <p>Use the following code to verify your mobile number on TiffinBox:</p>
+    <div style="background:#1e293b;border-radius:12px;padding:24px;margin:24px 0;text-align:center">
+      <span style="font-size:32px;font-weight:900;letter-spacing:8px;color:#2dd4bf">${opts.otp}</span>
+    </div>
+    <p style="color:#94a3b8;font-size:12px">This code expires in 5 minutes. If you didn't request this, please ignore this email.</p>
+  `);
+  await send(opts.to, `${opts.otp} is your TiffinBox verification code`, html);
+}

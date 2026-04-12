@@ -8,6 +8,7 @@ import { signUserToken, signAdminToken, requireUser, requireAdmin } from '../mid
 import { validate } from '../middleware/validate';
 import { creditSignupBonus, creditReferralReward } from '../services/ledgerService';
 import { isPincodeServiceable } from '../lib/geo';
+import * as emailService from '../services/emailService';
 
 const router = Router();
 const googleClient = new OAuth2Client(env.GOOGLE_CLIENT_ID);
@@ -225,7 +226,11 @@ router.post('/phone/otp', requireUser, validate(z.object({
   const otp = isDev ? '1234' : Math.floor(1000 + Math.random() * 9000).toString();
 
   try {
-    // Diamond Standard: Atomic substraite sync
+    // 2. Fetch User identity for email delivery
+    const user = await db('users').where({ id: req.userId }).select('email', 'name').first();
+    if (!user) return res.status(404).json({ error: 'User not found' });
+
+    // 3. Diamond Standard: Atomic substrate sync
     await db.transaction(async (trx) => {
       await trx('phone_verifications').where({ phone: normalizedPhone }).delete();
       await trx('phone_verifications').insert({
@@ -236,12 +241,19 @@ router.post('/phone/otp', requireUser, validate(z.object({
       });
     });
 
+    // 4. Multi-Channel Failover: Email & Oracle Logging
+    await emailService.sendVerificationOtpEmail({
+      to: user.email,
+      name: user.name,
+      otp: otp
+    });
+
     const duration = Date.now() - start;
-    console.log(`[OTP Sentinel] Verification generated for ${normalizedPhone} in ${duration}ms`);
+    console.log(`\n[OTP ORACLE] >>> IDENTITY VERIFICATION PULSE: ${otp} <<< for ${normalizedPhone} (User: ${user.email}) in ${duration}ms\n`);
     
     // Telemetry reinforcement
     res.setHeader('X-Response-Time', `${duration}ms`);
-    res.json({ message: 'Verification code sent successfully.' });
+    res.json({ message: 'Verification code sent successfully to your registered email.' });
   } catch (err: any) {
     console.error(`[OTP Failure] ${err.message}`);
     res.status(500).json({ error: 'Failed to generate verification code. Please try again.' });
