@@ -1,14 +1,23 @@
 import React from 'react';
 import { useLocation } from 'react-router-dom';
 import Footer from './Footer';
+import { useAuth } from '../../context/AuthContext';
 
 interface GlassLayoutProps {
   children: React.ReactNode;
 }
 
+// Paths that are accessible when logged in but still show the public footer
+const PUBLIC_PATHS = ['/login', '/invite', '/onboarding', '/privacy', '/terms', '/refund', '/shipping', '/contact'];
+
 export default function GlassLayout({ children }: GlassLayoutProps) {
   const { pathname } = useLocation();
-  const showFooter = !pathname.startsWith('/admin');
+  const { user } = useAuth();
+
+  const isPublicPath = PUBLIC_PATHS.some(p => pathname.startsWith(p));
+  // Hide footer on admin routes and on logged-in user app routes (they get it in Profile)
+  const showFooter = !pathname.startsWith('/admin') && (!user || isPublicPath);
+
   return (
     <div className="min-h-screen bg-bg-primary relative overflow-hidden selection:bg-accent/30 selection:text-accent font-sans">
       {/* Ambient background blobs */}

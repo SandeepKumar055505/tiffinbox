@@ -1,6 +1,8 @@
 import React, { useState, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
+import { motion, AnimatePresence } from 'framer-motion';
+import { ChevronDown } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useToast } from '../../context/ToastContext';
 import FlavorMeter from '../../components/user/FlavorMeter';
@@ -40,6 +42,7 @@ export default function ProfilePage() {
   const [showForm, setShowForm] = useState(false);
   const [addressEdit, setAddressEdit] = useState(false);
   const [addressVal, setAddressVal] = useState(user?.delivery_address ?? '');
+  const [showLegal, setShowLegal] = useState(false);
 
   // Profile Health Logic
   const healthScore = useMemo(() => {
@@ -454,6 +457,75 @@ export default function ProfilePage() {
               );
             })}
           </div>
+        </section>
+
+        {/* Legal & Company — collapsible */}
+        <section className="space-y-2 animate-glass" style={{ animationDelay: '0.38s' }}>
+          <button
+            onClick={() => { setShowLegal(v => !v); haptics.light(); }}
+            className="w-full flex items-center justify-between px-4 pb-2 group"
+          >
+            <h3 className="text-label-caps !text-[12px] !opacity-50 font-bold uppercase tracking-widest group-hover:opacity-70 transition-opacity">About & Legal</h3>
+            <motion.span
+              animate={{ rotate: showLegal ? 180 : 0 }}
+              transition={{ duration: 0.22, ease: 'easeInOut' }}
+              className="opacity-30 group-hover:opacity-60 transition-opacity"
+            >
+              <ChevronDown size={15} strokeWidth={2.5} />
+            </motion.span>
+          </button>
+
+          <AnimatePresence initial={false}>
+            {showLegal && (
+              <motion.div
+                initial={{ height: 0, opacity: 0 }}
+                animate={{ height: 'auto', opacity: 1 }}
+                exit={{ height: 0, opacity: 0 }}
+                transition={{ duration: 0.26, ease: [0.32, 0.72, 0, 1] }}
+                className="overflow-hidden"
+              >
+                <div className="surface-glass rounded-3xl ring-1 ring-border/15 overflow-hidden shadow-sm divide-y divide-border/10">
+                  {/* Brand */}
+                  <div className="px-6 py-5 space-y-1.5">
+                    <p className="text-[13px] font-bold text-teal-400">TiffinPoint</p>
+                    <p className="text-[11px] opacity-50 leading-relaxed">Freshly cooked tiffin meals, delivered daily across Delhi NCR.</p>
+                    <p className="text-[10px] opacity-25 pt-1">© {new Date().getFullYear()} TiffinPoint Services. All rights reserved.</p>
+                  </div>
+
+                  {/* Legal links */}
+                  <div className="px-6 py-5 space-y-3">
+                    <p className="text-[9px] font-bold uppercase tracking-widest opacity-30">Legal</p>
+                    <div className="grid grid-cols-2 gap-y-2.5 gap-x-4">
+                      {[
+                        { label: 'Privacy Policy', to: '/privacy' },
+                        { label: 'Terms of Service', to: '/terms' },
+                        { label: 'Refund Policy', to: '/refund' },
+                        { label: 'Shipping & Delivery', to: '/shipping' },
+                      ].map(link => (
+                        <Link
+                          key={link.to}
+                          to={link.to}
+                          className="text-[11px] font-medium opacity-50 hover:text-teal-400 hover:opacity-100 transition-all"
+                        >
+                          {link.label}
+                        </Link>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Company */}
+                  <div className="px-6 py-5 space-y-3">
+                    <p className="text-[9px] font-bold uppercase tracking-widest opacity-30">Company</p>
+                    <div className="space-y-2.5">
+                      <Link to="/contact" className="block text-[11px] font-medium opacity-50 hover:text-teal-400 hover:opacity-100 transition-all">Contact Us</Link>
+                      <a href="mailto:info@mypinnakle.com" className="block text-[11px] font-medium opacity-50 hover:text-teal-400 hover:opacity-100 transition-all">info@mypinnakle.com</a>
+                      <a href="tel:+918901221068" className="block text-[11px] font-medium opacity-50 hover:text-teal-400 hover:opacity-100 transition-all">+91-8901221068</a>
+                    </div>
+                  </div>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
         </section>
 
         {/* Danger zone */}
