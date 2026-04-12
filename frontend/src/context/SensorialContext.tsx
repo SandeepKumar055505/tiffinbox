@@ -13,8 +13,19 @@ export const haptics = {
   success: () => navigator.vibrate?.([40, 30, 80]), // Zenith Success Pulse
   warning: () => navigator.vibrate?.([60, 40, 60]), // Rapid Staccato
   heavy: () => navigator.vibrate?.([50, 100, 50]), // Intense Selection Anchor
-  impact: () => navigator.vibrate?.(20), // Solid Haptic Feedback
-  light: () => navigator.vibrate?.(5), // Micro Interaction
+  
+  // Unified Impact Engine
+  impact: (level: 'light' | 'medium' | 'heavy' | 'extra' = 'medium') => {
+    switch (level) {
+      case 'light': navigator.vibrate?.(10); break;
+      case 'medium': navigator.vibrate?.(30); break;
+      case 'heavy': navigator.vibrate?.(60); break;
+      case 'extra': navigator.vibrate?.([40, 20, 80]); break;
+      default: navigator.vibrate?.(30);
+    }
+  },
+  
+  light: () => navigator.vibrate?.(10), // Micro Interaction
   custom: (pattern: number | number[]) => navigator.vibrate?.(pattern), // Omni-Zenith Custom Payload
 };
 

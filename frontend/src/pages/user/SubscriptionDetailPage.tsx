@@ -104,7 +104,11 @@ export default function SubscriptionDetailPage() {
         <header className="pt-6 pb-3 border-b border-border/10 mb-6 flex justify-between items-end">
           <div>
             <div className="flex items-center gap-3 mb-2">
-              <Link to="/" className="text-[11px] font-bold text-text-muted uppercase tracking-widest hover:text-accent transition-colors">
+              <Link 
+                to="/" 
+                onClick={() => haptics.impact('light')}
+                className="text-[11px] font-bold text-text-muted uppercase tracking-widest hover:text-accent transition-colors"
+              >
                 ← Back
               </Link>
               <span className={`text-[8px] font-black uppercase tracking-[0.1em] px-2 py-0.5 rounded-sm border transition-all ${getStatusStyle(sub.state)}`}>
@@ -161,7 +165,7 @@ export default function SubscriptionDetailPage() {
         <section className="animate-glass" style={{ animationDelay: '0.2s' }}>
           {(sub.state === 'active' || sub.state === 'partially_skipped') && (
             <button
-              onClick={() => setShowPauseModal(true)}
+              onClick={() => { haptics.impact('light'); setShowPauseModal(true); }}
               disabled={publicConfig?.features?.pause_enabled === false}
               className="w-full surface-glass text-center !py-4 rounded-2xl border border-white/5 hover:border-text-muted/50 transition-colors disabled:opacity-20"
             >
@@ -182,13 +186,13 @@ export default function SubscriptionDetailPage() {
               </div>
               <div className="flex flex-col sm:flex-row gap-4">
                 <button
-                  onClick={() => setShowResumeModal(true)}
+                  onClick={() => { haptics.impact('medium'); setShowResumeModal(true); }}
                   className="flex-1 btn-primary !bg-white !text-black !py-4 rounded-2xl font-black text-[10px] tracking-widest uppercase hover:scale-105 active:scale-95 transition-all shadow-glow-subtle"
                 >
                   Resume Subcription
                 </button>
                 <button
-                  onClick={() => setShowPauseModal(true)}
+                  onClick={() => { haptics.impact('light'); setShowPauseModal(true); }}
                   className="flex-1 btn-ghost border border-white/10 !py-4 rounded-2xl font-black text-[10px] tracking-widest uppercase hover:bg-white/5 active:scale-95 transition-all"
                 >
                   Modify Reschedule
@@ -200,6 +204,7 @@ export default function SubscriptionDetailPage() {
           {(sub.state === 'draft' || sub.state === 'pending_payment' || sub.state === 'failed_payment') && (
             <Link
               to="/subscribe"
+              onClick={() => haptics.impact('heavy')}
               className="w-full block text-center bg-accent text-white py-4 rounded-2xl font-bold uppercase tracking-widest hover:opacity-90 transition-opacity"
             >
               Complete Order →
@@ -301,7 +306,7 @@ export default function SubscriptionDetailPage() {
                                       {cell.alternatives.map((alt: any) => (
                                         <button 
                                           key={alt.id}
-                                          onClick={() => swapMeal.mutate({ cellId: cell.id, itemId: alt.id })}
+                                          onClick={() => { haptics.success(); swapMeal.mutate({ cellId: cell.id, itemId: alt.id }); }}
                                           className="w-full text-left px-3 py-2 rounded-lg text-xs font-bold hover:bg-white/5 transition-colors t-text"
                                         >
                                           {alt.name}
@@ -313,6 +318,7 @@ export default function SubscriptionDetailPage() {
                             )}
                             <button
                               onClick={async () => {
+                                haptics.impact('light');
                                 if (await sensorial.confirm({ 
                                   title: 'Skip Selection', 
                                   message: 'Are you sure you wish to skip this gourmet meal? This action is processed by our prep-timers instantly.',

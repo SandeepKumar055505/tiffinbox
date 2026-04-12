@@ -469,7 +469,11 @@ export default function SubscribePage() {
               </div>
               <PriceTicker value={snapshot.final_total} className="text-h1 !text-6xl text-accent" />
             </div>
-            <button onClick={() => createSub.mutate()} disabled={createSub.isPending} className="btn-primary w-full !py-6 !text-2xl !rounded-[2rem] shadow-elite font-black uppercase tracking-tighter">
+            <button 
+              onClick={() => { haptics.impact('heavy'); createSub.mutate(); }} 
+              disabled={createSub.isPending} 
+              className="btn-primary w-full !py-6 !text-2xl !rounded-[2rem] shadow-elite font-black uppercase tracking-tighter"
+            >
               {createSub.isPending ? 'Securing Selection…' : 'Activate Subscription →'}
             </button>
           </section>

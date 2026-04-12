@@ -281,9 +281,28 @@ h1, h2, h3, h4, .font-display {
   animation: crimsonBleed 1.5s infinite ease-out;
 }
 
-.scrollbar-none::-webkit-scrollbar { display: none; }
-.shadow-elite { box-shadow: 0 30px 100px rgba(0, 0, 0, 0.15); }
 .ring-glass { outline: 1px solid rgba(255, 255, 255, 0.1); }
+.shadow-zenith { 
+  box-shadow: 
+    0 -10px 40px rgba(0, 0, 0, 0.1),
+    0 -1px 0 rgba(255, 255, 255, 0.1); 
+}
+.dark .shadow-zenith {
+  box-shadow: 
+    0 -20px 60px rgba(0, 0, 0, 0.5),
+    0 -1px 0 rgba(255, 255, 255, 0.05);
+}
+.border-zenith-etch {
+  position: relative;
+}
+.border-zenith-etch::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+  z-index: 10;
+}
 
 /* ── Admin / Shared Glass utilities (theme-aware) ───────────────────── */
 .glass {

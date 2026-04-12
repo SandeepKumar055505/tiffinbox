@@ -8,7 +8,7 @@ import { formatRupees } from '../../utils/pricing';
 import NotificationPanel from '../../components/shared/NotificationPanel';
 import ThemeToggle from '../../components/shared/ThemeToggle';
 import { usePublicConfig } from '../../hooks/usePublicConfig';
-import { useSensorial } from '../../context/SensorialContext';
+import { useSensorial, haptics } from '../../context/SensorialContext';
 import { useLivingTheme } from '../../hooks/useLivingTheme';
 import { useHeartbeatSync } from '../../hooks/useHeartbeatSync';
 import { ChronosStatusOrb } from '../../components/dashboard/ChronosStatusOrb';
@@ -128,7 +128,11 @@ export default function DashboardPage() {
           <div className="flex items-center gap-3 pb-1">
             <ThemeToggle />
             <NotificationPanel />
-            <Link to="/profile" className="w-10 h-10 rounded-2xl bg-accent text-white flex items-center justify-center font-bold text-lg hover:rotate-6 transition-all shadow-elite">
+            <Link 
+              to="/profile" 
+              onClick={() => haptics.impact('light')}
+              className="w-10 h-10 rounded-2xl bg-accent text-white flex items-center justify-center font-bold text-lg hover:rotate-6 transition-all shadow-elite"
+            >
               {user?.name?.[0]?.toUpperCase()}
             </Link>
           </div>
@@ -165,6 +169,7 @@ export default function DashboardPage() {
               </div>
               <Link
                 to={`/subscriptions/${draft.id}`}
+                onClick={() => haptics.impact('medium')}
                 className="btn-primary w-full sm:w-auto !py-4 !px-8 !bg-orange-600 !shadow-[0_15px_30px_rgba(249,115,22,0.3)] hover:scale-105 rounded-2xl transition-all relative z-10"
               >
                 Pay Now →
@@ -230,6 +235,7 @@ export default function DashboardPage() {
                            
                            {cell.delivery_status === 'delivered' && cell.proof_image_url && (
                              <button 
+                               onClick={() => haptics.impact('light')}
                                className="relative z-10 w-full h-20 rounded-xl overflow-hidden group/proof ring-1 ring-white/10"
                              >
                                 <img src={cell.proof_image_url} className="w-full h-full object-cover group-hover/proof:scale-110 transition-transform duration-700" alt="Arrival Proof" />
@@ -265,6 +271,7 @@ export default function DashboardPage() {
               </div>
               <Link
                 to="/subscribe"
+                onClick={() => haptics.impact('heavy')}
                 className="btn-primary !px-12 !py-5 rounded-2xl shadow-elite text-xs font-black tracking-[0.3em] uppercase hover:scale-105 active:scale-95 transition-all"
               >
                 Inaugurate Journey →
@@ -300,7 +307,7 @@ export default function DashboardPage() {
 
                      <Link 
                         to="/subscribe" 
-                        onClick={() => manifest()}
+                        onClick={() => { manifest(); haptics.impact('medium'); }}
                         className="btn-primary !bg-teal-600 !py-4 rounded-2xl text-[10px] font-black uppercase tracking-widest text-center shadow-glow-subtle relative z-10 hover:scale-[1.02] active:scale-95 transition-all"
                      >
                        Inaugurate Journey →
@@ -409,7 +416,11 @@ export default function DashboardPage() {
               );
             })}
             {personsList.length === 0 && (
-              <Link to="/profile" className="surface-liquid hover:bg-bg-subtle px-6 py-5 text-label-caps text-text-faint flex items-center justify-center gap-3 border-dashed border-2 rounded-2xl transition-all duration-700 group min-w-[140px]">
+              <Link 
+                to="/profile" 
+                onClick={() => haptics.impact('light')}
+                className="surface-liquid hover:bg-bg-subtle px-6 py-5 text-label-caps text-text-faint flex items-center justify-center gap-3 border-dashed border-2 rounded-2xl transition-all duration-700 group min-w-[140px]"
+              >
                 <span className="text-xl opacity-20 group-hover:scale-125 transition-transform">+</span>
                 <span className="text-[10px]">Add Member</span>
               </Link>

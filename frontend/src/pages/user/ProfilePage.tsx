@@ -82,6 +82,7 @@ export default function ProfilePage() {
   ];
 
   const toggleMute = (type: string) => {
+    haptics.light();
     const current = user?.notification_mutes || [];
     const updated = current.includes(type)
       ? current.filter((t: string) => t !== type)
@@ -128,6 +129,7 @@ export default function ProfilePage() {
   });
 
   function startEdit(p: Person) {
+    haptics.impact('light');
     setForm({ 
       name: p.name, 
       dietary_tag: p.dietary_tag || 'Veg', 
@@ -554,14 +556,14 @@ const MemberForm = ({
 
       <div className="flex flex-col gap-4 pt-6">
         <button
-          onClick={onSubmit}
+          onClick={() => { haptics.impact('medium'); onSubmit(); }}
           disabled={!form.name.trim() || loading}
           className="w-full rounded-[1.5rem] bg-gradient-to-r from-orange-500 to-amber-600 py-5 text-sm font-black uppercase tracking-[0.2em] text-white shadow-lg shadow-orange-200 transition-all hover:shadow-orange-300 active:scale-95 disabled:opacity-50"
         >
           {loading ? 'Simmering...' : editing ? 'Update Member' : 'Plat List Member'}
         </button>
         <button
-          onClick={onCancel}
+          onClick={() => { haptics.impact('light'); onCancel(); }}
           className="text-[10px] font-black uppercase tracking-[0.3em] opacity-30 hover:opacity-100 transition-all py-2"
         >
           Discard Changes
