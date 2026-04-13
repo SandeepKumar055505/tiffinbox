@@ -29,8 +29,8 @@ export async function postLedgerEntry(entry: {
   metadata?: any;           // JSONB structured data
   idempotency_key: string;
   created_by: 'system' | 'admin' | 'user';
-}): Promise<LedgerEntry | null> {
-  return db.transaction(async trx => {
+}, trxOverride?: any): Promise<LedgerEntry | null> {
+  const execute = async (trx: any) => {
     // Lock the user record to serialize wallet operations for this specific user
     await trx('users').where({ id: entry.user_id }).forUpdate().first();
 
@@ -82,7 +82,13 @@ export async function postLedgerEntry(entry: {
     });
 
     return row;
-  });
+  };
+
+  if (trxOverride) {
+    return execute(trxOverride);
+  } else {
+    return db.transaction(execute);
+  }
 }
 
 export async function getWalletBalance(user_id: number): Promise<number> {
@@ -109,7 +115,8 @@ export async function creditDeliveryFailure(
   subscription_id: number,
   meal_type: string,
   date: string,
-  meal_price: number
+  meal_price: number,
+  trx?: any
 ): Promise<void> {
   const key = `delivery_fail_${meal_cell_id}`;
   await postLedgerEntry({
@@ -122,7 +129,7 @@ export async function creditDeliveryFailure(
     description: `We missed your ${meal_type} delivery on ${formatDate(date)}. ${formatRupees(meal_price)} added back to wallet.`,
     idempotency_key: key,
     created_by: 'system',
-  });
+  }, trx);
   await db('meal_cells')
     .where({ id: meal_cell_id })
     .update({ wallet_credited: true });
@@ -137,7 +144,8 @@ export async function creditSkip(
   subscription_id: number,
   meal_type: string,
   date: string,
-  meal_price: number
+  meal_price: number,
+  trx?: any
 ): Promise<void> {
   const key = `skip_credit_${meal_cell_id}`;
   await postLedgerEntry({
@@ -150,7 +158,7 @@ export async function creditSkip(
     description: `Skip applied for ${meal_type} on ${formatDate(date)}. ${formatRupees(meal_price)} added to wallet.`,
     idempotency_key: key,
     created_by: 'system',
-  });
+  }, trx);
   await db('meal_cells')
     .where({ id: meal_cell_id })
     .update({ wallet_credited: true });
@@ -163,7 +171,8 @@ export async function debitWalletAtCheckout(
   user_id: number,
   subscription_id: number,
   amount: number,
-  payment_id?: number
+  payment_id?: number,
+  trx?: any
 ): Promise<void> {
   const key = `checkout_debit_${subscription_id}`;
   await postLedgerEntry({
@@ -176,7 +185,7 @@ export async function debitWalletAtCheckout(
     description: `${formatRupees(amount)} applied from wallet at checkout.`,
     idempotency_key: key,
     created_by: 'user',
-  });
+  }, trx);
 }
 
 /**
@@ -222,7 +231,8 @@ export async function creditReferralReward(
 export async function creditFullSubscriptionRefund(
   user_id: number,
   subscription_id: number,
-  amount: number
+  amount: number,
+  trx?: any
 ): Promise<void> {
   const key = `refund_full_sub_${subscription_id}`;
   await postLedgerEntry({
@@ -235,7 +245,7 @@ export async function creditFullSubscriptionRefund(
     metadata: { subscription_id, refund_type: 'full_cancellation' },
     idempotency_key: key,
     created_by: 'system',
-  });
+  }, trx);
 }
 
 /**

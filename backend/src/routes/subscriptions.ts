@@ -11,6 +11,7 @@ import { sendNotification, NotificationType } from '../services/notificationServ
 import { emitEvent, DomainEvent } from '../jobs/events';
 import { boss } from '../jobs/client';
 import { isPincodeServiceable } from '../lib/geo';
+import { settingsService } from '../services/settingsService';
 
 const router = Router();
 
@@ -196,7 +197,7 @@ router.post('/', requireUser, validate(createSchema), async (req, res) => {
   if (!geoStatus.is_serviceable) return res.status(422).json({ error_key: 'ERR_GEOFENCE_OUT', error: geoStatus.message });
 
   // Capacity Check (Operational Boundary)
-  const settings = await db('app_settings').where({ id: 1 }).first();
+  const settings = await settingsService.getSettings();
   const maxMeals = settings?.max_meals_per_slot ?? 200;
 
   // Meal-type availability check — reject disabled meal types
@@ -327,31 +328,42 @@ router.post('/', requireUser, validate(createSchema), async (req, res) => {
 
 // POST /api/subscriptions/:id/cancel
 router.post('/:id/cancel', requireUser, async (req, res) => {
+  let finalSub: any = null;
+  let statusResult: string = 'cancelled';
+
   await db.transaction(async trx => {
     const sub = await trx('subscriptions')
       .where({ id: req.params.id, user_id: req.userId })
       .forUpdate()
+      .noWait()
       .first();
 
-    if (!sub) return res.status(404).json({ error: 'Subscription not found' });
+    if (!sub) {
+      return res.status(404).json({ error: 'Subscription not found' });
+    }
+
     if (!canTransitionTo(sub.state, 'cancelled')) {
       return res.status(409).json({ error: `Cannot cancel from state: ${sub.state}` });
     }
 
-    const { todayIST } = await import('../lib/time');
     const today = todayIST();
     if (sub.start_date > today) {
       // Full Refund Window (Automated)
-      await trx('subscriptions').where({ id: sub.id }).update({ state: 'cancelled', updated_at: db.fn.now() });
+      [finalSub] = await trx('subscriptions')
+        .where({ id: sub.id })
+        .update({ state: 'cancelled', updated_at: db.fn.now() })
+        .returning('*');
+
       const amountToRefund = sub.wallet_applied || 0;
       if (amountToRefund > 0) {
-        const { creditFullSubscriptionRefund } = await import('../services/ledgerService');
-        await creditFullSubscriptionRefund(req.userId!, sub.id, amountToRefund);
+        await creditFullSubscriptionRefund(req.userId!, sub.id, amountToRefund, trx);
       }
-      return res.json({ message: 'Subscription cancelled with full refund (plan not yet started)', status: 'refunded' });
+      statusResult = 'refunded';
+      return;
     }
 
-    const [updated] = await trx('subscriptions')
+    // Standard Cancellation
+    [finalSub] = await trx('subscriptions')
       .where({ id: sub.id })
       .update({ state: 'cancelled', cancel_reason: req.body.reason || null, updated_at: db.fn.now() })
       .returning('*');
@@ -365,23 +377,29 @@ router.post('/:id/cancel', requireUser, async (req, res) => {
         is_included: false,
         updated_at: db.fn.now(),
       });
-
-    // Respond immediately after transaction commits
-    res.json(updated);
-
-    // Fire-and-forget: notification + domain event
-    sendNotification(
-      sub.user_id,
-      NotificationType.SYSTEM,
-      'Subscription Cancelled',
-      `Your ritual #${sub.id} has been cancelled as requested.`,
-    ).catch(() => { });
-
-    emitEvent(DomainEvent.SUBSCRIPTION_CANCELLED, {
-      subscription_id: sub.id,
-      user_id: sub.user_id,
-    }).catch(e => console.error('[bg] SUBSCRIPTION_CANCELLED emit failed:', e?.message));
   });
+
+  // 1. Respond immediately after transaction commits
+  if (!finalSub) return; // Should have been handled by errors inside if any, but added for safety
+  
+  if (statusResult === 'refunded') {
+    res.json({ message: 'Subscription cancelled with full refund (plan not yet started)', status: 'refunded', subscription: finalSub });
+  } else {
+    res.json(finalSub);
+  }
+
+  // 2. Fire-and-forget: notification + domain event (OUTSIDE transaction)
+  sendNotification(
+    finalSub.user_id,
+    NotificationType.SYSTEM,
+    'Subscription Cancelled',
+    `Your ritual #${finalSub.id} has been cancelled as requested.`,
+  ).catch(() => { });
+
+  emitEvent(DomainEvent.SUBSCRIPTION_CANCELLED, {
+    subscription_id: finalSub.id,
+    user_id: finalSub.user_id,
+  }).catch(e => console.error('[bg] SUBSCRIPTION_CANCELLED emit failed:', e?.message));
 });
 
 // POST /api/subscriptions/:id/pause
@@ -416,11 +434,14 @@ router.post('/:id/resume', requireUser, async (req, res) => {
 
   const { shift_dates } = req.body; // Liquid Time opt-in
 
+  let finalUpdated: any = null;
   await db.transaction(async (trx) => {
     const [updated] = await trx('subscriptions')
       .where({ id: sub.id })
       .update({ state: 'active', paused_at: null, pause_reason: null, updated_at: db.fn.now() })
       .returning('*');
+    
+    finalUpdated = updated;
 
     if (shift_dates) {
       // Liquid Time: Shift all paused/scheduled future meals forward
@@ -432,9 +453,9 @@ router.post('/:id/resume', requireUser, async (req, res) => {
         .where('date', '>=', db.raw('CURRENT_DATE'))
         .update({ delivery_status: 'scheduled', updated_at: db.fn.now() });
     }
-
-    res.json(updated);
   });
+
+  res.json(finalUpdated);
 });
 
 /**

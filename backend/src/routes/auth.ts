@@ -9,6 +9,7 @@ import { validate } from '../middleware/validate';
 import { creditSignupBonus, creditReferralReward } from '../services/ledgerService';
 import { isPincodeServiceable } from '../lib/geo';
 import * as emailService from '../services/emailService';
+import { settingsService } from '../services/settingsService';
 
 const router = Router();
 const googleClient = new OAuth2Client(env.GOOGLE_CLIENT_ID);
@@ -32,7 +33,7 @@ router.post('/google', validate(z.object({
     let referred_by_id: number | null = null;
 
     // Diamond Standard: Fetch Referrer details for personalized welcome
-    const settings = await db('app_settings').where({ id: 1 }).first();
+    const settings = await settingsService.getSettings();
     const skipReferralCheck = settings?.onboarding_skip_referral_check ?? false;
 
     if (req.body.referral_code && !skipReferralCheck) {
@@ -350,7 +351,7 @@ async function onNewUserCreated(
   fingerprint: string | null = null,
   referrer_name: string | null = null
 ): Promise<void> {
-  const settings = await db('app_settings').where({ id: 1 }).first();
+  const settings = await settingsService.getSettings();
 
   // 1. Credit signup wallet bonus (amount is in normalized Paise)
   const bonusPaise = settings?.signup_wallet_credit ?? 12000;

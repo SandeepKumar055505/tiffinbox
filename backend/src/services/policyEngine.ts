@@ -1,5 +1,6 @@
 import { db } from '../config/db';
 import { todayIST, currentHourIST, isTodayIST, isTomorrowIST, isPastIST } from '../lib/time';
+import { settingsService } from './settingsService';
 
 /**
  * Central policy engine — all business rule decisions live here.
@@ -40,7 +41,7 @@ export async function canSkipMeal(
     return { allowed: false, type: 'denied', reason: 'Cannot skip past meals' };
   }
 
-  const settings = await db('app_settings').where({ id: 1 }).first();
+  const settings = await settingsService.getSettings();
   const cutoffHour: number = sub[`${meal_type}_cutoff_hour`] ?? settings[`${meal_type}_cutoff_hour`];
 
   // Determine if we're before cutoff (IST)
@@ -75,7 +76,7 @@ export async function canSkipMeal(
  * Can a user add another person?
  */
 export async function canAddPerson(user_id: number): Promise<{ allowed: boolean; reason?: string }> {
-  const settings = await db('app_settings').where({ id: 1 }).first();
+  const settings = await settingsService.getSettings();
   const count = await db('persons').where({ user_id }).count('id as cnt').first();
   const current = parseInt((count as any).cnt, 10);
   if (current >= settings.max_persons_per_user) {
@@ -101,7 +102,7 @@ export async function hasReachedDayOffLimit(
   subscription_id: number,
   meal_date: string
 ): Promise<boolean> {
-  const settings = await db('app_settings').where({ id: 1 }).first();
+  const settings = await settingsService.getSettings();
   const limit: number = settings.max_skip_days_per_week;
 
   // Week boundaries (Mon–Sun) using date string math

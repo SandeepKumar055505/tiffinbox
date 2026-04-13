@@ -204,20 +204,21 @@ app.use(async (err: any, req: express.Request, res: express.Response, _next: exp
 
   if (status >= 400 && status < 500 && errorKey) {
     try {
-      const { db } = await import('./config/db');
-      await db('audit_logs').insert({
-        action: `friction.${errorKey}`,
-        target_type: 'user_request',
-        after_value: JSON.stringify({
-          url: req.url,
-          method: req.method,
-          status,
-          ip: req.ip,
-          requestId: res.getHeader('X-Request-ID'),
-        }),
-      });
+      import('./config/db').then(({ db }) => {
+        db('audit_logs').insert({
+          action: `friction.${errorKey}`,
+          target_type: 'user_request',
+          after_value: JSON.stringify({
+            url: req.url,
+            method: req.method,
+            status,
+            ip: req.ip,
+            requestId: res.getHeader('X-Request-ID'),
+          }),
+        }).catch(auditErr => console.error('[audit log error]', auditErr));
+      }).catch(importErr => console.error('[audit log import fail]', importErr));
     } catch (auditErr) {
-      console.error('[audit log error]', auditErr);
+      console.error('[audit log sync error]', auditErr);
     }
   }
 
