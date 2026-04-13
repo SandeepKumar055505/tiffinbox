@@ -120,11 +120,18 @@ router.post(
       })
       .returning('*');
 
-    // Increment promo used_count if a code was applied
+    // Increment promo used_count synchronously (before respond) — uppercase to match DB
     if (sub.promo_code) {
-      db('offers').where({ code: sub.promo_code }).increment('used_count', 1)
+      await db('offers')
+        .where({ code: sub.promo_code.toUpperCase() })
+        .increment('used_count', 1)
         .catch(err => console.error('[payment.verify] used_count increment failed:', err?.message));
     }
+
+    // Send activation notification directly (don't rely solely on pg-boss)
+    const { sendNotification, NotificationType } = await import('../services/notificationService');
+    sendNotification(req.userId!, NotificationType.SYSTEM, 'Plan confirmed! 🎉', 'Your subscription is active. Check your meal schedule on the dashboard.')
+      .catch(err => console.error('[payment.verify] notification failed:', err?.message));
 
     // Respond immediately — do NOT await event emission (blocks response on cold start)
     res.json({ success: true, subscription: updated });
@@ -164,11 +171,18 @@ router.post(
       .update({ state: 'active', updated_at: db.fn.now() })
       .returning('*');
 
-    // Increment promo used_count if a code was applied
+    // Increment promo used_count — uppercase to match DB
     if (sub.promo_code) {
-      db('offers').where({ code: sub.promo_code }).increment('used_count', 1)
+      await db('offers')
+        .where({ code: sub.promo_code.toUpperCase() })
+        .increment('used_count', 1)
         .catch(err => console.error('[activate-free] used_count increment failed:', err?.message));
     }
+
+    // Send activation notification directly
+    const { sendNotification, NotificationType } = await import('../services/notificationService');
+    sendNotification(req.userId!, NotificationType.SYSTEM, 'Plan confirmed! 🎉', 'Your subscription is active. Check your meal schedule on the dashboard.')
+      .catch(err => console.error('[activate-free] notification failed:', err?.message));
 
     res.json({ success: true, subscription: updated });
 

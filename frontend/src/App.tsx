@@ -20,6 +20,7 @@ const InvitePage = React.lazy(() => import('./pages/auth/InvitePage'));
 const DashboardPage = React.lazy(() => import('./pages/user/DashboardPage'));
 const SubscribePage = React.lazy(() => import('./pages/user/SubscribePage'));
 const SubscriptionDetailPage = React.lazy(() => import('./pages/user/SubscriptionDetailPage'));
+const SubscriptionsPage = React.lazy(() => import('./pages/user/SubscriptionsPage'));
 const WalletPage = React.lazy(() => import('./pages/user/WalletPage'));
 const SupportPage = React.lazy(() => import('./pages/user/SupportPage'));
 const ProfilePage = React.lazy(() => import('./pages/user/ProfilePage'));
@@ -112,6 +113,7 @@ export default function App() {
                 <Route element={<RequireUser><UserLayout /></RequireUser>}>
                   <Route path="/" element={<DashboardPage />} />
                   <Route path="/subscribe" element={<SubscribePage />} />
+                  <Route path="/subscriptions" element={<SubscriptionsPage />} />
                   <Route path="/subscriptions/:id" element={<SubscriptionDetailPage />} />
                   <Route path="/wallet" element={<WalletPage />} />
                   <Route path="/support" element={<SupportPage />} />

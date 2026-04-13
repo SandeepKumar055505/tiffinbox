@@ -318,8 +318,27 @@ export default function DashboardPage() {
           </section>
         )}
 
+        {/* Quick links row */}
+        <div className="grid grid-cols-3 gap-2">
+          {[
+            { to: '/subscriptions', icon: '🍱', label: 'My Plans' },
+            { to: '/wallet', icon: '💳', label: 'Wallet' },
+            { to: '/support', icon: '💬', label: 'Support' },
+          ].map(item => (
+            <Link
+              key={item.to}
+              to={item.to}
+              onClick={() => haptics.impact('light')}
+              className="flex flex-col items-center gap-2 py-4 surface-glass rounded-[1.5rem] hover:scale-[1.03] active:scale-[0.97] transition-all duration-200 ring-1 ring-white/5"
+            >
+              <span className="text-2xl">{item.icon}</span>
+              <span className="text-[11px] font-bold t-text-muted">{item.label}</span>
+            </Link>
+          ))}
+        </div>
+
         {/* Stats Row (The Sovereignty Metrics) */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 pt-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
           <Link to="/wallet" className="surface-glass p-6 sm:p-7 space-y-4 hover:scale-[1.02] transition-all duration-700 group rounded-[2.5rem] shadow-elite border-white/5 ring-1 ring-white/10 relative overflow-hidden">
             <div className="absolute top-0 right-0 p-6 text-3xl opacity-10 group-hover:scale-110 transition-transform duration-1000 group-hover:rotate-12">💳</div>
             <div className="space-y-1 relative z-10">
