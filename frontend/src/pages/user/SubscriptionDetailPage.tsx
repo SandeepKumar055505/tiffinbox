@@ -7,11 +7,13 @@ import { formatRupees } from '../../utils/pricing';
 import { haptics } from '../../context/SensorialContext';
 import { usePublicConfig } from '../../hooks/usePublicConfig';
 import ResumeConfirmModal from '../../components/shared/ResumeConfirmModal';
+import CancelRitualModal from '../../components/shared/CancelRitualModal';
 
 export default function SubscriptionDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const [showResumeModal, setShowResumeModal] = useState(false);
+  const [showCancelModal, setShowCancelModal] = useState(false);
   const [skipSuccessCell, setSkipSuccessCell] = useState<number | null>(null);
   const [retryingPayment, setRetryingPayment] = useState(false);
   const { config: publicConfig } = usePublicConfig();
@@ -98,12 +100,7 @@ export default function SubscriptionDetailPage() {
 
   const handleCancelRequest = () => {
     haptics.impact('heavy');
-    const reason = window.prompt("Why are you cancelling? (Optional)");
-    if (reason !== null) {
-      if (window.confirm("Are you sure you want to cancel this ritual? This action cannot be undone.")) {
-        cancelSub.mutate(reason);
-      }
-    }
+    setShowCancelModal(true);
   };
 
   return (
@@ -410,6 +407,17 @@ export default function SubscriptionDetailPage() {
           onClose={() => setShowResumeModal(false)}
           onConfirm={(shift) => resume.mutate(shift)}
           isPending={resume.isPending}
+        />
+      )}
+      {showCancelModal && (
+        <CancelRitualModal
+          isOpen={showCancelModal}
+          onClose={() => setShowCancelModal(false)}
+          onConfirm={(reason) => {
+            setShowCancelModal(false);
+            cancelSub.mutate(reason);
+          }}
+          isPending={cancelSub.isPending}
         />
       )}
     </div>

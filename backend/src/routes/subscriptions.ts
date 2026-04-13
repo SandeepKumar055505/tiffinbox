@@ -74,29 +74,29 @@ router.get('/:id', requireUser, async (req, res) => {
     .orderBy(['mc.date', 'mc.meal_type'])
     .select('mc.*', 'mi.name as item_name', 'mi.image_url', 'mi.description as item_description');
 
-    // Fetch alternatives and check for pending skip requests
-    const enriched = await Promise.all(cells.map(async (c: any) => {
-      const pendingRequest = await db('skip_requests')
-        .where({ meal_cell_id: c.id, status: 'pending' })
-        .first();
+  // Fetch alternatives and check for pending skip requests
+  const enriched = await Promise.all(cells.map(async (c: any) => {
+    const pendingRequest = await db('skip_requests')
+      .where({ meal_cell_id: c.id, status: 'pending' })
+      .first();
 
-      const dow = new Date(c.date).getDay();
-      const defaultRow = await db('default_menu').where({ weekday: dow, meal_type: c.meal_type }).first();
-      if (!defaultRow) return { ...c, pending_skip_request: !!pendingRequest, alternatives: [] };
-      
-      const alts = await db('default_menu_alternatives as dma')
-        .join('meal_items as mi', 'mi.id', 'dma.item_id')
-        .where({ default_menu_id: defaultRow.id })
-        .select('mi.id', 'mi.name');
+    const dow = new Date(c.date).getDay();
+    const defaultRow = await db('default_menu').where({ weekday: dow, meal_type: c.meal_type }).first();
+    if (!defaultRow) return { ...c, pending_skip_request: !!pendingRequest, alternatives: [] };
 
-      const defaultItem = await db('meal_items').where({ id: defaultRow.item_id }).select('id', 'name').first();
-      
-      return { 
-        ...c, 
-        pending_skip_request: !!pendingRequest,
-        alternatives: [defaultItem, ...alts].filter(a => a.id !== c.item_id)
-      };
-    }));
+    const alts = await db('default_menu_alternatives as dma')
+      .join('meal_items as mi', 'mi.id', 'dma.item_id')
+      .where({ default_menu_id: defaultRow.id })
+      .select('mi.id', 'mi.name');
+
+    const defaultItem = await db('meal_items').where({ id: defaultRow.item_id }).select('id', 'name').first();
+
+    return {
+      ...c,
+      pending_skip_request: !!pendingRequest,
+      alternatives: [defaultItem, ...alts].filter(a => a.id !== c.item_id)
+    };
+  }));
 
   const extras = await db('day_extras as de')
     .join('meal_items as mi', 'mi.id', 'de.item_id')
@@ -153,19 +153,19 @@ router.post('/', requireUser, validate(createSchema), async (req, res) => {
   const overlapping = await db('subscriptions')
     .where({ person_id: body.person_id })
     .whereIn('state', ['active', 'paused'])
-    .where(function() {
-      this.whereBetween('start_date', [body.start_date, body.days[body.days.length-1].date])
-          .orWhereBetween('end_date', [body.start_date, body.days[body.days.length-1].date])
-          .orWhere(function() {
-            this.where('start_date', '<=', body.start_date).andWhere('end_date', '>=', body.days[body.days.length-1].date);
-          });
+    .where(function () {
+      this.whereBetween('start_date', [body.start_date, body.days[body.days.length - 1].date])
+        .orWhereBetween('end_date', [body.start_date, body.days[body.days.length - 1].date])
+        .orWhere(function () {
+          this.where('start_date', '<=', body.start_date).andWhere('end_date', '>=', body.days[body.days.length - 1].date);
+        });
     })
     .first();
-  
+
   if (overlapping) {
-    return res.status(409).json({ 
+    return res.status(409).json({
       error_key: 'ERR_OVERLAP_SHIELD',
-      error: `Subscription Overlap: ${person.name} already has an active plan (${overlapping.start_date} to ${overlapping.end_date}) that overlaps with these dates.` 
+      error: `Subscription Overlap: ${person.name} already has an active plan (${overlapping.start_date} to ${overlapping.end_date}) that overlaps with these dates.`
     });
   }
 
@@ -216,7 +216,7 @@ router.post('/', requireUser, validate(createSchema), async (req, res) => {
       }
     }
   }
-  
+
   const { currentHourIST, isTodayIST } = await import('../lib/time');
   const nowHour = currentHourIST();
 
@@ -228,12 +228,12 @@ router.post('/', requireUser, validate(createSchema), async (req, res) => {
         lunch: settings?.lunch_cutoff_hour ?? 10,
         dinner: settings?.dinner_cutoff_hour ?? 18
       };
-      
+
       for (const meal of day.meals) {
         if (nowHour >= cutoffs[meal]) {
-          return res.status(422).json({ 
+          return res.status(422).json({
             error_key: 'ERR_CUTOFF_EXCEEDED',
-            error: `Cutoff Reached: Today's ${meal.toUpperCase()} orders closed at ${cutoffs[meal]}:00 IST. Please remove this meal from your selection or choose a starting date of tomorrow.` 
+            error: `Cutoff Reached: Today's ${meal.toUpperCase()} orders closed at ${cutoffs[meal]}:00 IST. Please remove this meal from your selection or choose a starting date of tomorrow.`
           });
         }
       }
@@ -244,12 +244,12 @@ router.post('/', requireUser, validate(createSchema), async (req, res) => {
         .where({ date: day.date, meal_type: meal })
         .count('id as cnt')
         .first();
-      
+
       const count = parseInt((currentCount as any)?.cnt ?? '0', 10);
       if (count >= maxMeals) {
-        return res.status(422).json({ 
+        return res.status(422).json({
           error_key: 'ERR_CAPACITY_FULL',
-          error: `Sold Out: Kitchen has reached maximum capacity for ${meal.toUpperCase()} on ${day.date}. Please choose another date or plan.` 
+          error: `Sold Out: Kitchen has reached maximum capacity for ${meal.toUpperCase()} on ${day.date}. Please choose another date or plan.`
         });
       }
     }
@@ -375,7 +375,7 @@ router.post('/:id/cancel', requireUser, async (req, res) => {
       NotificationType.SYSTEM,
       'Subscription Cancelled',
       `Your ritual #${sub.id} has been cancelled as requested.`,
-    ).catch(() => {});
+    ).catch(() => { });
 
     emitEvent(DomainEvent.SUBSCRIPTION_CANCELLED, {
       subscription_id: sub.id,
@@ -450,9 +450,9 @@ async function shiftRemainingCells(subId: number, trx: any) {
     .where({ subscription_id: subId })
     .where((qb: any) => {
       qb.where({ delivery_status: 'paused' })
-          .orWhere((qb2: any) => {
-            qb2.where({ delivery_status: 'scheduled' }).andWhere('date', '>=', today);
-          });
+        .orWhere((qb2: any) => {
+          qb2.where({ delivery_status: 'scheduled' }).andWhere('date', '>=', today);
+        });
     })
     .orderBy(['date', 'meal_type']);
 
@@ -460,7 +460,7 @@ async function shiftRemainingCells(subId: number, trx: any) {
 
   // 2. Identify distinct dates needing replacement
   const uniqueDates = Array.from(new Set(cells.map((c: any) => c.date))).sort();
-  
+
   // 3. Generate new date range starting from Tomorrow
   const startDate = tomorrowIST(); // Build manifest from tomorrow to ensure kitchen lead time
   const newDates = buildDateRange(startDate, uniqueDates.length, sub.week_pattern);
@@ -485,9 +485,9 @@ async function shiftRemainingCells(subId: number, trx: any) {
   // 6. Update subscription end_date
   await trx('subscriptions')
     .where({ id: subId })
-    .update({ 
+    .update({
       end_date: newDates[newDates.length - 1],
-      updated_at: db.fn.now() 
+      updated_at: db.fn.now()
     });
 }
 
@@ -588,7 +588,7 @@ router.patch('/:id/cells/:cellId/swap', requireUser, validate(z.object({
 
   const alternatives = await db('default_menu_alternatives').where({ default_menu_id: defaultRow.id }).select('item_id');
   const validIds = [defaultRow.item_id, ...alternatives.map(a => a.item_id)];
-  
+
   if (!validIds.includes(req.body.item_id)) {
     return res.status(422).json({ error: 'Invalid meal item for this slot' });
   }

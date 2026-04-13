@@ -92,7 +92,7 @@ router.post(
         NotificationType.SYSTEM,
         'Meal skip confirmed ✓',
         message,
-      ).catch(() => {});
+      ).catch(() => { });
 
       emitEvent(DomainEvent.MEAL_SKIPPED, {
         meal_cell_id: cell.id,
@@ -129,7 +129,7 @@ router.post(
         NotificationType.SYSTEM,
         'Skip request submitted ⏳',
         `We've received your skip request for ${cell.meal_type} on ${cell.date}. It is currently under review.`,
-      ).catch(() => {});
+      ).catch(() => { });
 
       return;
     }
