@@ -539,7 +539,8 @@ async function validatePromoCode(code: string, user_id: number, base_total?: num
   if (!promo) return { discount: 0 };
   if (promo.usage_limit && promo.used_count >= promo.usage_limit) return { discount: 0 };
   if (promo.min_order_amount && base_total && base_total < promo.min_order_amount) return { discount: 0 };
-  if (promo.discount_type === 'flat') return { discount: promo.value };
+  // value is stored in rupees (admin input); convert to paise to match pricing system
+  if (promo.discount_type === 'flat') return { discount: promo.value * 100 };
   if (promo.discount_type === 'percent' && base_total) {
     return { discount: Math.round(base_total * promo.value / 100) };
   }

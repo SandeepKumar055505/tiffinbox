@@ -157,7 +157,8 @@ export default function SubscribePage() {
 
   const promoDiscount = useMemo(() => {
     if (!promoResult) return 0;
-    if (promoResult.discount_type === 'flat') return promoResult.value;
+    // value from API is in rupees; pricing util works in paise → multiply by 100
+    if (promoResult.discount_type === 'flat') return promoResult.value * 100;
     const subtotal = baseSnapshot.base_total - baseSnapshot.discount_total;
     return Math.round(subtotal * promoResult.value / 100);
   }, [promoResult, baseSnapshot]);
