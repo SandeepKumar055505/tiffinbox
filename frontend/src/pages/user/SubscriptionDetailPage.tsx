@@ -1,19 +1,19 @@
 import React, { useState } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, Link, useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { subscriptions as subsApi, skip as skipApi } from '../../services/api';
+import { subscriptions as subsApi, skip as skipApi, payments as paymentsApi } from '../../services/api';
 import api from '../../services/api';
 import { formatRupees } from '../../utils/pricing';
-import { useSensorial, haptics } from '../../context/SensorialContext';
+import { haptics } from '../../context/SensorialContext';
 import { usePublicConfig } from '../../hooks/usePublicConfig';
-import SmartPauseModal from '../../components/shared/SmartPauseModal';
 import ResumeConfirmModal from '../../components/shared/ResumeConfirmModal';
 
 export default function SubscriptionDetailPage() {
   const { id } = useParams<{ id: string }>();
-  const [showPauseModal, setShowPauseModal] = useState(false);
+  const navigate = useNavigate();
   const [showResumeModal, setShowResumeModal] = useState(false);
-  const sensorial = useSensorial();
+  const [skipSuccessCell, setSkipSuccessCell] = useState<number | null>(null);
+  const [retryingPayment, setRetryingPayment] = useState(false);
   const { config: publicConfig } = usePublicConfig();
   // cell IDs that have a pending admin-approval skip
   const [pendingSkipCells, setPendingSkipCells] = useState<Set<number>>(new Set());
@@ -27,26 +27,19 @@ export default function SubscriptionDetailPage() {
     mutationFn: (meal_cell_id: number) => skipApi.request(meal_cell_id),
     onSuccess: (res, meal_cell_id) => {
       const data = res.data;
-      if (data.status === 'pending') {
-        setPendingSkipCells(prev => new Set([...prev, meal_cell_id]));
-      } else if (data.status === 'soul_swap') {
-        haptics.heavy();
-        sensorial.confirm({
-          title: 'Soul Swap Manifested',
-          message: 'Your late skip has been recovered through the Covenant and converted into a Meal Voucher. You can manifest this meal on a future date from your dashboard vault.',
-          confirmText: 'Go to Dashboard',
-          cancelText: 'Stay Here'
-        }).then(res => { if (res) window.location.href = '/'; });
-        refetch();
-      } else {
-        refetch();
+      haptics.success();
+      setPendingSkipCells(prev => new Set([...prev, meal_cell_id]));
+      setSkipSuccessCell(meal_cell_id);
+      setTimeout(() => setSkipSuccessCell(null), 4000);
+      if (data.status === 'soul_swap') {
+        // Voucher issued — refresh everything
+        qc.invalidateQueries({ queryKey: ['vouchers'] });
+        qc.invalidateQueries({ queryKey: ['wallet-history'] });
       }
+      refetch();
       qc.invalidateQueries({ queryKey: ['today-meals'] });
-      qc.invalidateQueries({ queryKey: ['wallet-history'] });
-      qc.invalidateQueries({ queryKey: ['vouchers'] });
     },
     onError: () => {
-      // Global axios interceptor handles the gourmet error modal automatically
       haptics.error();
     },
   });
@@ -162,54 +155,78 @@ export default function SubscriptionDetailPage() {
         )}
 
         {/* Actions */}
-        <section className="animate-glass" style={{ animationDelay: '0.2s' }}>
-          {(sub.state === 'active' || sub.state === 'partially_skipped') && (
-            <button
-              onClick={() => { haptics.impact('light'); setShowPauseModal(true); }}
-              disabled={publicConfig?.features?.pause_enabled === false}
-              className="w-full surface-glass text-center !py-4 rounded-2xl border border-white/5 hover:border-text-muted/50 transition-colors disabled:opacity-20"
-            >
-              <span className="text-[11px] font-bold uppercase tracking-widest text-text-muted">
-                {publicConfig?.features?.pause_enabled === false ? 'Pausing Temporarily Restricted' : 'Pause or Reschedule Subscription'}
-              </span>
-            </button>
-          )}
-
+        <section className="animate-glass space-y-3" style={{ animationDelay: '0.2s' }}>
+          {/* Paused plan — resume */}
           {sub.state === 'paused' && (
-            <div className="surface-liquid border border-yellow-500/20 bg-yellow-500/5 p-6 sm:p-8 rounded-[2rem] space-y-6 shadow-elite">
-              <div className="space-y-2">
-                <div className="flex items-center gap-3">
-                   <span className="w-2.5 h-2.5 rounded-full bg-yellow-500 animate-pulse" />
-                   <p className="text-label-caps !text-yellow-600 font-black !text-[10px]">Plan Interval Paused</p>
-                </div>
-                {sub.pause_reason && <p className="text-h3 !text-lg italic opacity-70">"{sub.pause_reason}"</p>}
+            <div className="surface-liquid border border-yellow-500/20 bg-yellow-500/5 p-5 rounded-[1.8rem] space-y-4 shadow-elite">
+              <div className="flex items-center gap-3">
+                <span className="w-2.5 h-2.5 rounded-full bg-yellow-500 animate-pulse" />
+                <p className="text-[11px] font-black uppercase tracking-widest text-yellow-500">Plan paused</p>
               </div>
-              <div className="flex flex-col sm:flex-row gap-4">
-                <button
-                  onClick={() => { haptics.impact('medium'); setShowResumeModal(true); }}
-                  className="flex-1 btn-primary !bg-white !text-black !py-4 rounded-2xl font-black text-[10px] tracking-widest uppercase hover:scale-105 active:scale-95 transition-all shadow-glow-subtle"
-                >
-                  Resume Subcription
-                </button>
-                <button
-                  onClick={() => { haptics.impact('light'); setShowPauseModal(true); }}
-                  className="flex-1 btn-ghost border border-white/10 !py-4 rounded-2xl font-black text-[10px] tracking-widest uppercase hover:bg-white/5 active:scale-95 transition-all"
-                >
-                  Modify Reschedule
-                </button>
-              </div>
+              {sub.pause_reason && (
+                <p className="text-[13px] t-text-muted italic">"{sub.pause_reason}"</p>
+              )}
+              <button
+                onClick={() => { haptics.impact('medium'); setShowResumeModal(true); }}
+                className="w-full btn-primary !py-3.5 rounded-[1.2rem] font-black text-[12px] tracking-widest uppercase"
+              >
+                Resume plan →
+              </button>
             </div>
           )}
 
+          {/* Pending / failed payment — retry Razorpay */}
           {(sub.state === 'draft' || sub.state === 'pending_payment' || sub.state === 'failed_payment') && (
-            <Link
-              to="/subscribe"
-              onClick={() => haptics.impact('heavy')}
-              className="w-full block text-center bg-accent text-white py-4 rounded-2xl font-bold uppercase tracking-widest hover:opacity-90 transition-opacity"
+            <button
+              onClick={async () => {
+                haptics.impact('heavy');
+                setRetryingPayment(true);
+                try {
+                  const orderRes = await paymentsApi.createOrder(sub.id);
+                  const { order_id, amount, key_id } = orderRes.data;
+                  const Razorpay = (window as any).Razorpay;
+                  if (!Razorpay) { alert('Payment window could not load. Please refresh.'); return; }
+                  const rz = new Razorpay({
+                    key: key_id, amount, currency: 'INR', order_id,
+                    name: 'TiffinBox',
+                    description: `${sub.plan_days}-day meal plan`,
+                    theme: { color: '#14b8a6' },
+                    handler: async (response: any) => {
+                      try {
+                        await paymentsApi.verify({ subscription_id: sub.id, ...response });
+                        qc.invalidateQueries({ queryKey: ['subscriptions'] });
+                        qc.invalidateQueries({ queryKey: ['subscription', id] });
+                        navigate('/subscriptions');
+                      } catch {
+                        refetch();
+                      }
+                    },
+                    modal: { ondismiss: () => setRetryingPayment(false) },
+                  });
+                  rz.open();
+                } catch (err) {
+                  setRetryingPayment(false);
+                }
+              }}
+              disabled={retryingPayment}
+              className="w-full flex items-center justify-center gap-2 bg-accent text-white py-4 rounded-[1.2rem] font-bold text-[14px] uppercase tracking-widest hover:opacity-90 disabled:opacity-60 transition-opacity active:scale-[0.98]"
             >
-              Complete Order →
-            </Link>
+              {retryingPayment ? (
+                <><span className="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin" /> Processing…</>
+              ) : (
+                'Complete payment →'
+              )}
+            </button>
           )}
+
+          {/* Back to My Plans */}
+          <Link
+            to="/subscriptions"
+            onClick={() => qc.invalidateQueries({ queryKey: ['subscriptions'] })}
+            className="w-full flex items-center justify-center py-3 text-[12px] font-bold t-text-muted hover:t-text-primary transition-colors"
+          >
+            ← All my plans
+          </Link>
         </section>
 
         {/* Meal schedule */}
@@ -301,44 +318,42 @@ export default function SubscriptionDetailPage() {
                                   Swap ▾
                                 </button>
                                 <div className="absolute right-0 top-full mt-1 w-48 surface-elevated rounded-xl shadow-2xl border border-white/10 hidden group-hover/swap:block z-30 overflow-hidden animate-glass">
-                                   <div className="p-2 space-y-1">
-                                      <p className="px-2 py-1 text-[8px] font-black uppercase tracking-widest opacity-40">Choose Alternative</p>
-                                      {cell.alternatives.map((alt: any) => (
-                                        <button 
-                                          key={alt.id}
-                                          onClick={() => { haptics.success(); swapMeal.mutate({ cellId: cell.id, itemId: alt.id }); }}
-                                          className="w-full text-left px-3 py-2 rounded-lg text-xs font-bold hover:bg-white/5 transition-colors t-text"
-                                        >
-                                          {alt.name}
-                                        </button>
-                                      ))}
-                                   </div>
+                                  <div className="p-2 space-y-1">
+                                    <p className="px-2 py-1 text-[8px] font-black uppercase tracking-widest opacity-40">Choose Alternative</p>
+                                    {cell.alternatives.map((alt: any) => (
+                                      <button
+                                        key={alt.id}
+                                        onClick={() => { haptics.success(); swapMeal.mutate({ cellId: cell.id, itemId: alt.id }); }}
+                                        className="w-full text-left px-3 py-2 rounded-lg text-xs font-bold hover:bg-white/5 transition-colors t-text"
+                                      >
+                                        {alt.name}
+                                      </button>
+                                    ))}
+                                  </div>
                                 </div>
                               </div>
                             )}
                             <button
-                              onClick={async () => {
-                                haptics.impact('light');
-                                if (await sensorial.confirm({ 
-                                  title: 'Skip Selection', 
-                                  message: 'Are you sure you wish to skip this gourmet meal? This action is processed by our prep-timers instantly.',
-                                  confirmText: 'Yes, Skip',
-                                  type: 'danger' 
-                                })) {
-                                  skipMeal.mutate(cell.id);
-                                }
+                              onClick={() => {
+                                haptics.impact('medium');
+                                skipMeal.mutate(cell.id);
                               }}
                               disabled={skipMeal.isPending}
                               className="text-[10px] font-black text-orange-500 hover:text-white uppercase tracking-widest px-4 py-2 rounded-xl disabled:opacity-50 transition-all border border-orange-500/10 hover:bg-orange-500 active:scale-95"
                             >
-                              Skip
+                              {skipMeal.isPending ? '…' : 'Skip'}
                             </button>
                           </div>
                         )}
-                        {isSkippable && pendingSkipCells.has(cell.id) && (
-                          <span className="shrink-0 text-[9px] font-bold text-yellow-500 uppercase tracking-widest px-2 py-1 rounded bg-yellow-500/10 border border-yellow-500/20 animate-pulse">
-                            Pending
-                          </span>
+                        {pendingSkipCells.has(cell.id) && (
+                          <div className="shrink-0 text-right space-y-0.5">
+                            <span className="block text-[9px] font-bold text-yellow-500 uppercase tracking-widest px-2 py-1 rounded bg-yellow-500/10 border border-yellow-500/20 animate-pulse">
+                              Skip requested
+                            </span>
+                            {skipSuccessCell === cell.id && (
+                              <p className="text-[8px] t-text-muted opacity-60">We'll update you shortly</p>
+                            )}
+                          </div>
                         )}
                         {!cell.is_included && cell.delivery_status === 'skipped' && (
                           <span className="shrink-0 text-[10px] font-bold text-text-muted uppercase tracking-widest">Skipped</span>

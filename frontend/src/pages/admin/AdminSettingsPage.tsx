@@ -38,6 +38,7 @@ export default function AdminSettingsPage() {
       dinner_enabled: !!form.dinner_enabled,
       delivery_otp_enabled: !!form.delivery_otp_enabled,
       ratings_enabled: !!form.ratings_enabled,
+      user_cancel_enabled: !!form.user_cancel_enabled,
     }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['admin-settings'] });
@@ -185,6 +186,7 @@ export default function AdminSettingsPage() {
             { key: 'dinner_enabled', label: 'Dinner enabled' },
             { key: 'delivery_otp_enabled', label: 'Delivery OTP' },
             { key: 'ratings_enabled', label: 'Meal ratings' },
+            { key: 'user_cancel_enabled', label: 'Allow users to cancel plans' },
           ].map(f => (
             <label key={f.key} className="flex items-center gap-2 cursor-pointer">
               <input type="checkbox" checked={!!form[f.key]}

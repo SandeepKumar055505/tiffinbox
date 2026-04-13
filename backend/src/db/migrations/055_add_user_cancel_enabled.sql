@@ -1,0 +1,1 @@
+ALTER TABLE app_settings ADD COLUMN IF NOT EXISTS user_cancel_enabled BOOLEAN NOT NULL DEFAULT TRUE;

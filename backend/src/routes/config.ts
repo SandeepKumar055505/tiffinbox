@@ -57,6 +57,7 @@ router.get('/public', async (_req, res) => {
       delivery_otp_enabled: settings?.delivery_otp_enabled ?? true,
       ratings_enabled: settings?.ratings_enabled ?? true,
       pause_enabled: settings?.user_pause_enabled ?? true,
+      cancel_enabled: settings?.user_cancel_enabled ?? true,
     },
     streak_rewards: streakRewards.map((r: any) => ({
       streak_days: r.streak_days,

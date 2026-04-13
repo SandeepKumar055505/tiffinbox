@@ -22,6 +22,7 @@ export interface PublicConfig {
     delivery_otp_enabled: boolean;
     ratings_enabled: boolean;
     pause_enabled: boolean;
+    cancel_enabled: boolean;
   };
   streak_rewards: Array<{
     streak_days: number;

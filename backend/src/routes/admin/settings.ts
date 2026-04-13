@@ -34,6 +34,7 @@ router.patch(
     dinner_enabled: z.boolean().optional(),
     delivery_otp_enabled: z.boolean().optional(),
     ratings_enabled: z.boolean().optional(),
+    user_cancel_enabled: z.boolean().optional(),
     global_banner_text: z.string().max(500).optional(),
     global_banner_active: z.boolean().optional(),
     geo_check_enabled: z.boolean().optional(),
@@ -46,7 +47,7 @@ router.patch(
       'max_skip_days_per_week', 'max_grace_skips_per_week', 'max_persons_per_user',
       'signup_wallet_credit', 'referral_reward_amount',
       'breakfast_enabled', 'lunch_enabled', 'dinner_enabled',
-      'delivery_otp_enabled', 'ratings_enabled',
+      'delivery_otp_enabled', 'ratings_enabled', 'user_cancel_enabled',
       'global_banner_text', 'global_banner_active',
       'geo_check_enabled', 'serviceable_pincodes',
     ];
