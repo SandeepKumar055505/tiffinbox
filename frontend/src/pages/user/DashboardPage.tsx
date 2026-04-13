@@ -119,19 +119,19 @@ export default function DashboardPage() {
       <div className={`absolute bottom-[-10%] -right-20 w-[60rem] h-[60rem] bg-orange-500/5 blur-[220px] rounded-full animate-mesh pointer-events-none transition-all duration-[3000ms] style={{ animationDelay: '5s' }}`} />
 
       <div className="max-w-2xl mx-auto px-6 space-y-10 relative z-10">
-        {/* Apple Music Header */}
-        <header className="flex items-end justify-between pt-6 pb-3 border-b border-border/10 mb-6 relative">
-          <div className="space-y-1">
-            <p className="text-label-caps !text-[11px] font-black tracking-widest uppercase transition-colors" style={{ color: atmosphere.accent }}>{atmosphere.label}</p>
-            <h1 className="text-h1 !text-[34px] font-extrabold tracking-tight">Dashboard</h1>
+        {/* Header */}
+        <header className="flex items-center justify-between pt-5 pb-3 border-b border-border/10 mb-6 relative gap-3">
+          <div className="min-w-0 flex-1">
+            <p className="text-[10px] sm:text-[11px] font-black tracking-widest uppercase truncate transition-colors" style={{ color: atmosphere.accent }}>{atmosphere.label}</p>
+            <h1 className="text-[26px] sm:text-[32px] font-extrabold tracking-tight leading-none mt-0.5">Dashboard</h1>
           </div>
-          <div className="flex items-center gap-3 pb-1">
+          <div className="flex items-center gap-2 sm:gap-3 shrink-0">
             <ThemeToggle />
             <NotificationPanel />
-            <Link 
-              to="/profile" 
+            <Link
+              to="/profile"
               onClick={() => haptics.impact('light')}
-              className="w-10 h-10 rounded-2xl bg-accent text-white flex items-center justify-center font-bold text-lg hover:rotate-6 transition-all shadow-elite"
+              className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl sm:rounded-2xl bg-accent text-white flex items-center justify-center font-bold text-base sm:text-lg hover:rotate-6 transition-all shadow-elite"
             >
               {user?.name?.[0]?.toUpperCase()}
             </Link>
