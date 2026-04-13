@@ -204,8 +204,12 @@ router.patch(
   requireAdmin,
   validate(z.object({
     is_active: z.boolean().optional(),
+    description: z.string().optional(),
+    discount_type: z.enum(['flat', 'percent']).optional(),
+    value: z.number().int().positive().optional(),
+    valid_from: z.string().optional(),
     valid_to: z.string().optional(),
-    usage_limit: z.number().int().positive().optional(),
+    usage_limit: z.number().int().positive().nullable().optional(),
   })),
   async (req, res) => {
     const [row] = await db('offers').where({ id: req.params.id }).update(req.body).returning('*');

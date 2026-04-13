@@ -120,6 +120,12 @@ router.post(
       })
       .returning('*');
 
+    // Increment promo used_count if a code was applied
+    if (sub.promo_code) {
+      db('offers').where({ code: sub.promo_code }).increment('used_count', 1)
+        .catch(err => console.error('[payment.verify] used_count increment failed:', err?.message));
+    }
+
     // Respond immediately — do NOT await event emission (blocks response on cold start)
     res.json({ success: true, subscription: updated });
 
@@ -157,6 +163,12 @@ router.post(
       .where({ id: sub.id })
       .update({ state: 'active', updated_at: db.fn.now() })
       .returning('*');
+
+    // Increment promo used_count if a code was applied
+    if (sub.promo_code) {
+      db('offers').where({ code: sub.promo_code }).increment('used_count', 1)
+        .catch(err => console.error('[activate-free] used_count increment failed:', err?.message));
+    }
 
     res.json({ success: true, subscription: updated });
 

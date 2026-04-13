@@ -17,6 +17,7 @@ export default function AdminSettingsPage() {
   const [showOfferForm, setShowOfferForm] = useState(false);
   const [savedFlash, setSavedFlash] = useState(false);
   const [broadcastSent, setBroadcastSent] = useState(false);
+  const [editingOffer, setEditingOffer] = useState<any | null>(null);
 
   useEffect(() => {
     if (data?.settings) setForm(data.settings);
@@ -91,6 +92,15 @@ export default function AdminSettingsPage() {
   const toggleOffer = useMutation({
     mutationFn: ({ id, is_active }: { id: number; is_active: boolean }) => adminSettings.updateOffer(id, { is_active }),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['admin-offers'] }),
+  });
+
+  const saveOfferEdit = useMutation({
+    mutationFn: ({ id, data }: { id: number; data: any }) => adminSettings.updateOffer(id, {
+      ...data,
+      value: Number(data.value),
+      usage_limit: data.usage_limit ? Number(data.usage_limit) : null,
+    }),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['admin-offers'] }); setEditingOffer(null); },
   });
 
   return (
@@ -325,21 +335,114 @@ export default function AdminSettingsPage() {
           </div>
         )}
 
-        <div className="space-y-2">
+        <div className="space-y-3">
           {(offers as any[]).map((o: any) => (
-            <div key={o.id} className="flex items-center gap-3 text-sm">
-              <span className={`font-mono font-bold ${o.is_active ? 'text-teal-500' : 't-text-faint line-through'}`}>{o.code}</span>
-              <span className="t-text-muted text-xs flex-1">
-                {o.discount_type === 'flat' ? `₹${o.value} off` : `${o.value}% off`}
-                {o.usage_limit ? ` · ${o.used_count}/${o.usage_limit} used` : ` · ${o.used_count} used`}
-                {' · '}{o.valid_to}
-              </span>
-              <button
-                onClick={() => toggleOffer.mutate({ id: o.id, is_active: !o.is_active })}
-                className={`text-xs px-2 py-0.5 rounded ${o.is_active ? 'bg-red-500/20 text-red-400' : 'bg-teal-500/20 text-teal-400'}`}
-              >
-                {o.is_active ? 'Disable' : 'Enable'}
-              </button>
+            <div key={o.id} className="glass rounded-xl overflow-hidden">
+              {/* Row */}
+              <div className="flex items-center gap-3 px-3 py-2.5 text-sm">
+                <span className={`font-mono font-bold text-sm shrink-0 ${o.is_active ? 'text-teal-500' : 't-text-faint line-through'}`}>{o.code}</span>
+                <span className="t-text-muted text-xs flex-1 min-w-0 truncate">
+                  {o.discount_type === 'flat' ? `₹${o.value} off` : `${o.value}% off`}
+                  {' · '}
+                  <span className={o.usage_limit && o.used_count >= o.usage_limit ? 'text-red-400 font-bold' : ''}>
+                    {o.usage_limit ? `${o.used_count}/${o.usage_limit} used` : `${o.used_count} used`}
+                  </span>
+                  {' · '}{o.valid_to?.slice(0, 10)}
+                </span>
+                <div className="flex items-center gap-1.5 shrink-0">
+                  <button
+                    onClick={() => setEditingOffer(editingOffer?.id === o.id ? null : { ...o, usage_limit: o.usage_limit ?? '' })}
+                    className="text-xs px-2 py-0.5 rounded bg-gray-700/50 text-gray-300 hover:text-white"
+                  >
+                    Edit
+                  </button>
+                  <button
+                    onClick={() => toggleOffer.mutate({ id: o.id, is_active: !o.is_active })}
+                    className={`text-xs px-2 py-0.5 rounded ${o.is_active ? 'bg-red-500/20 text-red-400 hover:bg-red-500/30' : 'bg-teal-500/20 text-teal-400 hover:bg-teal-500/30'}`}
+                  >
+                    {o.is_active ? 'Disable' : 'Enable'}
+                  </button>
+                </div>
+              </div>
+
+              {/* Inline edit form */}
+              {editingOffer?.id === o.id && (
+                <div className="border-t border-border/10 px-3 py-3 space-y-3 bg-bg-subtle/30">
+                  <div className="grid grid-cols-2 gap-2">
+                    <div className="space-y-1">
+                      <p className="text-[10px] t-text-faint uppercase tracking-wide">Description</p>
+                      <input
+                        value={editingOffer.description}
+                        onChange={e => setEditingOffer((f: any) => ({ ...f, description: e.target.value }))}
+                        className="w-full glass border-transparent rounded px-2 py-1.5 t-text text-xs outline-none focus:border-teal-500"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <p className="text-[10px] t-text-faint uppercase tracking-wide">Type</p>
+                      <select
+                        value={editingOffer.discount_type}
+                        onChange={e => setEditingOffer((f: any) => ({ ...f, discount_type: e.target.value }))}
+                        className="w-full glass border-transparent rounded px-2 py-1.5 t-text text-xs outline-none"
+                      >
+                        <option value="flat">Flat (₹)</option>
+                        <option value="percent">Percent (%)</option>
+                      </select>
+                    </div>
+                    <div className="space-y-1">
+                      <p className="text-[10px] t-text-faint uppercase tracking-wide">Value</p>
+                      <input
+                        type="number" min={1}
+                        value={editingOffer.value}
+                        onChange={e => setEditingOffer((f: any) => ({ ...f, value: e.target.value }))}
+                        className="w-full glass border-transparent rounded px-2 py-1.5 t-text text-xs outline-none focus:border-teal-500"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <p className="text-[10px] t-text-faint uppercase tracking-wide">Usage limit</p>
+                      <input
+                        type="number" min={1}
+                        value={editingOffer.usage_limit}
+                        onChange={e => setEditingOffer((f: any) => ({ ...f, usage_limit: e.target.value }))}
+                        placeholder="Unlimited"
+                        className="w-full glass border-transparent rounded px-2 py-1.5 t-text text-xs outline-none focus:border-teal-500"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <p className="text-[10px] t-text-faint uppercase tracking-wide">Valid from</p>
+                      <input
+                        type="date"
+                        value={editingOffer.valid_from?.slice(0, 10)}
+                        onChange={e => setEditingOffer((f: any) => ({ ...f, valid_from: e.target.value }))}
+                        className="w-full glass border-transparent rounded px-2 py-1.5 t-text text-xs outline-none"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <p className="text-[10px] t-text-faint uppercase tracking-wide">Valid to</p>
+                      <input
+                        type="date"
+                        value={editingOffer.valid_to?.slice(0, 10)}
+                        onChange={e => setEditingOffer((f: any) => ({ ...f, valid_to: e.target.value }))}
+                        className="w-full glass border-transparent rounded px-2 py-1.5 t-text text-xs outline-none"
+                      />
+                    </div>
+                  </div>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => saveOfferEdit.mutate({ id: o.id, data: editingOffer })}
+                      disabled={saveOfferEdit.isPending}
+                      className="bg-teal-500 hover:bg-teal-400 disabled:opacity-50 text-white text-xs px-3 py-1.5 rounded-lg font-bold"
+                    >
+                      {saveOfferEdit.isPending ? 'Saving…' : 'Save changes'}
+                    </button>
+                    <button
+                      onClick={() => setEditingOffer(null)}
+                      className="text-xs px-3 py-1.5 rounded-lg glass t-text-muted hover:t-text"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
           ))}
           {(offers as any[]).length === 0 && <p className="text-xs t-text-faint">No promo codes yet</p>}
