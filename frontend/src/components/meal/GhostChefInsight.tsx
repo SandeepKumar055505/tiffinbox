@@ -16,7 +16,7 @@ const INSIGHTS: Insight[] = [
   { category: 'VITALITY', text: "Streaks unlock rewards at 7, 14, and 30 days. Maintain your momentum.", persona: "Ritual Guardian" },
   { category: 'MASTERY', text: "Tap any dish to explore alternatives. Your palate, your sovereignty.", persona: "Culinary Guide" },
   { category: 'LOGISTICS', text: "Deselect all meals for a day to claim it as a full Day-Off.", persona: "Ghost Chef" },
-  { category: 'RITUAL', text: "Cutoffs: Breakfast 10pm, Lunch 8am, Dinner 2pm. Plan your rhythm.", persona: "Timekeeper" },
+  { category: 'RITUAL', text: "Cutoffs: Breakfast 10am, Lunch 1pm, Dinner 6pm. Plan your rhythm.", persona: "Timekeeper" },
   { category: 'VITALITY', text: "Your health is a covenant between your palate and your future.", persona: "Soulful Insight" },
   { category: 'MASTERY', text: "Most users alternate proteins to prevent palate fatigue.", persona: "Flavor Architect" },
 ];

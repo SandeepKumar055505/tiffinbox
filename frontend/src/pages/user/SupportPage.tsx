@@ -13,7 +13,18 @@ import {
   Package,
   CreditCard,
   ChefHat,
-  X
+  X,
+  MapPin,
+  CalendarX,
+  Smartphone,
+  Box,
+  Tag,
+  Utensils,
+  Heart,
+  PauseCircle,
+  IndianRupee,
+  Users,
+  AlertTriangle
 } from 'lucide-react';
 import { support as supportApi } from '../../services/api';
 import { SupportTicket } from '../../types';
@@ -30,10 +41,118 @@ interface Message {
 }
 
 const CONCIERGE_CHIPS = [
-  { id: 'delivery', label: 'Delivery Signal', icon: Package, subject: 'Delivery Inquiry', template: 'I am inquiring about the manifestation of my current delivery...' },
-  { id: 'quality', label: 'Culinary Quality', icon: ChefHat, subject: 'Food Quality Feedback', template: 'I wish to share insights regarding the artisanal quality of my recent meal...' },
-  { id: 'payment', label: 'Fiscal Support', icon: CreditCard, subject: 'Payment/Billing Issue', template: 'I require assistance with the fiscal processing of my subscription...' },
-  { id: 'other', label: 'Other Rituals', icon: HelpCircle, subject: 'General Support', template: 'I have a unique inquiry regarding the TiffinBox experience...' },
+  { 
+    id: 'late', 
+    label: 'Khaana Late Hai', 
+    icon: Clock, 
+    subject: 'Late Delivery', 
+    template: 'Hi, mera aaj ka khaana abhi tak nahi aaya. Please check karke batao kab tak aayega?' 
+  },
+  { 
+    id: 'missing', 
+    label: 'Kuch Missing Hai', 
+    icon: Package, 
+    subject: 'Missing Item', 
+    template: 'Hi, mere tiffin mein [Item Name] missing hai. Please help!' 
+  },
+  { 
+    id: 'wrong', 
+    label: 'Galat Order', 
+    icon: AlertTriangle, 
+    subject: 'Wrong Item Delivered', 
+    template: 'Hi, mujhe galat order deliver ho gaya hai. Maine [Item A] manga tha par [Item B] aaya hai.' 
+  },
+  { 
+    id: 'quality', 
+    label: 'Taste ya Quality', 
+    icon: ChefHat, 
+    subject: 'Food Quality', 
+    template: 'Hi, aaj ke khaane ka taste sahi nahi tha. [Explain karein kya problem thi]' 
+  },
+  { 
+    id: 'packing', 
+    label: 'Packing Issue', 
+    icon: Box, 
+    subject: 'Packaging Feedback', 
+    template: 'Hi, aaj tiffin ki packing sahi nahi thi. [Explain: leakage tha ya box toota tha]' 
+  },
+  { 
+    id: 'payment', 
+    label: 'Paisa / Refund', 
+    icon: CreditCard, 
+    subject: 'Payment/Refund Issue', 
+    template: 'Mere account se paise kat gaye par order confirm nahi hua. Please refund check karo.' 
+  },
+  { 
+    id: 'refund_status', 
+    label: 'Refund Kab Aayega?', 
+    icon: IndianRupee, 
+    subject: 'Refund Status Inquiry', 
+    template: 'Maine refund request ki thi, par abhi tak paise wapas nahi aaye. Kab tak aayenge?' 
+  },
+  { 
+    id: 'promo', 
+    label: 'Offer / Coupon', 
+    icon: Tag, 
+    subject: 'Promo Code Issue', 
+    template: 'Mera coupon code kaam nahi kar raha hai. [Explain: apply nahi ho raha ya error aa raha hai]' 
+  },
+  { 
+    id: 'address', 
+    label: 'Address Change', 
+    icon: MapPin, 
+    subject: 'Change Delivery Address', 
+    template: 'Hi, mujhe apna delivery address change karwana hai. Naya address: [Naya Address Likhein]' 
+  },
+  { 
+    id: 'skip', 
+    label: 'Skip Today', 
+    icon: CalendarX, 
+    subject: "Skip Today's Meal", 
+    template: 'Mujhe aaj ka tiffin nahi chahiye. Please skip kar do.' 
+  },
+  { 
+    id: 'pause', 
+    label: 'Pause Sub', 
+    icon: PauseCircle, 
+    subject: 'Pause Subscription', 
+    template: 'Mujhe apni subscription kuch dino ke liye pause karni hai. [Dates batayein]' 
+  },
+  { 
+    id: 'diet', 
+    label: 'Diet / Allergy', 
+    icon: Utensils, 
+    subject: 'Dietary Requirements', 
+    template: 'Hi, mujhe [Allergy/Extra requirement] hai, please chef ko inform kar do.' 
+  },
+  { 
+    id: 'bulk', 
+    label: 'Bulk / Party', 
+    icon: Users, 
+    subject: 'Bulk Order Inquiry', 
+    template: 'Mujhe ek badi party/office event ke liye order karna hai. [Detail deín]' 
+  },
+  { 
+    id: 'app', 
+    label: 'App Issue', 
+    icon: Smartphone, 
+    subject: 'App/Technical Problem', 
+    template: 'App mein problem aa rahi hai. Screen stuck hai ya loading nahi ho rahi. [Explain setup]' 
+  },
+  { 
+    id: 'feedback', 
+    label: 'Feedback', 
+    icon: Heart, 
+    subject: 'Appreciation / Suggestion', 
+    template: 'Hi, mujhe TiffinBox bahut pasand aaya! [Write your message here]' 
+  },
+  { 
+    id: 'other', 
+    label: 'Kuch Aur Help', 
+    icon: HelpCircle, 
+    subject: 'General Inquiry', 
+    template: 'Hi, mujhe ek problem hai jo list mein nahi hai. Please help!' 
+  },
 ];
 
 export default function SupportPage() {
@@ -71,7 +190,7 @@ export default function SupportPage() {
       haptics.success();
       qc.invalidateQueries({ queryKey: ['support-tickets'] });
     },
-    onError: () => showError({ title: 'Manifest Error', message: 'Failed to manifest your request.' }),
+    onError: () => showError({ title: 'Error', message: 'Message send nahi ho raha. Network check karien?' }),
   });
 
   const sendReply = useMutation({
@@ -83,7 +202,7 @@ export default function SupportPage() {
       qc.invalidateQueries({ queryKey: ['support-thread', selectedId] });
       qc.invalidateQueries({ queryKey: ['support-tickets'] });
     },
-    onError: () => showError({ title: 'Transmission Error', message: 'Failed to transmit your signal.' }),
+    onError: () => showError({ title: 'Error', message: 'Reply send nahi hui. Please try again.' }),
   });
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -97,7 +216,7 @@ export default function SupportPage() {
       setAttachment(res.data.url);
       haptics.light();
     } catch {
-      setUploadError('Upload failed — please select a smaller artifact.');
+      setUploadError('Upload fail ho gaya — please try small file.');
     } finally {
       setIsUploading(false);
     }
@@ -134,7 +253,7 @@ export default function SupportPage() {
         exit={{ opacity: 0, scale: 0.98 }}
         className="fixed inset-0 z-[100] bg-bg-primary flex flex-col h-[100dvh]"
       >
-        {/* Thread Header Ritual */}
+        {/* Thread Header */}
         <header className="px-6 pt-4 pb-4 bg-bg-primary/80 backdrop-blur-2xl border-b border-white/5 flex items-center gap-4 sticky top-0 z-30">
           <button 
             onClick={() => { setSelectedId(null); haptics.light(); }}
@@ -171,12 +290,12 @@ export default function SupportPage() {
                     <p className="text-sm font-medium leading-relaxed">{m.message}</p>
                     {m.attachment_url && (
                       <div className="mt-3 rounded-2xl overflow-hidden shadow-inner ring-1 ring-white/10 max-w-sm">
-                        <img src={m.attachment_url} alt="Manifested Attachment" className="w-full h-auto object-cover max-h-64" />
+                        <img src={m.attachment_url} alt="Attachment" className="w-full h-auto object-cover max-h-64" />
                       </div>
                     )}
                   </div>
                   <div className={`flex items-center gap-2 mt-2 px-2 opacity-30 text-[9px] font-bold uppercase tracking-widest ${isUser ? 'justify-end' : 'justify-start'}`}>
-                    <span>{isUser ? 'You' : 'Artisan'}</span>
+                    <span>{isUser ? 'Aap' : 'TiffinBox Help'}</span>
                     <span className="w-0.5 h-0.5 rounded-full bg-current" />
                     <span>{getTime(m)}</span>
                   </div>
@@ -187,7 +306,7 @@ export default function SupportPage() {
           <div ref={threadEnd} />
         </div>
 
-        {/* Input Zenith Cluster */}
+        {/* Input Area */}
         <footer className="px-6 pt-6 pb-28 bg-bg-primary/80 backdrop-blur-3xl border-t border-white/5 safe-area-bottom">
           {thread.ticket.status !== 'resolved' ? (
             <div className="space-y-4">
@@ -209,7 +328,7 @@ export default function SupportPage() {
                 <div className="flex-1 relative">
                   <input
                     className="w-full surface-glass border-white/10 rounded-2xl py-3.5 px-5 outline-none focus:ring-2 focus:ring-accent/30 transition-all text-sm font-medium placeholder:opacity-20"
-                    placeholder="Brief your artisanal concierge..."
+                    placeholder="Kuch poochna hai ya batana hai?"
                     value={reply}
                     onChange={e => setReply(e.target.value)}
                     onKeyDown={e => e.key === 'Enter' && !e.shiftKey && (reply.trim() || attachment) && sendReply.mutate()}
@@ -226,7 +345,7 @@ export default function SupportPage() {
             </div>
           ) : (
             <div className="py-2 text-center">
-              <p className="text-[10px] font-black uppercase tracking-widest opacity-30">This Engagement has been Manifested & Resolved</p>
+              <p className="text-[10px] font-black uppercase tracking-widest opacity-30">The issue is resolved</p>
             </div>
           )}
         </footer>
@@ -234,20 +353,20 @@ export default function SupportPage() {
     );
   }
 
-  // Orchestrator Manifest (List View)
+  // Support List View
   return (
     <div className="min-h-screen pb-32 animate-glass bg-bg-primary/50">
       <div className="max-w-2xl mx-auto px-6 space-y-8 relative z-10 pt-8 mt-2">
-        {/* Sovereign Header */}
+        {/* Main Header */}
         <header className="space-y-1">
-          <h1 className="text-[40px] font-black tracking-tight leading-tight">Concierge</h1>
-          <p className="text-sm font-medium opacity-40 tracking-tight">How may we manifest your perfection today?</p>
+          <h1 className="text-[40px] font-black tracking-tight leading-tight">Help & Support</h1>
+          <p className="text-sm font-medium opacity-40 tracking-tight">Aapki kya madad kar sakte hain?</p>
         </header>
 
-        {/* Concierge Ritual Selection */}
+        {/* Support Request Selection */}
         <section className="space-y-4">
           <div className="flex items-center justify-between px-1">
-            <h3 className="text-[10px] font-black uppercase tracking-[0.2em] opacity-30">Manifest New Signal</h3>
+            <h3 className="text-[10px] font-black uppercase tracking-[0.2em] opacity-30">Help Topics</h3>
           </div>
           <div className="flex gap-3 overflow-x-auto pb-4 scrollbar-none -mx-6 px-6">
             {CONCIERGE_CHIPS.map(chip => (
@@ -267,13 +386,13 @@ export default function SupportPage() {
           <div className="surface-glass rounded-3xl border border-white/5 shadow-2xl overflow-hidden flex flex-col focus-within:ring-2 focus-within:ring-accent/20 transition-all">
             <input
               className="w-full bg-transparent border-0 border-b border-white/5 focus:ring-0 outline-none py-4 px-6 text-base font-bold placeholder:opacity-20"
-              placeholder="The Essence (Subject)"
+              placeholder="Topic / Subject"
               value={subject}
               onChange={e => setSubject(e.target.value)}
             />
             <textarea
               className="w-full bg-transparent border-0 focus:ring-0 outline-none resize-none min-h-[160px] py-4 px-6 text-sm font-medium leading-relaxed placeholder:opacity-20"
-              placeholder="Detail your requirements for our artisans..."
+              placeholder="Yahan apni problem likhein..."
               value={message}
               onChange={e => setMessage(e.target.value)}
             />
@@ -283,17 +402,17 @@ export default function SupportPage() {
                 disabled={!subject.trim() || !message.trim() || create.isPending}
                 className="w-full py-4 rounded-2xl bg-accent text-white font-black text-sm tracking-widest uppercase shadow-glow-subtle active:scale-95 transition-all disabled:opacity-20 disabled:grayscale"
               >
-                {create.isPending ? 'Manifesting...' : 'Initiate Engagement'}
+                {create.isPending ? 'Sending...' : 'Send Message'}
               </button>
             </div>
           </div>
         </section>
 
-        {/* Engagement History Manifest */}
+        {/* Support Request History */}
         <section className="space-y-4">
           <div className="flex items-center justify-between px-1">
-            <h3 className="text-[10px] font-black uppercase tracking-[0.2em] opacity-30">Active Engagements</h3>
-            {tickets.length > 0 && <span className="text-[9px] font-black opacity-40">{tickets.length} Signals Captured</span>}
+            <h3 className="text-[10px] font-black uppercase tracking-[0.2em] opacity-30">Active Help Requests</h3>
+            {tickets.length > 0 && <span className="text-[9px] font-black opacity-40">{tickets.length} messages</span>}
           </div>
 
           <AnimatePresence mode="popLayout">
@@ -304,7 +423,7 @@ export default function SupportPage() {
                 className="py-16 text-center space-y-3 opacity-20"
               >
                 <MessageSquare size={48} className="mx-auto" />
-                <p className="text-sm font-bold tracking-widest uppercase">No Active Signals</p>
+                <p className="text-sm font-bold tracking-widest uppercase">No Active Requests</p>
               </motion.div>
             ) : (
               <div className="space-y-3">
@@ -327,7 +446,7 @@ export default function SupportPage() {
                       </div>
                       <div className="text-left min-w-0">
                         <p className="text-sm font-black truncate leading-tight tracking-tight">{t.subject}</p>
-                        <p className="text-[10px] font-black opacity-30 uppercase tracking-widest mt-1">{getDate(t)} · Signal #{t.id}</p>
+                        <p className="text-[10px] font-black opacity-30 uppercase tracking-widest mt-1">{getDate(t)} · Request #{t.id}</p>
                       </div>
                     </div>
                     <div className="flex items-center gap-3">
