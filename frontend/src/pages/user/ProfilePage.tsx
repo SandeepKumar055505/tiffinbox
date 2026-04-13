@@ -116,10 +116,10 @@ export default function ProfilePage() {
       authApi.updateProfile(data),
     onSuccess: () => {
       refresh();
-      showToast('Address updated!');
+      showToast('Wallet status updated!');
     },
     onError: (err: any) => {
-      showToast(err.response?.data?.error || 'Failed to update address', 'error');
+      showToast(err.response?.data?.error || 'Failed to update wallet', 'error');
     }
   });
 

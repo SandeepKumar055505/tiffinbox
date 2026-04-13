@@ -472,9 +472,9 @@ export default function SubscribePage() {
               </div>
               <div className="grid gap-2">
                 {[
-                  { value: 'full' as const,     label: 'Every day',     days: ['M','T','W','T','F','S','S'], active: [1,1,1,1,1,1,1] },
-                  { value: 'no_sun' as const,   label: 'Skip Sunday',   days: ['M','T','W','T','F','S','S'], active: [1,1,1,1,1,1,0] },
-                  { value: 'weekdays' as const, label: 'Weekdays only', days: ['M','T','W','T','F','S','S'], active: [1,1,1,1,1,0,0] },
+                  { value: 'full' as const, label: 'Every day', days: ['M', 'T', 'W', 'T', 'F', 'S', 'S'], active: [1, 1, 1, 1, 1, 1, 1] },
+                  { value: 'no_sun' as const, label: 'Skip Sunday', days: ['M', 'T', 'W', 'T', 'F', 'S', 'S'], active: [1, 1, 1, 1, 1, 1, 0] },
+                  { value: 'weekdays' as const, label: 'Weekdays only', days: ['M', 'T', 'W', 'T', 'F', 'S', 'S'], active: [1, 1, 1, 1, 1, 0, 0] },
                 ].map(opt => {
                   const sel = pattern === opt.value;
                   return (
@@ -637,7 +637,7 @@ export default function SubscribePage() {
             style={{ background: isDark ? 'rgba(251,113,133,0.06)' : 'rgba(56,189,248,0.07)' }} />
         </div>
         <div className="max-w-2xl mx-auto px-2 sm:px-2 space-y-6 relative z-10 pb-10">
-          {renderHeader("Pick your meals", "Tap to include or skip. Swap any dish with the ↕ icon.", () => setStep('setup'))}
+          {renderHeader("Plan Your Meals", "Tap to include or skip meals. Use the ↕ icon to swap for alternatives.", () => setStep('setup'))}
           <LiquidProgressBar currentStep={2} totalSteps={3} />
           <MealGrid days={days} weekMenu={weekMenu} planDays={planDays} maxDayOffs={planDays <= 7 ? 1 : 2} mealPrices={mealPrices} enabledMealTypes={enabledMealTypes} onChange={setDays} />
         </div>
