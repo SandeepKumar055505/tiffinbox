@@ -12,6 +12,8 @@ interface GlassConfirmModalProps {
   confirmText?: string;
   cancelText?: string;
   isDangerous?: boolean;
+  variant?: 'default' | 'danger' | 'success' | 'whatsapp';
+  icon?: React.ReactNode;
 }
 
 const GlassConfirmModal: React.FC<GlassConfirmModalProps> = ({
@@ -24,6 +26,8 @@ const GlassConfirmModal: React.FC<GlassConfirmModalProps> = ({
   confirmText = 'Confirm',
   cancelText = 'Cancel',
   isDangerous = false,
+  variant = 'default',
+  icon,
 }) => {
   // Trigger Haptic Feedback on open if it's a dangerous modal
   React.useEffect(() => {
@@ -63,10 +67,13 @@ const GlassConfirmModal: React.FC<GlassConfirmModalProps> = ({
             </button>
 
             <div className="flex flex-col items-center text-center">
-              <div className={`mb-6 flex h-16 w-16 items-center justify-center rounded-2xl ${
-                isDangerous ? 'bg-red-50 text-red-500' : 'bg-orange-50 text-orange-500'
+              <div className={`mb-6 flex h-16 w-16 items-center justify-center rounded-2xl transition-colors duration-500 ${
+                variant === 'whatsapp' ? 'bg-green-500/10 text-green-500 shadow-[0_0_20px_rgba(34,197,94,0.2)]' :
+                variant === 'success' ? 'bg-teal-500/10 text-teal-500' :
+                (variant === 'danger' || isDangerous) ? 'bg-red-500/10 text-red-500' : 
+                'bg-orange-500/10 text-orange-500'
               }`}>
-                <AlertTriangle size={32} />
+                {icon || <AlertTriangle size={32} />}
               </div>
 
               <h3 className="mb-2 text-2xl font-bold tracking-tight text-gray-900">
@@ -81,9 +88,11 @@ const GlassConfirmModal: React.FC<GlassConfirmModalProps> = ({
                 <button
                   onClick={handleConfirm}
                   className={`w-full rounded-2xl py-4 font-semibold text-white shadow-lg transition-all active:scale-95 ${
-                    isDangerous 
-                      ? 'bg-gradient-to-r from-red-500 to-rose-600 shadow-red-200' 
-                      : 'bg-gradient-to-r from-orange-500 to-amber-600 shadow-orange-200'
+                    variant === 'whatsapp' ? 'bg-gradient-to-r from-green-500 to-emerald-600 shadow-green-200/50' :
+                    variant === 'success' ? 'bg-gradient-to-r from-teal-500 to-teal-600 shadow-teal-200/50' :
+                    (variant === 'danger' || isDangerous)
+                      ? 'bg-gradient-to-r from-red-500 to-rose-600 shadow-red-200/50' 
+                      : 'bg-gradient-to-r from-orange-500 to-amber-600 shadow-orange-200/50'
                   }`}
                 >
                   {confirmText}

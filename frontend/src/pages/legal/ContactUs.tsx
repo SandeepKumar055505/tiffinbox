@@ -4,15 +4,18 @@ import { Link } from 'react-router-dom';
 // TODO_USER: fill the real street, locality, and pincode below before Razorpay KYC submission.
 // These must match EXACTLY what appears on your address-proof document (utility bill / rent
 // agreement / bank statement) that you upload to Razorpay.
-const BUSINESS_NAME = 'TiffinPoint Services';
-const BUSINESS_PHONE = '+91-8901221068';
-const BUSINESS_STREET = 'F-102, Sector 48';
-const BUSINESS_LOCALITY = 'Sector 48, Gurugram';
-const BUSINESS_CITY = 'Gurugram';
-const BUSINESS_STATE = 'Haryana';
-const BUSINESS_PINCODE = '122018';
-const BUSINESS_COUNTRY = 'India';
-const BUSINESS_HOURS = 'Mon – Sat, 9:00 AM – 9:00 PM IST';
+import { 
+  BUSINESS_NAME, 
+  BUSINESS_PHONE, 
+  BUSINESS_EMAIL,
+  BUSINESS_STREET,
+  BUSINESS_LOCALITY,
+  BUSINESS_CITY,
+  BUSINESS_STATE,
+  BUSINESS_PINCODE,
+  BUSINESS_COUNTRY,
+  BUSINESS_HOURS
+} from '../../constants/contact';
 
 export default function ContactUs() {
   return (
@@ -30,7 +33,7 @@ export default function ContactUs() {
             <div className="space-y-4 text-body-sm t-text-secondary">
               <div className="space-y-1">
                 <p className="font-bold text-teal-400 uppercase tracking-widest text-[10px]">Email</p>
-                <a href="mailto:info@mypinnakle.com" className="hover:text-teal-400">info@mypinnakle.com</a>
+                <a href={`mailto:${BUSINESS_EMAIL}`} className="hover:text-teal-400">{BUSINESS_EMAIL}</a>
               </div>
               <div className="space-y-1">
                 <p className="font-bold text-teal-400 uppercase tracking-widest text-[10px]">Phone</p>
@@ -61,7 +64,7 @@ export default function ContactUs() {
               <h3 className="font-bold text-teal-400 uppercase tracking-widest text-[10px]">Grievance Officer</h3>
               <div className="text-body-sm t-text-secondary">
                 <p>Sandeep Kumar</p>
-                <p><a href="mailto:info@mypinnakle.com" className="hover:text-teal-400">info@mypinnakle.com</a></p>
+                <p><a href={`mailto:${BUSINESS_EMAIL}`} className="hover:text-teal-400">{BUSINESS_EMAIL}</a></p>
               </div>
             </div>
           </div>
