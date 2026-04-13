@@ -11,6 +11,7 @@ export enum DomainEvent {
   SKIP_REQUEST_CREATED = 'skip_request.created',
   STREAK_MILESTONE     = 'streak.milestone',
   PERSON_UPDATED       = 'person.updated',
+  SUBSCRIPTION_CANCELLED = 'subscription.cancelled',
 }
 
 export async function emitEvent(event: DomainEvent, payload: object): Promise<void> {

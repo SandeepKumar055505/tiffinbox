@@ -37,17 +37,6 @@ router.post('/:id/approve', requireAdmin, async (req, res) => {
   }
 
   const sub = await db('subscriptions').where({ id: request.subscription_id }).first();
-  if (sub) {
-    await emitEvent(DomainEvent.MEAL_SKIPPED, {
-      meal_cell_id: request.meal_cell_id,
-      user_id: sub.user_id,
-      subscription_id: sub.id,
-      meal_type: request.meal_type,
-      date: request.date,
-      is_grace_skip: true,   // admin approval always credits wallet
-      is_holiday_skip: false,
-    });
-  }
 
   await db('audit_logs').insert({
     admin_id: req.adminId,
@@ -57,7 +46,28 @@ router.post('/:id/approve', requireAdmin, async (req, res) => {
     note: req.body.note,
   });
 
+  // Respond immediately
   res.json({ success: true });
+
+  // Fire-and-forget: event + user notification
+  if (sub) {
+    sendNotification(
+      sub.user_id,
+      NotificationType.SYSTEM,
+      'Meal skip approved ✓',
+      `Your skip for ${request.meal_type} on ${request.date} has been approved. Wallet credit will be added shortly.`,
+    ).catch(() => {});
+
+    emitEvent(DomainEvent.MEAL_SKIPPED, {
+      meal_cell_id: request.meal_cell_id,
+      user_id: sub.user_id,
+      subscription_id: sub.id,
+      meal_type: request.meal_type,
+      date: request.date,
+      is_grace_skip: true,   // admin approval always credits wallet
+      is_holiday_skip: false,
+    }).catch(e => console.error('[bg] MEAL_SKIPPED emit failed:', e?.message));
+  }
 });
 
 // POST /api/admin/skip/:id/deny
@@ -71,14 +81,6 @@ router.post('/:id/deny', requireAdmin, async (req, res) => {
     admin_note: req.body.note || null,
   });
 
-    // Notify user
-    await sendNotification(
-      sub.user_id,
-      NotificationType.PAYMENTS,
-      'Skip request denied',
-      `Your skip request for ${request.meal_type} on ${request.date} was denied.${req.body.note ? ' Reason: ' + req.body.note : ''}`
-    );
-
   await db('audit_logs').insert({
     admin_id: req.adminId,
     action: 'skip.deny',
@@ -87,7 +89,18 @@ router.post('/:id/deny', requireAdmin, async (req, res) => {
     note: req.body.note,
   });
 
+  // Respond immediately
   res.json({ success: true });
+
+  // Fire-and-forget notification
+  if (sub) {
+    sendNotification(
+      sub.user_id,
+      NotificationType.SYSTEM,
+      'Skip request denied',
+      `Your skip request for ${request.meal_type} on ${request.date} was not approved.${req.body.note ? ' Reason: ' + req.body.note : ''}`,
+    ).catch(() => {});
+  }
 });
 
 export default router;

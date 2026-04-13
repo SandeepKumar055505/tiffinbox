@@ -23,19 +23,26 @@ export default function SubscriptionDetailPage() {
     queryFn: () => subsApi.get(Number(id)).then(r => r.data),
   });
 
+  const cancelSub = useMutation({
+    mutationFn: (reason: string) => subsApi.cancel(Number(id), reason),
+    onSuccess: () => {
+      haptics.success();
+      qc.invalidateQueries({ queryKey: ['subscription', id] });
+      qc.invalidateQueries({ queryKey: ['subscriptions'] });
+    },
+    onError: (err: any) => {
+      haptics.error();
+      alert(err.response?.data?.error || 'Failed to cancel subscription');
+    },
+  });
+
   const skipMeal = useMutation({
     mutationFn: (meal_cell_id: number) => skipApi.request(meal_cell_id),
     onSuccess: (res, meal_cell_id) => {
-      const data = res.data;
       haptics.success();
       setPendingSkipCells(prev => new Set([...prev, meal_cell_id]));
       setSkipSuccessCell(meal_cell_id);
       setTimeout(() => setSkipSuccessCell(null), 4000);
-      if (data.status === 'soul_swap') {
-        // Voucher issued — refresh everything
-        qc.invalidateQueries({ queryKey: ['vouchers'] });
-        qc.invalidateQueries({ queryKey: ['wallet-history'] });
-      }
       refetch();
       qc.invalidateQueries({ queryKey: ['today-meals'] });
     },
@@ -81,9 +88,21 @@ export default function SubscriptionDetailPage() {
   const getStatusStyle = (state: string) => {
     switch(state) {
       case 'active': return 'bg-green-500/10 text-green-500 border-green-500/20 shadow-[0_0_15px_rgba(34,197,94,0.1)]';
+      case 'partially_skipped': return 'bg-teal-500/10 text-teal-500 border-teal-500/20';
       case 'failed_payment': return 'bg-red-500/10 text-red-500 border-red-500/20';
       case 'paused': return 'bg-yellow-500/10 text-yellow-500 border-yellow-500/20';
+      case 'cancelled': return 'bg-bg-subtle text-text-faint border-border/10';
       default: return 'bg-bg-subtle text-text-muted border-border/20';
+    }
+  };
+
+  const handleCancelRequest = () => {
+    haptics.impact('heavy');
+    const reason = window.prompt("Why are you cancelling? (Optional)");
+    if (reason !== null) {
+      if (window.confirm("Are you sure you want to cancel this ritual? This action cannot be undone.")) {
+        cancelSub.mutate(reason);
+      }
     }
   };
 
@@ -92,23 +111,23 @@ export default function SubscriptionDetailPage() {
       {/* Mesh Accents */}
       <div className="absolute top-[-10%] -right-20 w-[40rem] h-[40rem] bg-accent/10 blur-[150px] rounded-full animate-mesh" />
       
-      <div className="max-w-2xl mx-auto px-6 space-y-8 relative z-10">
+      <div className="max-w-2xl mx-auto px-6 space-y-8 relative z-10 pb-20">
         {/* Apple Music Header */}
         <header className="pt-6 pb-3 border-b border-border/10 mb-6 flex justify-between items-end">
           <div>
             <div className="flex items-center gap-3 mb-2">
               <Link 
-                to="/" 
+                to="/subscriptions" 
                 onClick={() => haptics.impact('light')}
                 className="text-[11px] font-bold text-text-muted uppercase tracking-widest hover:text-accent transition-colors"
               >
                 ← Back
               </Link>
               <span className={`text-[8px] font-black uppercase tracking-[0.1em] px-2 py-0.5 rounded-sm border transition-all ${getStatusStyle(sub.state)}`}>
-                {sub.state}
+                {sub.state.replace('_', ' ')}
               </span>
             </div>
-            <h1 className="text-h1 !text-[34px] font-extrabold tracking-tight">Order #{sub.id}</h1>
+            <h1 className="text-h1 !text-[34px] font-extrabold tracking-tight">Ritual #{sub.id}</h1>
           </div>
         </header>
 
@@ -116,38 +135,44 @@ export default function SubscriptionDetailPage() {
           <div className="flex items-center gap-4">
             <div className="space-y-0.5">
               <p className="text-[11px] uppercase tracking-widest font-black opacity-30">Plan Details</p>
-              <p className="text-xl font-black">{sub.plan_days} Day Plan</p>
+              <p className="text-xl font-black">{sub.plan_days} Day Manifest</p>
             </div>
           </div>
           <div className="text-right">
-            <p className="text-[11px] uppercase tracking-widest font-black opacity-30">Active Window</p>
+            <p className="text-[11px] uppercase tracking-widest font-black opacity-30">Temporal Window</p>
             <p className="text-[12px] font-bold">
-              {new Date(sub.start_date).toLocaleDateString('en-IN', { month: 'short', day: 'numeric', year: 'numeric' })} 
+              {new Date(sub.start_date).toLocaleDateString('en-IN', { month: 'short', day: 'numeric' })} 
               <span className="opacity-40 px-1">→</span> 
-              {new Date(sub.end_date).toLocaleDateString('en-IN', { month: 'short', day: 'numeric', year: 'numeric' })}
+              {new Date(sub.end_date).toLocaleDateString('en-IN', { month: 'short', day: 'numeric' })}
             </p>
           </div>
         </section>
 
         {sub.price_snapshot && (
           <section className="space-y-2 animate-glass" style={{ animationDelay: '0.15s' }}>
-            <h3 className="text-label-caps !text-[12px] !opacity-50 font-bold uppercase tracking-widest pl-4 pb-1">Payment Snapshot</h3>
+            <h3 className="text-label-caps !text-[12px] !opacity-50 font-bold uppercase tracking-widest pl-4 pb-1">Fiscal Manifest</h3>
             <div className="surface-glass rounded-2xl p-5 border border-white/5 shadow-sm">
               <div className="space-y-4">
-                <div className="flex justify-between items-center">
-                  <span className="text-sm font-medium opacity-60">Subtotal</span>
-                  <span className="text-sm font-bold">{formatRupees(sub.price_snapshot.base_total - sub.price_snapshot.discount_total)}</span>
+                <div className="flex justify-between items-center text-xs">
+                  <span className="font-medium opacity-60">Base Contribution</span>
+                  <span className="font-bold">{formatRupees(sub.price_snapshot.base_total)}</span>
                 </div>
+                {sub.price_snapshot.discount_total > 0 && (
+                  <div className="flex justify-between items-center text-xs text-teal-500">
+                    <span className="font-medium">Plan Savings</span>
+                    <span className="font-bold">−{formatRupees(sub.price_snapshot.discount_total)}</span>
+                  </div>
+                )}
                 {sub.price_snapshot.wallet_applied > 0 && (
-                  <div className="flex justify-between items-center text-accent">
-                    <span className="text-sm font-medium">Wallet Applied</span>
-                    <span className="text-sm font-bold">−{formatRupees(sub.price_snapshot.wallet_applied)}</span>
+                  <div className="flex justify-between items-center text-xs text-orange-400">
+                    <span className="font-medium">Wallet Credit</span>
+                    <span className="font-bold">−{formatRupees(sub.price_snapshot.wallet_applied)}</span>
                   </div>
                 )}
               </div>
               <div className="h-px bg-white/10 w-full my-4" />
               <div className="flex justify-between items-end">
-                <span className="text-[11px] font-bold uppercase tracking-widest opacity-60">Total Paid</span>
+                <span className="text-[11px] font-bold uppercase tracking-widest opacity-60">Total Manifested</span>
                 <span className="text-2xl font-black text-accent tracking-tighter">{formatRupees(sub.price_snapshot.final_total)}</span>
               </div>
             </div>
@@ -155,7 +180,7 @@ export default function SubscriptionDetailPage() {
         )}
 
         {/* Actions */}
-        <section className="animate-glass space-y-3" style={{ animationDelay: '0.2s' }}>
+        <section className="animate-glass space-y-4" style={{ animationDelay: '0.2s' }}>
           {/* Paused plan — resume */}
           {sub.state === 'paused' && (
             <div className="surface-liquid border border-yellow-500/20 bg-yellow-500/5 p-5 rounded-[1.8rem] space-y-4 shadow-elite">
@@ -170,7 +195,7 @@ export default function SubscriptionDetailPage() {
                 onClick={() => { haptics.impact('medium'); setShowResumeModal(true); }}
                 className="w-full btn-primary !py-3.5 rounded-[1.2rem] font-black text-[12px] tracking-widest uppercase"
               >
-                Resume plan →
+                Resume ritual →
               </button>
             </div>
           )}
@@ -214,31 +239,33 @@ export default function SubscriptionDetailPage() {
               {retryingPayment ? (
                 <><span className="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin" /> Processing…</>
               ) : (
-                'Complete payment →'
+                'Finalize manifesting →'
               )}
             </button>
           )}
 
-          {/* Back to My Plans */}
-          <Link
-            to="/subscriptions"
-            onClick={() => qc.invalidateQueries({ queryKey: ['subscriptions'] })}
-            className="w-full flex items-center justify-center py-3 text-[12px] font-bold t-text-muted hover:t-text-primary transition-colors"
-          >
-            ← All my plans
-          </Link>
+          {/* Active plan cancellation option — subtle */}
+          {(sub.state === 'active' || sub.state === 'partially_skipped' || sub.state === 'paused') && (
+            <div className="pt-2 text-center">
+              <button 
+                onClick={handleCancelRequest}
+                disabled={cancelSub.isPending}
+                className="text-[10px] font-black text-red-500/50 hover:text-red-500 uppercase tracking-widest transition-colors py-2 px-4"
+              >
+                {cancelSub.isPending ? 'Processing...' : 'Detach from ritual'}
+              </button>
+            </div>
+          )}
         </section>
 
         {/* Meal schedule */}
-        <section className="space-y-2 animate-glass" style={{ animationDelay: '0.25s' }}>
-          <div className="flex items-center justify-between px-4 pb-2">
-            <h3 className="text-label-caps !text-[12px] !opacity-50 font-bold uppercase tracking-widest">Delivery Schedule</h3>
-            <p className="text-[10px] font-bold uppercase tracking-widest opacity-40">{(sub.meal_cells || []).length} Meals</p>
+        <section className="space-y-4 animate-glass" style={{ animationDelay: '0.25s' }}>
+          <div className="flex items-center justify-between px-4">
+            <h3 className="text-label-caps !text-[12px] !opacity-50 font-bold uppercase tracking-widest">Temporal Manifest</h3>
+            <p className="text-[10px] font-bold uppercase tracking-widest opacity-40">{(sub.meal_cells || []).length} Encounters</p>
           </div>
 
-
-
-          <div className="space-y-4">
+          <div className="space-y-5">
             {Object.entries(
               (sub.meal_cells || []).reduce((acc: Record<string, any[]>, cell: any) => {
                 if (!acc[cell.date]) acc[cell.date] = [];
@@ -246,24 +273,26 @@ export default function SubscriptionDetailPage() {
                 return acc;
               }, {})
             ).map(([date, cells]) => (
-              <div key={date} className="surface-glass rounded-2xl overflow-hidden border border-white/5 shadow-sm">
-                <div className="px-5 py-3 border-b border-border/10 bg-bg-secondary/40">
-                  <p className="text-[11px] font-bold uppercase tracking-widest opacity-60">
+              <div key={date} className="surface-glass rounded-[2rem] overflow-hidden border border-white/5 shadow-sm backdrop-blur-xl">
+                <div className="px-6 py-3 border-b border-border/10 bg-white/[0.02]">
+                  <p className="text-[11px] font-black uppercase tracking-widest opacity-40">
                     {new Date(date).toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long' })}
                   </p>
                 </div>
-                <div className="divide-y divide-border/10">
+                <div className="divide-y divide-white/[0.04]">
                   {(cells as any[]).map((cell: any) => {
                     const isSkippable = cell.is_included && cell.delivery_status === 'scheduled' &&
-                      (sub.state === 'active' || sub.state === 'partially_skipped');
+                      (sub.state === 'active' || sub.state === 'partially_skipped') && !cell.pending_skip_request;
+                    const isPending = cell.pending_skip_request || pendingSkipCells.has(cell.id);
+
                     return (
-                      <div key={cell.id} className="p-4 sm:p-5 flex items-center justify-between hover:bg-bg-secondary/40 transition-colors">
-                        <div className="min-w-0 flex-1 flex items-center gap-4">
-                          <div className="text-2xl opacity-60 shrink-0">
+                      <div key={cell.id} className="p-5 flex items-center justify-between hover:bg-white/[0.01] transition-colors">
+                        <div className="min-w-0 flex-1 flex items-center gap-5">
+                          <div className="w-10 h-10 rounded-xl bg-bg-secondary flex items-center justify-center text-xl shrink-0">
                             {cell.meal_type === 'breakfast' ? '☀️' : cell.meal_type === 'lunch' ? '🍱' : '🌙'}
                           </div>
-                          <div className="space-y-0.5">
-                            <p className={`text-base font-bold ${cell.is_included ? '' : 'opacity-30 line-through'}`}>
+                          <div className="space-y-1">
+                            <p className={`text-[15px] font-bold tracking-tight ${cell.is_included ? 't-text-primary' : 'text-text-muted line-through opacity-40'}`}>
                               {cell.item_name || (cell.meal_type.charAt(0).toUpperCase() + cell.meal_type.slice(1))}
                             </p>
                             <div className="flex items-center gap-2">
@@ -272,37 +301,40 @@ export default function SubscriptionDetailPage() {
                                 cell.delivery_status === 'out_for_delivery' ? 'bg-yellow-500 animate-pulse' :
                                 cell.delivery_status === 'failed' ? 'bg-red-500' :
                                 cell.delivery_status === 'skipped_holiday' ? 'bg-purple-500' :
+                                isPending ? 'bg-orange-500 animate-pulse' :
                                 cell.delivery_status === 'skipped' || cell.delivery_status === 'skipped_by_admin' ? 'bg-text-faint' :
                                 'bg-text-muted opacity-40'
                               }`} />
-                              <p className={`text-[9px] font-bold uppercase tracking-widest ${
-                                cell.delivery_status === 'delivered' ? 'text-teal-600' :
-                                cell.delivery_status === 'out_for_delivery' ? 'text-yellow-600' :
+                              <p className={`text-[9px] font-black uppercase tracking-widest ${
+                                cell.delivery_status === 'delivered' ? 'text-teal-500' :
+                                cell.delivery_status === 'out_for_delivery' ? 'text-yellow-500' :
                                 cell.delivery_status === 'failed' ? 'text-red-500' :
                                 cell.delivery_status === 'skipped_holiday' ? 'text-purple-500' :
-                                'text-text-faint'
+                                isPending ? 'text-orange-500' :
+                                'text-text-muted'
                               }`}>
                                 {cell.delivery_status === 'out_for_delivery' ? 'Out for Delivery' :
                                  cell.delivery_status === 'skipped_by_admin' ? 'Skipped by Admin' :
                                  cell.delivery_status === 'skipped_holiday' ? 'Holiday' :
+                                 isPending ? 'Pending Review' :
                                  cell.delivery_status}
                               </p>
                             </div>
 
                             {cell.delivery_image_url && (
-                              <div className="mt-2 group/proof relative">
-                                <span className="text-[10px] font-bold text-teal-500 bg-teal-500/10 px-2 py-0.5 rounded cursor-pointer border border-teal-500/20">
-                                  Proof Attached 📎
+                              <div className="mt-2 group/proof relative inline-block">
+                                <span className="text-[9px] font-black text-teal-400 bg-teal-400/10 px-2 py-1 rounded-lg cursor-pointer border border-teal-400/20">
+                                  Proof manifestation 📎
                                 </span>
-                                <div className="absolute left-0 top-full mt-2 w-48 hidden group-hover/proof:block z-40 animate-glass shadow-2xl">
+                                <div className="absolute left-0 top-full mt-3 w-56 hidden group-hover/proof:block z-40 animate-glass shadow-2xl rounded-2xl overflow-hidden border border-white/10">
                                   <img 
                                     src={cell.delivery_image_url} 
-                                    className="w-full h-auto rounded-xl border-2 border-accent/20" 
+                                    className="w-full h-auto" 
                                     alt="Delivery Proof" 
                                   />
                                   {cell.delivery_notes && (
-                                    <div className="bg-bg-primary/95 p-3 border border-white/10 rounded-b-xl border-t-0 -mt-2">
-                                      <p className="text-[10px] italic leading-tight opacity-80">"{cell.delivery_notes}"</p>
+                                    <div className="bg-bg-primary/95 p-3 border-t border-white/10">
+                                      <p className="text-[10px] italic leading-tight opacity-70">"{cell.delivery_notes}"</p>
                                     </div>
                                   )}
                                 </div>
@@ -310,21 +342,22 @@ export default function SubscriptionDetailPage() {
                             )}
                           </div>
                         </div>
-                        {isSkippable && !pendingSkipCells.has(cell.id) && (
+
+                        {isSkippable && (
                           <div className="flex gap-2 shrink-0">
                             {cell.alternatives && cell.alternatives.length > 0 && (
                               <div className="relative group/swap">
-                                <button className="text-[10px] font-bold text-accent hover:text-white uppercase tracking-widest px-3 py-1.5 rounded transition-all bg-accent/10 hover:bg-accent flex items-center gap-1">
+                                <button className="text-[10px] font-black text-accent/60 hover:text-accent uppercase tracking-widest px-3 py-2 rounded-xl transition-all hover:bg-accent/10 flex items-center gap-1">
                                   Swap ▾
                                 </button>
-                                <div className="absolute right-0 top-full mt-1 w-48 surface-elevated rounded-xl shadow-2xl border border-white/10 hidden group-hover/swap:block z-30 overflow-hidden animate-glass">
+                                <div className="absolute right-0 top-full mt-2 w-52 surface-glass rounded-2xl shadow-2xl border border-white/10 hidden group-hover/swap:block z-30 overflow-hidden animate-glass backdrop-blur-2xl">
                                   <div className="p-2 space-y-1">
-                                    <p className="px-2 py-1 text-[8px] font-black uppercase tracking-widest opacity-40">Choose Alternative</p>
+                                    <p className="px-3 py-1 text-[8px] font-black uppercase tracking-widest opacity-30">Choose manifestation</p>
                                     {cell.alternatives.map((alt: any) => (
                                       <button
                                         key={alt.id}
                                         onClick={() => { haptics.success(); swapMeal.mutate({ cellId: cell.id, itemId: alt.id }); }}
-                                        className="w-full text-left px-3 py-2 rounded-lg text-xs font-bold hover:bg-white/5 transition-colors t-text"
+                                        className="w-full text-left px-3 py-2.5 rounded-xl text-xs font-bold hover:bg-white/5 transition-colors t-text"
                                       >
                                         {alt.name}
                                       </button>
@@ -345,18 +378,21 @@ export default function SubscriptionDetailPage() {
                             </button>
                           </div>
                         )}
-                        {pendingSkipCells.has(cell.id) && (
-                          <div className="shrink-0 text-right space-y-0.5">
-                            <span className="block text-[9px] font-bold text-yellow-500 uppercase tracking-widest px-2 py-1 rounded bg-yellow-500/10 border border-yellow-500/20 animate-pulse">
-                              Skip requested
-                            </span>
-                            {skipSuccessCell === cell.id && (
-                              <p className="text-[8px] t-text-muted opacity-60">We'll update you shortly</p>
-                            )}
+
+                        {isPending && (
+                          <div className="shrink-0 text-right">
+                             <div className="flex items-center gap-1.5 text-orange-400 bg-orange-400/10 px-3 py-1.5 rounded-full border border-orange-400/20">
+                               <span className="w-1.5 h-1.5 rounded-full bg-orange-400 animate-pulse" />
+                               <span className="text-[10px] font-black uppercase tracking-widest">In Review</span>
+                             </div>
+                             {skipSuccessCell === cell.id && (
+                               <p className="text-[8px] font-bold text-accent mt-2 animate-bounce">Manifesting request...</p>
+                             )}
                           </div>
                         )}
-                        {!cell.is_included && cell.delivery_status === 'skipped' && (
-                          <span className="shrink-0 text-[10px] font-bold text-text-muted uppercase tracking-widest">Skipped</span>
+
+                        {!cell.is_included && !isPending && (
+                          <span className="shrink-0 text-[10px] font-black text-text-muted/40 uppercase tracking-widest">Ritual skipped</span>
                         )}
                       </div>
                     );

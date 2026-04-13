@@ -5,7 +5,8 @@ import { requireUser } from '../middleware/auth';
 import { validate } from '../middleware/validate';
 import { canSkipMeal, hasReachedDayOffLimit } from '../services/policyEngine';
 import { emitEvent, DomainEvent } from '../jobs/events';
-import { nowIST, weekStartIST, weekEndIST, weekRangeUTC } from '../lib/time';
+import { nowIST, weekRangeUTC } from '../lib/time';
+import { sendNotification, NotificationType } from '../services/notificationService';
 
 const router = Router();
 
@@ -36,7 +37,6 @@ router.post(
 
     // Check if skipping this meal would exceed weekly day-off limit
     const dayOffLimitReached = await hasReachedDayOffLimit(cell.subscription_id, cell.date);
-    // Only block if ALL 3 meals would be off for that day (making it a full day off)
     if (dayOffLimitReached) {
       const otherMeals = await db('meal_cells')
         .where({ subscription_id: cell.subscription_id, date: cell.date, is_included: true })
@@ -60,7 +60,7 @@ router.post(
       const usedCount = Number(graceSkipsUsed?.cnt ?? 0);
       const isGraceSkip = usedCount < graceLimit;
 
-      // Auto-approve: mark skipped, emit event
+      // Auto-approve: mark skipped
       await db('meal_cells').where({ id: cell.id }).update({
         is_included: false,
         delivery_status: 'skipped',
@@ -79,68 +79,63 @@ router.post(
       await db('subscriptions').where({ id: cell.subscription_id, state: 'active' })
         .update({ state: 'partially_skipped', updated_at: db.fn.now() });
 
-      await emitEvent(DomainEvent.MEAL_SKIPPED, {
+      const message = isGraceSkip
+        ? 'Your meal skip has been confirmed. Wallet credit will be added shortly.'
+        : 'Meal skip confirmed. No wallet credit — weekly grace skip limit reached.';
+
+      // Respond immediately — do NOT await event emission
+      res.json({ status: 'auto', is_grace_skip: isGraceSkip, message });
+
+      // Fire-and-forget: event + notification
+      sendNotification(
+        cell.user_id,
+        NotificationType.SYSTEM,
+        'Meal skip confirmed ✓',
+        message,
+      ).catch(() => {});
+
+      emitEvent(DomainEvent.MEAL_SKIPPED, {
         meal_cell_id: cell.id,
         user_id: cell.user_id,
         subscription_id: cell.subscription_id,
         meal_type: cell.meal_type,
         date: cell.date,
         is_grace_skip: isGraceSkip,
-      });
+      }).catch(e => console.error('[bg] MEAL_SKIPPED emit failed:', e?.message));
 
-      const message = isGraceSkip
-        ? 'Skip applied. Wallet will be credited shortly.'
-        : 'Skip applied. No wallet credit (weekly grace skip limit reached).';
-      return res.json({ status: 'auto', is_grace_skip: isGraceSkip, message });
+      return;
     }
 
-    // Past cutoff — "The Soul Swap" (Zenith v4.1 Logic)
-    // Instead of pending admin approval, we immediately issue a Meal Voucher
-    // and mark the cell as skipped. No wallet credit, but future meal preserved.
-    return await db.transaction(async (trx) => {
-      await trx('meal_cells').where({ id: cell.id }).update({
-        is_included: false,
-        delivery_status: 'skipped',
-        updated_at: db.fn.now(),
-      });
-
-      const [voucher] = await trx('meal_vouchers').insert({
-        user_id: req.userId,
+    if (eligibility.type === 'admin_approval') {
+      // Past cutoff — Create a pending request for admin review instead of auto-approving
+      const [request] = await db('skip_requests').insert({
         subscription_id: cell.subscription_id,
+        meal_cell_id: cell.id,
+        date: cell.date,
         meal_type: cell.meal_type,
-        origin_reason: 'late_skip',
-        status: 'active',
-        metadata: JSON.stringify({
-          original_date: cell.date,
-          original_cell_id: cell.id,
-          cultivated_at: nowIST().toISOString(),
-        }),
+        status: 'pending',
       }).returning('*');
 
-      await trx('skip_requests').insert({
-        subscription_id: cell.subscription_id,
-        meal_cell_id: cell.id,
-        date: cell.date,
-        meal_type: cell.meal_type,
-        status: 'auto_voucher',
+      // Respond immediately
+      res.json({
+        status: 'pending',
+        message: 'Your skip request has been submitted for admin review. We will notify you once processed.',
+        request_id: request.id
       });
 
-      await emitEvent(DomainEvent.MEAL_SKIPPED, {
-        meal_cell_id: cell.id,
-        user_id: cell.user_id,
-        subscription_id: cell.subscription_id,
-        meal_type: cell.meal_type,
-        date: cell.date,
-        is_grace_skip: false,
-        voucher_id: voucher.id,
-      });
+      // Fire-and-forget: notification
+      sendNotification(
+        cell.user_id,
+        NotificationType.SYSTEM,
+        'Skip request submitted ⏳',
+        `We've received your skip request for ${cell.meal_type} on ${cell.date}. It is currently under review.`,
+      ).catch(() => {});
 
-      return res.status(200).json({
-        status: 'soul_swap',
-        message: 'Late skip recovered! We have issued a Meal Voucher to your vault. You can use this to add a future meal at any time.',
-        voucher_id: voucher.id,
-      });
-    });
+      return;
+    }
+
+    // Default fallback (should rarely be reached)
+    res.status(409).json({ error: 'Manual review required for this skip' });
   }
 );
 

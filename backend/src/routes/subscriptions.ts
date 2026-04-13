@@ -7,6 +7,7 @@ import { nowIST, todayIST, tomorrowIST, addDays, parseDateIST, formatDateIST } f
 import { calculateQuote, buildDateRange } from '../services/pricingEngine';
 import { canAccessMonthlyPlan, canTransitionTo } from '../services/policyEngine';
 import { getWalletBalance, debitWalletAtCheckout, creditFullSubscriptionRefund } from '../services/ledgerService';
+import { sendNotification, NotificationType } from '../services/notificationService';
 import { emitEvent, DomainEvent } from '../jobs/events';
 import { boss } from '../jobs/client';
 import { isPincodeServiceable } from '../lib/geo';
@@ -73,25 +74,29 @@ router.get('/:id', requireUser, async (req, res) => {
     .orderBy(['mc.date', 'mc.meal_type'])
     .select('mc.*', 'mi.name as item_name', 'mi.image_url', 'mi.description as item_description');
 
-  // Fetch alternatives for each cell's slot
-  const enriched = await Promise.all(cells.map(async (c: any) => {
-    const dow = new Date(c.date).getDay();
-    const defaultRow = await db('default_menu').where({ weekday: dow, meal_type: c.meal_type }).first();
-    if (!defaultRow) return { ...c, alternatives: [] };
-    
-    const alts = await db('default_menu_alternatives as dma')
-      .join('meal_items as mi', 'mi.id', 'dma.item_id')
-      .where({ default_menu_id: defaultRow.id })
-      .select('mi.id', 'mi.name');
+    // Fetch alternatives and check for pending skip requests
+    const enriched = await Promise.all(cells.map(async (c: any) => {
+      const pendingRequest = await db('skip_requests')
+        .where({ meal_cell_id: c.id, status: 'pending' })
+        .first();
 
-    // Also include default itself in alternatives for easy swapping back
-    const defaultItem = await db('meal_items').where({ id: defaultRow.item_id }).select('id', 'name').first();
-    
-    return { 
-      ...c, 
-      alternatives: [defaultItem, ...alts].filter(a => a.id !== c.item_id)
-    };
-  }));
+      const dow = new Date(c.date).getDay();
+      const defaultRow = await db('default_menu').where({ weekday: dow, meal_type: c.meal_type }).first();
+      if (!defaultRow) return { ...c, pending_skip_request: !!pendingRequest, alternatives: [] };
+      
+      const alts = await db('default_menu_alternatives as dma')
+        .join('meal_items as mi', 'mi.id', 'dma.item_id')
+        .where({ default_menu_id: defaultRow.id })
+        .select('mi.id', 'mi.name');
+
+      const defaultItem = await db('meal_items').where({ id: defaultRow.item_id }).select('id', 'name').first();
+      
+      return { 
+        ...c, 
+        pending_skip_request: !!pendingRequest,
+        alternatives: [defaultItem, ...alts].filter(a => a.id !== c.item_id)
+      };
+    }));
 
   const extras = await db('day_extras as de')
     .join('meal_items as mi', 'mi.id', 'de.item_id')
@@ -361,7 +366,21 @@ router.post('/:id/cancel', requireUser, async (req, res) => {
         updated_at: db.fn.now(),
       });
 
+    // Respond immediately after transaction commits
     res.json(updated);
+
+    // Fire-and-forget: notification + domain event
+    sendNotification(
+      sub.user_id,
+      NotificationType.SYSTEM,
+      'Subscription Cancelled',
+      `Your ritual #${sub.id} has been cancelled as requested.`,
+    ).catch(() => {});
+
+    emitEvent(DomainEvent.SUBSCRIPTION_CANCELLED, {
+      subscription_id: sub.id,
+      user_id: sub.user_id,
+    }).catch(e => console.error('[bg] SUBSCRIPTION_CANCELLED emit failed:', e?.message));
   });
 });
 
