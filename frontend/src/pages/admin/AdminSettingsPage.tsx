@@ -20,11 +20,22 @@ export default function AdminSettingsPage() {
   const [editingOffer, setEditingOffer] = useState<any | null>(null);
 
   useEffect(() => {
-    if (data?.settings) setForm(data.settings);
+    if (data?.settings) {
+      const s = data.settings;
+      setForm({
+        ...s,
+        breakfast_price: s.breakfast_price ? Math.round(s.breakfast_price / 100) : '',
+        lunch_price: s.lunch_price ? Math.round(s.lunch_price / 100) : '',
+        dinner_price: s.dinner_price ? Math.round(s.dinner_price / 100) : '',
+      });
+    }
   }, [data]);
 
   const updateSettings = useMutation({
     mutationFn: () => adminSettings.update({
+      breakfast_price: Math.round(Number(form.breakfast_price) * 100),
+      lunch_price: Math.round(Number(form.lunch_price) * 100),
+      dinner_price: Math.round(Number(form.dinner_price) * 100),
       breakfast_cutoff_hour: parseInt(form.breakfast_cutoff_hour),
       lunch_cutoff_hour: parseInt(form.lunch_cutoff_hour),
       dinner_cutoff_hour: parseInt(form.dinner_cutoff_hour),
@@ -117,6 +128,37 @@ export default function AdminSettingsPage() {
         </div>
       )}
       <h1 className="text-xl font-bold t-text">Settings</h1>
+
+      {/* Meal Prices */}
+      <div className="glass p-5 space-y-4">
+        <p className="text-sm font-medium t-text-secondary">Meal Prices (₹)</p>
+        <div className="grid grid-cols-3 gap-3">
+          {[
+            { key: 'breakfast_price', label: 'Breakfast' },
+            { key: 'lunch_price', label: 'Lunch' },
+            { key: 'dinner_price', label: 'Dinner' },
+          ].map(f => (
+            <div key={f.key} className="space-y-1">
+              <p className="text-xs t-text-muted">{f.label} price (₹)</p>
+              <input
+                type="number"
+                min={1}
+                value={form[f.key] ?? ''}
+                onChange={e => setForm((s: any) => ({ ...s, [f.key]: e.target.value }))}
+                className="w-full glass border-transparent rounded px-2 py-1.5 t-text text-sm outline-none focus:border-teal-500"
+              />
+            </div>
+          ))}
+        </div>
+        <p className="text-[11px] t-text-faint">These prices are shown to users everywhere. Existing subscriptions are unaffected (prices are frozen at order time).</p>
+        <button
+          onClick={() => updateSettings.mutate()}
+          disabled={updateSettings.isPending}
+          className="bg-teal-500 hover:bg-teal-400 disabled:opacity-50 text-white text-sm px-4 py-2 rounded-lg"
+        >
+          {updateSettings.isPending ? 'Saving…' : 'Save settings'}
+        </button>
+      </div>
 
       {/* Cutoff times */}
       <div className="glass p-5 space-y-4">
