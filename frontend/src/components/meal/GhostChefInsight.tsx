@@ -74,7 +74,7 @@ export const GhostChefInsight: React.FC<GhostChefInsightProps> = ({ status }) =>
 
   const handleNext = () => {
     setIndex(prev => (prev + 1) % activePool.length);
-    haptics.impact('light');
+    // haptics.impact('light');
   };
 
   return (
