@@ -95,13 +95,13 @@ router.post(
     // Idempotent — if already active, return success
     if (sub.state === 'active') return res.json({ success: true, subscription: sub });
 
-    // Create payment record
+    // Create payment record — price_paid is already in paise, store as-is
     const [payment] = await db('payments').insert({
       subscription_id,
       user_id: req.userId,
       razorpay_order_id,
       razorpay_payment_id,
-      amount: sub.price_paid * 100,
+      amount: sub.price_paid,
       status: 'paid',
     }).returning('*');
 
@@ -120,15 +120,18 @@ router.post(
       })
       .returning('*');
 
-    // Emit event — jobs handle wallet debit, notification, 30-day unlock
-    await emitEvent(DomainEvent.PAYMENT_SUCCESS, {
+    // Respond immediately — do NOT await event emission (blocks response on cold start)
+    res.json({ success: true, subscription: updated });
+
+    // Fire-and-forget: jobs handle wallet debit, notification, 30-day unlock
+    emitEvent(DomainEvent.PAYMENT_SUCCESS, {
       subscription_id,
       payment_id: payment.id,
       user_id: req.userId,
       wallet_applied: sub.wallet_applied,
+    }).catch(err => {
+      console.error('[payment.verify] Event emission failed (non-fatal):', err?.message);
     });
-
-    res.json({ success: true, subscription: updated });
   }
 );
 
@@ -155,14 +158,16 @@ router.post(
       .update({ state: 'active', updated_at: db.fn.now() })
       .returning('*');
 
-    await emitEvent(DomainEvent.PAYMENT_SUCCESS, {
+    res.json({ success: true, subscription: updated });
+
+    emitEvent(DomainEvent.PAYMENT_SUCCESS, {
       subscription_id: sub.id,
       payment_id: null,
       user_id: req.userId,
       wallet_applied: sub.wallet_applied,
+    }).catch(err => {
+      console.error('[activate-free] Event emission failed (non-fatal):', err?.message);
     });
-
-    res.json({ success: true, subscription: updated });
   }
 );
 

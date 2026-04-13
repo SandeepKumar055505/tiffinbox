@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { adminSubscriptions } from '../../services/adminApi';
 import { useSensorial } from '../../context/SensorialContext';
+import { formatRupees } from '../../utils/pricing';
 
 const STATE_COLORS: Record<string, string> = {
   active: 'bg-teal-500/20 text-teal-400',
@@ -67,7 +68,7 @@ export default function AdminSubscriptionsPage() {
                 </span>
               </div>
               <p className="text-xs t-text-muted mt-0.5">
-                {sub.plan_days}-day · {sub.start_date} → {sub.end_date} · ₹{sub.price_paid}
+                {sub.plan_days}-day · {sub.start_date} → {sub.end_date} · {formatRupees(sub.price_paid)}
               </p>
             </div>
             {['active', 'partially_skipped', 'paused'].includes(sub.state) && (
