@@ -103,6 +103,7 @@ export const adminAreas = {
   list: () => api.get('/admin/areas'),
   create: (data: any) => api.post('/admin/areas', data),
   update: (id: number, data: any) => api.patch(`/admin/areas/${id}`, data),
+  remove: (id: number) => api.delete(`/admin/areas/${id}`),
 };
 
 export const adminNarratives = {

@@ -88,10 +88,11 @@ const ALLOWED_ORIGINS = [
 
 const corsOptions: cors.CorsOptions = {
   origin: (origin, cb) => {
-    const isAllowed = !origin || env.isDev || 
-      ALLOWED_ORIGINS.includes(origin) || 
-      /\.mytiffinpoint\.com$/.test(origin) || 
-      /\.onrender\.com$/.test(origin);
+    const isAllowed = !origin || env.isDev ||
+      ALLOWED_ORIGINS.includes(origin) ||
+      /\.mytiffinpoint\.com$/.test(origin) ||
+      /\.onrender\.com$/.test(origin) ||
+      /\.vercel\.app$/.test(origin);
 
     if (isAllowed) return cb(null, true);
     
@@ -187,10 +188,11 @@ app.use(async (err: any, req: express.Request, res: express.Response, _next: exp
 
   // Guarantee CORS headers even on error responses
   const origin = req.headers.origin;
-  const isAllowed = !origin || env.isDev || 
-    ALLOWED_ORIGINS.includes(origin) || 
-    /\.mytiffinpoint\.com$/.test(origin) || 
-    /\.onrender\.com$/.test(origin);
+  const isAllowed = !origin || env.isDev ||
+    ALLOWED_ORIGINS.includes(origin) ||
+    /\.mytiffinpoint\.com$/.test(origin) ||
+    /\.onrender\.com$/.test(origin) ||
+    /\.vercel\.app$/.test(origin);
 
   if (origin && isAllowed) {
     res.setHeader('Access-Control-Allow-Origin', origin);

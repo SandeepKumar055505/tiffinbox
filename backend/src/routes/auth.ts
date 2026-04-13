@@ -176,6 +176,7 @@ router.get('/me', async (req, res) => {
 router.patch('/me', requireUser, validate(z.object({
   wallet_auto_apply: z.boolean().optional(),
   delivery_address: z.string().max(500).optional(),
+  notification_mutes: z.array(z.string()).optional(),
 })), async (req, res) => {
   const updates: Record<string, any> = {};
   if (req.body.wallet_auto_apply !== undefined) updates.wallet_auto_apply = req.body.wallet_auto_apply;

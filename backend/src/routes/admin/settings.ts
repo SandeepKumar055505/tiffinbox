@@ -36,9 +36,10 @@ router.patch(
     ratings_enabled: z.boolean().optional(),
     global_banner_text: z.string().max(500).optional(),
     global_banner_active: z.boolean().optional(),
+    geo_check_enabled: z.boolean().optional(),
+    serviceable_pincodes: z.string().max(2000).optional(),
   })),
   async (req, res) => {
-    // Ω.7: Recursive Defensive Mapping (Only allow keys defined in schema to reach DB)
     const validKeys = [
       'breakfast_price', 'lunch_price', 'dinner_price',
       'breakfast_cutoff_hour', 'lunch_cutoff_hour', 'dinner_cutoff_hour',
@@ -46,7 +47,8 @@ router.patch(
       'signup_wallet_credit', 'referral_reward_amount',
       'breakfast_enabled', 'lunch_enabled', 'dinner_enabled',
       'delivery_otp_enabled', 'ratings_enabled',
-      'global_banner_text', 'global_banner_active'
+      'global_banner_text', 'global_banner_active',
+      'geo_check_enabled', 'serviceable_pincodes',
     ];
     
     const updateData: any = {};

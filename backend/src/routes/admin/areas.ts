@@ -23,6 +23,7 @@ router.post(
   requireAdmin,
   validate(z.object({
     name: z.string().min(1),
+    pincodes: z.string().default(''),
     is_active: z.boolean().default(true),
     priority: z.number().int().min(0).default(0),
     notes: z.string().optional(),
@@ -46,19 +47,27 @@ router.patch(
   requireAdmin,
   validate(z.object({
     name: z.string().optional(),
+    pincodes: z.string().optional(),
     is_active: z.boolean().optional(),
     priority: z.number().int().optional(),
-    notes: z.string().optional()
+    notes: z.string().optional(),
   })),
   async (req, res) => {
     const [updated] = await db('areas')
       .where({ id: req.params.id })
       .update({ ...req.body, updated_at: db.fn.now() })
       .returning('*');
-    
+
     if (!updated) return res.status(404).json({ error: 'Zone not found' });
     res.json(updated);
   }
 );
+
+// DELETE /api/admin/areas/:id
+router.delete('/:id', requireAdmin, async (req, res) => {
+  const deleted = await db('areas').where({ id: req.params.id }).delete();
+  if (!deleted) return res.status(404).json({ error: 'Zone not found' });
+  res.status(204).send();
+});
 
 export default router;

@@ -29,10 +29,10 @@ export default function AdminLayout() {
   }
 
   return (
-    <div className="min-h-screen flex">
+    <div className="h-screen flex overflow-hidden">
       <OracleCommandBar />
       {/* Sidebar */}
-      <aside className="w-64 shrink-0 glass rounded-none border-r border-border/10 flex flex-col m-4 mr-0 rounded-l-2xl">
+      <aside className="w-64 shrink-0 glass rounded-none border-r border-border/10 flex flex-col m-4 mr-0 rounded-l-2xl overflow-hidden">
         <div className="p-6 border-b border-border/10 flex items-center justify-between">
           <div>
             <p className="text-primary font-black tracking-tight text-lg">TiffinBox</p>
@@ -81,7 +81,7 @@ export default function AdminLayout() {
       </aside>
 
       {/* Main */}
-      <main className="flex-1 overflow-y-auto p-4">
+      <main className="flex-1 overflow-y-auto p-4 min-w-0">
         <div className="glass-elevated min-h-full p-8 animate-glass">
           <Outlet />
         </div>
