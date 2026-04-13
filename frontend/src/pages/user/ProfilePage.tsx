@@ -593,7 +593,7 @@ export default function ProfilePage() {
                   hover:bg-accent/20 px-4 py-2 rounded-xl transition-all active:scale-95"
               >
                 <Plus size={13} strokeWidth={2.5} />
-                Add New
+                Add Member
               </button>
             )}
           </div>
