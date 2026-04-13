@@ -20,6 +20,7 @@ interface MealGridProps {
   planDays: number;
   maxDayOffs: number;
   mealPrices: MealPrices;
+  enabledMealTypes?: string[];
   onChange: (days: DaySelection[]) => void;
 }
 
@@ -32,7 +33,9 @@ function getDayOffCount(days: DaySelection[]): number {
   return days.filter(d => d.meals.length === 0).length;
 }
 
-export default function MealGrid({ days, weekMenu, planDays, maxDayOffs, mealPrices, onChange }: MealGridProps) {
+export default function MealGrid({ days, weekMenu, planDays, maxDayOffs, mealPrices, enabledMealTypes, onChange }: MealGridProps) {
+  // Only render columns for meal types the admin has enabled
+  const activeMealTypes = MEAL_TYPES.filter(m => !enabledMealTypes || enabledMealTypes.includes(m));
   const { isDark } = useTheme();
   const [swapModal, setSwapModal] = useState<{ date: string; mealType: MealType } | null>(null);
   const dayOffCount = getDayOffCount(days);
@@ -125,7 +128,7 @@ export default function MealGrid({ days, weekMenu, planDays, maxDayOffs, mealPri
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: idx * 0.03, duration: 0.3 }}
             >
-              <div className="grid gap-2" style={{ gridTemplateColumns: '48px repeat(3, 1fr)' }}>
+              <div className="grid gap-2" style={{ gridTemplateColumns: `48px repeat(${activeMealTypes.length}, 1fr)` }}>
                 {/* Date column */}
                 <div className={`flex flex-col justify-center items-center rounded-2xl border py-2
                   ${isDark ? 'bg-white/[0.03] border-white/[0.05]' : 'bg-indigo-950/[0.03] border-indigo-900/5'}`}>
@@ -143,8 +146,8 @@ export default function MealGrid({ days, weekMenu, planDays, maxDayOffs, mealPri
                   </span>
                 </div>
 
-                {/* Meal cells */}
-                {MEAL_TYPES.map(mealType => {
+                {/* Meal cells — only enabled types */}
+                {activeMealTypes.map(mealType => {
                   const included = day.meals.includes(mealType);
                   const item = getItemForCell(day.date, mealType);
                   const blocked = wouldExceedDayOff(day.date, mealType);

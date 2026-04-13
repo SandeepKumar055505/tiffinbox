@@ -193,6 +193,24 @@ router.post('/', requireUser, validate(createSchema), async (req, res) => {
   // Capacity Check (Operational Boundary)
   const settings = await db('app_settings').where({ id: 1 }).first();
   const maxMeals = settings?.max_meals_per_slot ?? 200;
+
+  // Meal-type availability check — reject disabled meal types
+  const disabledMeals: string[] = [];
+  if (settings?.breakfast_enabled === false) disabledMeals.push('breakfast');
+  if (settings?.lunch_enabled === false) disabledMeals.push('lunch');
+  if (settings?.dinner_enabled === false) disabledMeals.push('dinner');
+  if (disabledMeals.length > 0) {
+    for (const day of body.days) {
+      const blocked = (day.meals as string[]).filter((m: string) => disabledMeals.includes(m));
+      if (blocked.length > 0) {
+        const names = blocked.map((m: string) => m.charAt(0).toUpperCase() + m.slice(1)).join(' & ');
+        return res.status(422).json({
+          error_key: 'ERR_MEAL_DISABLED',
+          error: `${names} ${blocked.length === 1 ? 'is' : 'are'} not available for new subscriptions right now. Please remove ${blocked.length === 1 ? 'it' : 'them'} from your selection.`,
+        });
+      }
+    }
+  }
   
   const { currentHourIST, isTodayIST } = await import('../lib/time');
   const nowHour = currentHourIST();

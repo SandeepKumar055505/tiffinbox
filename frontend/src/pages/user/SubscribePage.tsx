@@ -58,7 +58,7 @@ const PATTERN_OPTIONS = [
 export default function SubscribePage() {
   const { user } = useAuth();
   const navigate = useNavigate();
-  const { mealPrices, discountTable } = usePublicConfig();
+  const { mealPrices, discountTable, enabledMealTypes, config: pubConfig } = usePublicConfig();
   const sensorial = useSensorial();
   const { isDark } = useTheme();
 
@@ -115,6 +115,7 @@ export default function SubscribePage() {
     setDays(dates.map(date => {
       const dow = new Date(date).getDay();
       const menuForDay = weekMenu[dow];
+      const allMealTypes: MealType[] = ['breakfast', 'lunch', 'dinner'];
       const includedMeals: MealType[] = [];
       if (menuForDay) {
         if (menuForDay.breakfast) includedMeals.push('breakfast');
@@ -122,9 +123,13 @@ export default function SubscribePage() {
         if (menuForDay.dinner) includedMeals.push('dinner');
       }
 
+      const base = includedMeals.length > 0 ? includedMeals : allMealTypes;
+      // Only keep meals that are enabled by admin
+      const filtered = base.filter(m => enabledMealTypes.includes(m));
+
       return {
         date,
-        meals: includedMeals.length > 0 ? includedMeals : (['breakfast', 'lunch', 'dinner'] as MealType[]),
+        meals: filtered.length > 0 ? filtered : base,
         overrides: { breakfast: undefined, lunch: undefined, dinner: undefined },
       };
     }));
@@ -296,6 +301,27 @@ export default function SubscribePage() {
         <div className="max-w-xl mx-auto space-y-10 relative z-10 pb-8">
           {renderHeader("Start your plan", "Tell us who's eating and when.", () => navigate('/'))}
           <LiquidProgressBar currentStep={1} totalSteps={3} />
+
+          {/* ── Meal availability note ── */}
+          {pubConfig && (() => {
+            const disabled = (['breakfast', 'lunch', 'dinner'] as const).filter(m => !pubConfig.meals[m].enabled);
+            const enabled = (['breakfast', 'lunch', 'dinner'] as const).filter(m => pubConfig.meals[m].enabled);
+            const icons: Record<string, string> = { breakfast: '☕', lunch: '🍱', dinner: '🌙' };
+            if (disabled.length === 0) return null;
+            return (
+              <div className="flex items-start gap-3 bg-amber-500/8 border border-amber-500/20 rounded-[1.2rem] px-4 py-3">
+                <span className="text-amber-400 text-[15px] mt-0.5 shrink-0">ℹ️</span>
+                <div>
+                  <p className="text-[12px] font-bold text-amber-400 leading-snug">
+                    Currently accepting {enabled.map(m => `${icons[m]} ${m.charAt(0).toUpperCase() + m.slice(1)}`).join(' · ')}
+                  </p>
+                  <p className="text-[11px] t-text-muted mt-0.5 opacity-70">
+                    {disabled.map(m => `${icons[m]} ${m.charAt(0).toUpperCase() + m.slice(1)}`).join(' & ')} {disabled.length === 1 ? 'is' : 'are'} not available right now
+                  </p>
+                </div>
+              </div>
+            );
+          })()}
 
           {/* ── 01 Who is this for? ── */}
           <section className="space-y-4 animate-glass" style={{ animationDelay: '0.08s' }}>
@@ -612,7 +638,7 @@ export default function SubscribePage() {
         <div className="max-w-2xl mx-auto px-2 sm:px-2 space-y-6 relative z-10 pb-10">
           {renderHeader("Pick your meals", "Tap to include or skip. Swap any dish with the ↕ icon.", () => setStep('setup'))}
           <LiquidProgressBar currentStep={2} totalSteps={3} />
-          <MealGrid days={days} weekMenu={weekMenu} planDays={planDays} maxDayOffs={planDays <= 7 ? 1 : 2} mealPrices={mealPrices} onChange={setDays} />
+          <MealGrid days={days} weekMenu={weekMenu} planDays={planDays} maxDayOffs={planDays <= 7 ? 1 : 2} mealPrices={mealPrices} enabledMealTypes={enabledMealTypes} onChange={setDays} />
         </div>
         {/* Fixed bottom bar — always visible while scrolling */}
         <PriceBar snapshot={snapshot} planDays={planDays} onNext={() => setShowConfirmModal(true)} />
