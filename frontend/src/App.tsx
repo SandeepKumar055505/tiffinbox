@@ -50,9 +50,11 @@ const AdminNotificationPage = React.lazy(() => import('./pages/admin/AdminNotifi
 const AdminUsersPage = React.lazy(() => import('./pages/admin/AdminUsersPage'));
 const AdminUserDetailPage = React.lazy(() => import('./pages/admin/AdminUserDetailPage'));
 const PhoneVerificationPage = React.lazy(() => import('./pages/auth/PhoneVerificationPage'));
+const LandingPage = React.lazy(() => import('./pages/portal/LandingPage'));
 
 import GlassLayout from './components/shared/GlassLayout';
 import UserLayout from './components/user/UserLayout';
+import ScrollToTop from './components/shared/ScrollToTop';
 
 const Loader = () => (
   <div className="min-h-screen flex items-center justify-center text-secondary text-sm">
@@ -83,11 +85,13 @@ function RequireAdmin({ children }: { children: React.ReactNode }) {
 
 export default function App() {
   const location = useLocation();
+  const { user } = useAuth();
 
   return (
     <AdminAuthProvider>
       <ErrorBoundary>
       <React.Suspense fallback={<Loader />}>
+        <ScrollToTop />
         <GlassLayout>
           <AnimatePresence mode="wait">
             <motion.div
@@ -109,9 +113,11 @@ export default function App() {
                 <Route path="/shipping" element={<ShippingPolicy />} />
                 <Route path="/contact" element={<ContactUs />} />
                 
+                <Route path="/" element={user ? <Navigate to="/dashboard" replace /> : <LandingPage />} />
+                
                 {/* User routes — Wrapped in UserLayout */}
                 <Route element={<RequireUser><UserLayout /></RequireUser>}>
-                  <Route path="/" element={<DashboardPage />} />
+                  <Route path="/dashboard" element={<DashboardPage />} />
                   <Route path="/subscribe" element={<SubscribePage />} />
                   <Route path="/subscriptions" element={<SubscriptionsPage />} />
                   <Route path="/subscriptions/:id" element={<SubscriptionDetailPage />} />
