@@ -1,4 +1,4 @@
-# TiffinBox — API Reference
+# TiffinPoint — API Reference
 
 > Base URL: `/api`. All endpoints return JSON. Errors use `ApiError` shape.
 > Auth: `Authorization: Bearer <jwt>` header. Admin endpoints require admin JWT.

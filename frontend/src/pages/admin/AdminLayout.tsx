@@ -35,7 +35,7 @@ export default function AdminLayout() {
       <aside className="w-64 shrink-0 glass rounded-none border-r border-border/10 flex flex-col m-4 mr-0 rounded-l-2xl overflow-hidden">
         <div className="p-6 border-b border-border/10 flex items-center justify-between">
           <div>
-            <p className="text-primary font-black tracking-tight text-lg">TiffinBox</p>
+            <p className="text-primary font-black tracking-tight text-lg">TiffinPoint</p>
             <p className="text-accent text-[10px] font-bold uppercase tracking-widest mt-0.5">Admin Portal</p>
           </div>
           <ThemeToggle />

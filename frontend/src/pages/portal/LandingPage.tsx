@@ -1,3 +1,4 @@
+import '../../portal.css';
 import React, { useEffect, useRef, useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { motion, useScroll, useTransform, AnimatePresence, useInView, Variants } from 'framer-motion';
@@ -45,7 +46,7 @@ const CHEF_DATA = [
 const TESTIMONIALS = [
   { name: "Priya M.", text: "Mujhe lagta hai meri maa ne bheja hai — itna ghar jaisa khana kabhi nahi mila bahar.", rating: 5, area: "Sector 56", since: "6 months" },
   { name: "Rahul K.", text: "Office mein sab puchte hain tiffin kahan se aata hai. Ab pura floor subscriber hai!", rating: 5, area: "Sector 48", since: "4 months" },
-  { name: "Anita S.", text: "Bacchon ne maggi chhod di jab se TiffinBox aana shuru hua. Proudest mom moment.", rating: 5, area: "Sohna Road", since: "8 months" },
+  { name: "Anita S.", text: "Bacchon ne maggi chhod di jab se TiffinPoint aana shuru hua. Proudest mom moment.", rating: 5, area: "Sohna Road", since: "8 months" },
   { name: "Vikram P.", text: "3 months ho gaye, ek din bhi skip nahi kiya. That's how good it is.", rating: 5, area: "Golf Course Rd", since: "3 months" },
   { name: "Neha G.", text: "PG ka khana chhod diya. Ab lagta hi nahi ghar se door hoon.", rating: 5, area: "DLF Phase 3", since: "5 months" },
   { name: "Amit D.", text: "Steel tiffin, sealed, garam. Doctor ne bhi bola nutrition improve hua hai.", rating: 5, area: "Sector 62", since: "7 months" }
@@ -87,7 +88,7 @@ const PAIN_POINTS = [
   { emoji: "😷", text: "Unknown kitchen hygiene — you don't know who cooked it or how" }
 ];
 
-// A Day with TiffinBox — narrative storytelling
+// A Day with TiffinPoint — narrative storytelling
 const A_DAY_WITH_US = [
   { time: "8:00 AM", emoji: "🌅", title: "Nashta Arrives", desc: "Garam poha aur adrak chai. Steel tiffin mein sealed. Aapka din sahi shuru hota hai.", mood: "Energized" },
   { time: "12:30 PM", emoji: "☀️", title: "Lunch at Your Desk", desc: "Rajma chawal, raita, achar. Colleagues jealous. Aap satisfied. Post-lunch slump? Not today.", mood: "Fulfilled" },
@@ -115,7 +116,7 @@ const ORIGIN_STORY = {
   paragraphs: [
     "Hum Gurugram mein rehte hain. Roz bahar ka khana khaate the — Zomato, Swiggy, mess, canteen. Pet toh bhar jaata tha, par mann nahi bharta tha.",
     "Ek din ek aunty ne kaha — \"Beta, kal se mere ghar ka khana kha lo.\" Pehla bite liya aur aankhen band ho gayin. Woh taste, woh aroma — wahi tha jo bachpan mein milta tha.",
-    "Usi pal TiffinBox ka idea aaya. Agar ek aunty itna achha bana sakti hain, toh kyun na poore sheher ko yeh swaad milna chahiye?"
+    "Usi pal TiffinPoint ka idea aaya. Agar ek aunty itna achha bana sakti hain, toh kyun na poore sheher ko yeh swaad milna chahiye?"
   ]
 };
 
@@ -181,36 +182,58 @@ const FAQItem = ({ q, a }: { q: string; a: string }) => {
 const TiffinBloom = () => {
   const ref = useRef<HTMLDivElement>(null);
   const { scrollYProgress } = useScroll({ target: ref, offset: ["start start", "end end"] });
-  const y1 = useTransform(scrollYProgress, [0.1, 0.4], [0, -60]);
-  const y2 = useTransform(scrollYProgress, [0.1, 0.4], [0, 50]);
-  const y3 = useTransform(scrollYProgress, [0.1, 0.4], [0, 160]);
-  const lid = useTransform(scrollYProgress, [0.05, 0.25], [0, -45]);
+  const y1 = useTransform(scrollYProgress, [0.05, 0.35], [0, -80]);
+  const y2 = useTransform(scrollYProgress, [0.1, 0.45], [0, 40]);
+  const y3 = useTransform(scrollYProgress, [0.15, 0.55], [0, 160]);
+  const lid = useTransform(scrollYProgress, [0.05, 0.25], [0, -60]);
   const op = useTransform(scrollYProgress, [0, 0.1, 0.9, 1], [0, 1, 1, 0]);
   const textOp = useTransform(scrollYProgress, [0.4, 0.55], [0, 1]);
+  const scale = useTransform(scrollYProgress, [0, 0.4], [0.8, 1]);
+
   return (
-    <div ref={ref} className="relative h-[140vh]">
+    <div ref={ref} className="relative h-[200vh]">
       <div className="sticky top-0 h-screen flex flex-col items-center justify-center overflow-hidden px-4">
-        <motion.div style={{ opacity: op }} className="relative perspective-1200 w-52 sm:w-64 md:w-72 h-64 sm:h-72 mb-24 sm:mb-36">
-          <motion.div style={{ y: y1, rotateX: lid }} className="absolute inset-x-0 h-12 sm:h-16 md:h-20 bg-gradient-to-b from-zinc-200 to-zinc-400 rounded-t-[2rem] sm:rounded-t-[2.5rem] shadow-2xl z-40 border-b-[6px] border-black/5 flex items-center justify-center ring-1 ring-inset ring-white/30">
-            <div className="w-12 sm:w-16 md:w-20 h-1 bg-zinc-500 rounded-full opacity-40" />
+        {/* Cinematic Background Flourish */}
+        <motion.div style={{ opacity: op }} className="absolute inset-0 z-0 pointer-events-none">
+          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[40rem] h-[40rem] bg-amber-500/[0.08] blur-[160px] rounded-full animate-mesh" />
+          <div className="absolute top-[20%] right-[10%] w-[25rem] h-[25rem] bg-slate-400/[0.05] blur-[120px] rounded-full animate-mesh" style={{ animationDelay: '5s' }} />
+        </motion.div>
+
+        <motion.div style={{ opacity: op, scale }} className="relative perspective-1200 w-52 sm:w-64 md:w-80 h-64 sm:h-72 mb-28 sm:mb-44 z-10">
+          {/* LID */}
+          <motion.div style={{ y: y1, rotateX: lid }} className="absolute inset-x-0 h-14 sm:h-16 md:h-24 bg-gradient-to-b from-zinc-100 to-zinc-300 rounded-t-[2.5rem] shadow-2xl z-40 border-b-[6px] border-black/10 flex items-center justify-center ring-1 ring-inset ring-white focus-within:ring-amber-400 transition-all">
+            <div className="w-14 sm:w-16 md:w-24 h-1.5 bg-zinc-400 rounded-full opacity-30 shadow-inner" />
           </motion.div>
-          <motion.div style={{ y: y1 }} className="absolute top-12 sm:top-16 md:top-20 inset-x-0 h-20 sm:h-24 md:h-28 bg-white rounded-xl sm:rounded-2xl shadow-xl z-30 flex flex-col items-center justify-center p-3 sm:p-5 text-center ring-1 ring-black/5">
-            <span className="text-[7px] sm:text-[8px] md:text-[9px] font-black uppercase tracking-[0.2em] text-amber-600 mb-0.5 font-zenith">🌅 Subah ka Nashta</span>
-            <span className="text-slate-900 font-heritage font-black text-xs sm:text-base md:text-lg italic leading-none">Poha & Adrak Chai</span>
+
+          {/* BREKKIE */}
+          <motion.div style={{ y: y1 }} className="absolute top-14 sm:top-16 md:top-24 inset-x-0 h-24 sm:h-28 md:h-32 bg-white rounded-xl sm:rounded-2xl shadow-xl z-30 flex flex-col items-center justify-center p-3 sm:p-5 text-center ring-1 ring-black/[0.02]">
+            <span className="text-[7px] sm:text-[8px] md:text-[9px] font-black uppercase tracking-[0.25em] text-amber-600 mb-1 font-zenith">🌅 Subah ka Nashta</span>
+            <span className="text-slate-900 font-heritage font-black text-xs sm:text-base md:text-xl italic leading-none">Poha & Adrak Chai</span>
           </motion.div>
-          <motion.div style={{ y: y2 }} className="absolute top-12 sm:top-16 md:top-20 inset-x-0 h-24 sm:h-28 md:h-36 bg-white rounded-2xl sm:rounded-3xl shadow-2xl z-20 mt-24 sm:mt-28 md:mt-32 flex flex-col items-center justify-center p-4 sm:p-6 text-center ring-1 ring-black/5">
-            <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 w-6 h-6 sm:w-7 sm:h-7 rounded-full bg-amber-500 shadow-glow flex items-center justify-center text-white"><Zap size={9} fill="currentColor" /></div>
-            <span className="text-[7px] sm:text-[8px] md:text-[9px] font-black uppercase tracking-[0.2em] text-amber-600 mb-0.5 font-zenith">☀️ Dopahar ki Thaali</span>
-            <span className="text-slate-900 font-heritage font-black text-sm sm:text-lg md:text-xl italic leading-none">Rajma Chawal & Raita</span>
+
+          {/* LUNCH */}
+          <motion.div style={{ y: y2 }} className="absolute top-14 sm:top-16 md:top-24 inset-x-0 h-32 sm:h-40 md:h-48 bg-white rounded-2xl sm:rounded-3xl shadow-2xl z-20 mt-28 sm:mt-32 md:mt-36 flex flex-col items-center justify-center p-4 sm:p-6 text-center border-x border-slate-50 ring-1 ring-black/[0.02]">
+            <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-amber-500 shadow-glow flex items-center justify-center text-white z-50">
+              <Zap size={10} fill="currentColor" />
+            </div>
+            <span className="text-[7px] sm:text-[8px] md:text-[9px] font-black uppercase tracking-[0.25em] text-amber-600 mb-1 font-zenith">☀️ Dopahar ki Thaali</span>
+            <span className="text-slate-900 font-heritage font-black text-sm sm:text-xl md:text-2xl italic leading-none">Rajma Chawal & Raita</span>
           </motion.div>
-          <motion.div style={{ y: y3 }} className="absolute top-12 sm:top-16 md:top-20 inset-x-0 h-24 sm:h-28 md:h-36 bg-white rounded-[1.5rem] sm:rounded-[2.5rem] shadow-2xl z-10 mt-52 sm:mt-60 md:mt-72 flex flex-col items-center justify-center p-4 sm:p-6 text-center ring-1 ring-black/5">
-            <span className="text-[7px] sm:text-[8px] md:text-[9px] font-black uppercase tracking-[0.2em] text-amber-600 mb-0.5 font-zenith">🌙 Raat ka Sukoon</span>
-            <span className="text-slate-900 font-heritage font-black text-sm sm:text-lg md:text-xl italic leading-none text-balance">Dal Tadka & Missi Roti</span>
+
+          {/* DINNER */}
+          <motion.div style={{ y: y3 }} className="absolute top-14 sm:top-16 md:top-24 inset-x-0 h-32 sm:h-40 md:h-48 bg-white rounded-[2.5rem] sm:rounded-[3.5rem] shadow-2xl z-10 mt-64 sm:mt-72 md:mt-80 flex flex-col items-center justify-center p-4 sm:p-6 text-center ring-1 ring-black/[0.02] border-t border-slate-50">
+            <span className="text-[7px] sm:text-[8px] md:text-[9px] font-black uppercase tracking-[0.25em] text-amber-600 mb-1 font-zenith">🌙 Raat ka Sukoon</span>
+            <span className="text-slate-900 font-heritage font-black text-sm sm:text-lg md:text-2xl italic leading-none text-balance">Dal Tadka & Missi Roti</span>
           </motion.div>
         </motion.div>
-        <motion.div style={{ opacity: textOp }} className="text-center space-y-2 sm:space-y-3 px-4 relative z-50">
-          <h3 className="text-2xl sm:text-4xl md:text-6xl font-heritage font-black italic tracking-tighter text-slate-900 leading-none">The Perfect <span className="text-amber-500">Tiffin</span>.</h3>
-          <p className="text-[10px] sm:text-xs font-heritage italic opacity-50 max-w-xs sm:max-w-sm mx-auto leading-relaxed">Teen layers. Teen meals. Ek waada — <span className="text-amber-600 not-italic font-bold">subah se shaam tak.</span></p>
+
+        <motion.div style={{ opacity: textOp }} className="text-center space-y-3 sm:space-y-4 px-4 relative z-50">
+          <div className="inline-flex items-center gap-2 px-3 py-1 bg-amber-100 rounded-full border border-amber-200 shadow-sm mb-2">
+            <ShieldCheck size={12} className="text-amber-600" />
+            <span className="text-[8px] font-black uppercase tracking-widest text-amber-800 font-zenith">SS-304 Medical Grade Steel</span>
+          </div>
+          <h3 className="text-3xl sm:text-5xl md:text-7xl font-heritage font-black italic tracking-tighter text-slate-900 leading-none">The Perfect <span className="text-amber-500">Tiffin</span>.</h3>
+          <p className="text-xs sm:text-sm font-heritage italic text-slate-500 max-w-xs sm:max-w-md mx-auto leading-relaxed">Teen layers. Teen meals. Ek waada — <span className="text-amber-600 not-italic font-bold">har bite mein Gurgaon ki sabse pure quality.</span></p>
         </motion.div>
       </div>
     </div>
@@ -259,7 +282,7 @@ export default function LandingPage() {
       <nav className={`fixed top-0 left-0 right-0 z-[60] px-4 sm:px-6 py-3 flex justify-between items-center mx-2 sm:mx-3 mt-2 sm:mt-3 rounded-2xl sm:rounded-full transition-all duration-500 ${scrolled ? 'glass-prismatic shadow-warm' : 'bg-white/0'}`}>
         <Link to="/" className="flex items-center gap-2">
           <div className="w-8 h-8 bg-amber-500 rounded-xl flex items-center justify-center shadow-md"><ChefHat className="text-white" size={15} /></div>
-          <span className="text-base sm:text-lg font-black italic tracking-tighter text-slate-800 font-heritage uppercase">TiffinBox</span>
+          <span className="text-base sm:text-lg font-black italic tracking-tighter text-slate-800 font-heritage uppercase">TiffinPoint</span>
         </Link>
         <div className="hidden md:flex items-center gap-6 lg:gap-8">
           {[{ l: "Our Story", id: "our-story" }, { l: "Menu", id: "weekly-menu" }, { l: "How It Works", id: "how-it-works" }, { l: "Reviews", id: "reviews" }].map(n => (
@@ -365,7 +388,7 @@ export default function LandingPage() {
           </div>
           <motion.div initial={{ opacity: 0 }} whileInView={{ opacity: 1 }} viewport={{ once: true }} className="text-center pt-4 sm:pt-6">
             <p className="text-lg sm:text-xl md:text-2xl font-heritage font-black italic text-slate-800 leading-snug">Kab tak?</p>
-            <p className="text-base sm:text-lg md:text-xl font-heritage font-black italic text-amber-500 mt-1">Ab nahi. Ab <span className="text-slate-900 uppercase not-italic">TiffinBox</span>.</p>
+            <p className="text-base sm:text-lg md:text-xl font-heritage font-black italic text-amber-500 mt-1">Ab nahi. Ab <span className="text-slate-900 uppercase not-italic">TiffinPoint</span>.</p>
           </motion.div>
         </div>
       </section>
@@ -385,7 +408,7 @@ export default function LandingPage() {
 
       {/* ═══ ACT III — THE SOLUTION ═══ */}
 
-      {/* WHY TIFFINBOX */}
+      {/* WHY TiffinPoint */}
       <section id="why-us" className="py-16 sm:py-24 px-4 sm:px-6 bg-culinary-soul">
         <div className="max-w-5xl mx-auto space-y-10 sm:space-y-14">
           <div className="text-center space-y-2 sm:space-y-3 max-w-2xl mx-auto">
@@ -419,11 +442,11 @@ export default function LandingPage() {
       {/* COMPARISON */}
       <section className="py-12 sm:py-20 px-4 sm:px-6 bg-white">
         <div className="max-w-3xl mx-auto space-y-8 sm:space-y-12">
-          <div className="text-center space-y-2"><h2 className="text-2xl sm:text-4xl md:text-5xl font-heritage font-black tracking-tighter italic leading-none">TiffinBox vs <span className="text-slate-300 line-through decoration-red-400/50">Bahar ka Khana</span></h2></div>
+          <div className="text-center space-y-2"><h2 className="text-2xl sm:text-4xl md:text-5xl font-heritage font-black tracking-tighter italic leading-none">TiffinPoint vs <span className="text-slate-300 line-through decoration-red-400/50">Bahar ka Khana</span></h2></div>
           <div className="bg-white rounded-2xl sm:rounded-3xl border border-slate-100 overflow-hidden shadow-sm">
             <div className="grid grid-cols-3 bg-slate-50 border-b border-slate-100 px-4 sm:px-6 py-3">
               <span className="text-[9px] sm:text-[10px] font-black uppercase tracking-widest text-slate-300 font-zenith">Feature</span>
-              <span className="text-[9px] sm:text-[10px] font-black uppercase tracking-widest text-amber-600 font-zenith text-center">TiffinBox</span>
+              <span className="text-[9px] sm:text-[10px] font-black uppercase tracking-widest text-amber-600 font-zenith text-center">TiffinPoint</span>
               <span className="text-[9px] sm:text-[10px] font-black uppercase tracking-widest text-slate-300 font-zenith text-right">Others</span>
             </div>
             {COMPARISON.map((c, i) => (
@@ -468,8 +491,11 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* THE PERFECT TIFFIN */}
-      <section className="bg-white"><TiffinBloom /></section>
+      {/* THE PERFECT TIFFIN — Anatomical Deep-Dive */}
+      {/* <section id="anatomy" className="relative bg-slate-950 overflow-hidden border-y border-white/5">
+        <div className="absolute inset-0 bg-amber-500/[0.03] backdrop-blur-3xl" />
+        <TiffinBloom />
+      </section> */}
 
       {/* WEEKLY MENU */}
       <section id="weekly-menu" className="py-16 sm:py-24 px-4 sm:px-6 bg-culinary-soul">
@@ -545,12 +571,12 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* ═══ A DAY WITH TIFFINBOX — Narrative Timeline ═══ */}
+      {/* ═══ A DAY WITH TiffinPoint — Narrative Timeline ═══ */}
       <section className="py-16 sm:py-24 px-4 sm:px-6 bg-white">
         <div className="max-w-4xl mx-auto space-y-10 sm:space-y-14">
           <div className="text-center space-y-2 sm:space-y-3">
             <span className="text-[9px] sm:text-[10px] font-black uppercase tracking-[0.3em] text-amber-600">Ek Din, Aapka</span>
-            <h2 className="text-3xl sm:text-4xl md:text-5xl font-heritage font-black tracking-tighter italic leading-[0.95]">A Day with <span className="text-amber-500 not-italic uppercase">TiffinBox</span>.</h2>
+            <h2 className="text-3xl sm:text-4xl md:text-5xl font-heritage font-black tracking-tighter italic leading-[0.95]">A Day with <span className="text-amber-500 not-italic uppercase">TiffinPoint</span>.</h2>
             <p className="text-xs sm:text-sm text-slate-400 font-heritage italic">Imagine karo — kal se aapka din aisa hoga.</p>
           </div>
           <div className="relative">
@@ -580,8 +606,8 @@ export default function LandingPage() {
       </section>
 
       {/* ═══ SAVINGS CALCULATOR — Psychology: Loss Aversion ═══ */}
-      {(() => {
-        // Use real prices from config; estimate outside as ~2x TiffinBox
+      {/* {(() => {
+        // Use real prices from config; estimate outside as ~2x TiffinPoint
         // const bT = mealPrices.breakfast;
         const lT = mealPrices.lunch;
         const dT = mealPrices.dinner;
@@ -613,7 +639,7 @@ export default function LandingPage() {
                 <div className="grid grid-cols-3 bg-slate-50 border-b border-slate-100 px-4 sm:px-6 py-3">
                   <span className="text-[9px] sm:text-[10px] font-black uppercase tracking-widest text-slate-300 font-zenith">Meal</span>
                   <span className="text-[9px] sm:text-[10px] font-black uppercase tracking-widest text-red-400 font-zenith text-center">Bahar Ka</span>
-                  <span className="text-[9px] sm:text-[10px] font-black uppercase tracking-widest text-emerald-600 font-zenith text-right">TiffinBox</span>
+                  <span className="text-[9px] sm:text-[10px] font-black uppercase tracking-widest text-emerald-600 font-zenith text-right">TiffinPoint</span>
                 </div>
                 {rows.map((s, i) => (
                   <div key={i} className={`grid grid-cols-3 items-center px-4 sm:px-6 py-3 sm:py-3.5 border-b border-slate-50 last:border-0 ${i === rows.length - 1 ? 'bg-amber-50/30 font-bold' : i % 2 === 0 ? 'bg-white' : 'bg-slate-50/30'}`}>
@@ -630,10 +656,10 @@ export default function LandingPage() {
             </div>
           </section>
         );
-      })()}
+      })()} */}
 
       {/* ═══ NEIGHBORHOODS — Local Pride ═══ */}
-      <section className="py-14 sm:py-20 px-4 sm:px-6 bg-white">
+      {/* <section className="py-14 sm:py-20 px-4 sm:px-6 bg-white">
         <div className="max-w-4xl mx-auto space-y-8 sm:space-y-12">
           <div className="text-center space-y-2 sm:space-y-3">
             <span className="text-[9px] sm:text-[10px] font-black uppercase tracking-[0.3em] text-amber-600">Delivery Network</span>
@@ -653,7 +679,7 @@ export default function LandingPage() {
           </div>
           <p className="text-center text-[10px] sm:text-xs text-slate-300 font-zenith font-bold">And expanding every month! Aapka area nahi dikha? <a href="https://wa.me/919876543210?text=Mera%20area%20check%20karo" target="_blank" rel="noopener noreferrer" className="text-amber-500 hover:underline">WhatsApp karo →</a></p>
         </div>
-      </section>
+      </section> */}
 
       {/* ═══ CINEMATIC PHILOSOPHY BREAK ═══ */}
       <section className="py-16 sm:py-24 bg-slate-900 text-white text-center relative overflow-hidden">
@@ -664,7 +690,7 @@ export default function LandingPage() {
               "Khana banane mein waqt lagta hai.<br />
               <span className="text-amber-400">Pyaar</span> daalne mein aur bhi zyada."
             </p>
-            <p className="text-[10px] sm:text-xs font-black uppercase tracking-[0.3em] text-white/20 font-zenith mt-4 sm:mt-6">— Every TiffinBox Chef, Every Day</p>
+            <p className="text-[10px] sm:text-xs font-black uppercase tracking-[0.3em] text-white/20 font-zenith mt-4 sm:mt-6">— Every TiffinPoint Chef, Every Day</p>
           </motion.div>
         </div>
       </section>
@@ -689,7 +715,7 @@ export default function LandingPage() {
           </div>
           <motion.div initial={{ opacity: 0 }} whileInView={{ opacity: 1 }} viewport={{ once: true }} className="bg-amber-50/50 rounded-2xl sm:rounded-3xl p-6 sm:p-8 border border-amber-100/50 text-center space-y-3">
             <p className="text-lg sm:text-xl md:text-2xl font-heritage font-black italic text-slate-800 leading-snug">"Har ghar mein ek aunty hai jo duniya ka sabse achha khana banati hai.<br />Humne unhe ek platform diya."</p>
-            <p className="text-[10px] font-black uppercase tracking-[0.3em] text-amber-600 font-zenith">— TiffinBox Philosophy</p>
+            <p className="text-[10px] font-black uppercase tracking-[0.3em] text-amber-600 font-zenith">— TiffinPoint Philosophy</p>
           </motion.div>
         </div>
       </section>
@@ -776,7 +802,7 @@ export default function LandingPage() {
         <div className="max-w-5xl mx-auto space-y-8 sm:space-y-10">
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-8 sm:gap-10">
             <div className="space-y-3">
-              <div className="flex items-center gap-2"><div className="w-8 h-8 bg-amber-500 rounded-xl flex items-center justify-center"><ChefHat className="text-white" size={15} /></div><span className="text-lg font-black italic tracking-tighter font-heritage uppercase">TiffinBox</span></div>
+              <div className="flex items-center gap-2"><div className="w-8 h-8 bg-amber-500 rounded-xl flex items-center justify-center"><ChefHat className="text-white" size={15} /></div><span className="text-lg font-black italic tracking-tighter font-heritage uppercase">TiffinPoint</span></div>
               <p className="text-xs text-white/30 font-heritage italic leading-relaxed">Ghar ka khana, roz ka sukoon. Real home chefs cooking real food with real love.</p>
             </div>
             <div className="space-y-3">
@@ -787,7 +813,7 @@ export default function LandingPage() {
               <p className="text-[9px] font-black uppercase tracking-widest text-white/20 font-zenith">Contact</p>
               <div className="space-y-1.5">
                 <a href="tel:+918901221068" className="flex items-center gap-2 text-xs text-white/30 hover:text-amber-400 transition-all"><Phone size={12} />+91 89012 21068</a>
-                <a href="mailto:hello@tiffinbox.in" className="flex items-center gap-2 text-xs text-white/30 hover:text-amber-400 transition-all"><Mail size={12} />info@mypinnakle.com</a>
+                <a href="mailto:hello@TiffinPoint.in" className="flex items-center gap-2 text-xs text-white/30 hover:text-amber-400 transition-all"><Mail size={12} />info@mypinnakle.com</a>
                 <p className="flex items-center gap-2 text-xs text-white/30"><MapPin size={12} className="text-amber-500/50" />Gurugram, Haryana</p>
               </div>
             </div>

@@ -1,4 +1,4 @@
-# TiffinBox — Admin Operations
+# TiffinPoint — Admin Operations
 
 > Daily workflows and admin features. Read with PRODUCT.md for business rules.
 

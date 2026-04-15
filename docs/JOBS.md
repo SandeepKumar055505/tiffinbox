@@ -1,4 +1,4 @@
-# TiffinBox — Background Jobs & Event Bus
+# TiffinPoint — Background Jobs & Event Bus
 
 > pg-boss (PostgreSQL-backed job queue). Zero extra infrastructure — uses the same Neon DB.
 > Install: `npm install pg-boss`

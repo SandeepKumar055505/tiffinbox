@@ -273,7 +273,7 @@ export async function startJobWorkers(): Promise<void> {
             referral.referrer_id,
             NotificationType.PROMO,
             'Referral reward earned!',
-            `Your friend joined TiffinBox and placed their first order. ₹${rewardPaise/100} added to your wallet!`
+            `Your friend joined TiffinPoint and placed their first order. ₹${rewardPaise/100} added to your wallet!`
           );
         }
       }

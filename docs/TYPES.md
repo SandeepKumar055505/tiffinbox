@@ -1,4 +1,4 @@
-# TiffinBox — TypeScript Types & Enums
+# TiffinPoint — TypeScript Types & Enums
 
 > All interfaces, enums, and constants. Mirror these exactly in `frontend/src/types/` and `backend/src/types/`.
 

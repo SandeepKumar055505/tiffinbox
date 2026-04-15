@@ -1,4 +1,4 @@
-# TiffinBox — External Services
+# TiffinPoint — External Services
 
 > All third-party integrations. Read VARIABLES.md for credentials setup.
 
@@ -107,7 +107,7 @@ const options = {
   key: import.meta.env.VITE_RAZORPAY_KEY_ID,
   amount: breakdown.final_total * 100,  // paise
   currency: 'INR',
-  name: 'TiffinBox',
+  name: 'TiffinPoint',
   description: 'Meal Subscription',
   order_id: razorpayOrderId,
   handler: async (response) => {
@@ -152,9 +152,9 @@ export async function sendSubscriptionConfirmation(
   planSummary: string
 ) {
   await transporter.sendMail({
-    from: `TiffinBox <${process.env.GMAIL_USER}>`,
+    from: `TiffinPoint <${process.env.GMAIL_USER}>`,
     to,
-    subject: 'Your TiffinBox plan is confirmed! 🍱',
+    subject: 'Your TiffinPoint plan is confirmed! 🍱',
     html: `<h2>Hi ${name},</h2><p>Your plan is active. ${planSummary}</p>`,
   });
 }

@@ -1,4 +1,4 @@
-# TiffinBox — Database Schema
+# TiffinPoint — Database Schema
 
 > PostgreSQL (Neon). All migrations in `backend/src/db/migrations/`. Use Knex.js for queries.
 

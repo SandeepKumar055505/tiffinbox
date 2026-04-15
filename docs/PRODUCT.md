@@ -1,4 +1,4 @@
-# TiffinBox — Complete Product Specification
+# TiffinPoint — Complete Product Specification
 
 ## Vision
 

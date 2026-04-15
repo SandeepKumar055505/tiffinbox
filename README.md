@@ -1,4 +1,4 @@
-# TiffinBox
+# TiffinPoint
 
 Meal subscription web app for Delhi/NCR tiffin services.
 

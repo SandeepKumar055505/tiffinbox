@@ -210,7 +210,7 @@ export default function SubscriptionDetailPage() {
                   if (!Razorpay) { alert('Payment window could not load. Please refresh.'); return; }
                   const rz = new Razorpay({
                     key: key_id, amount, currency: 'INR', order_id,
-                    name: 'TiffinBox',
+                    name: 'TiffinPoint',
                     description: `${sub.plan_days}-day meal plan`,
                     theme: { color: '#14b8a6' },
                     handler: async (response: any) => {

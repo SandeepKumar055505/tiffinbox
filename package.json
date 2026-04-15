@@ -1,8 +1,8 @@
 {
-  "name": "tiffinbox",
+  "name": "TiffinPoint",
   "version": "1.0.0",
   "private": true,
-  "description": "TiffinBox — meal subscription web app for Delhi/NCR",
+  "description": "TiffinPoint — meal subscription web app for Delhi/NCR",
   "scripts": {
     "dev:backend": "cd backend && npm run dev",
     "dev:frontend": "cd frontend && npm run dev",

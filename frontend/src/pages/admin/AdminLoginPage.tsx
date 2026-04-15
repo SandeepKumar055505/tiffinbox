@@ -45,7 +45,7 @@ export default function AdminLoginPage() {
               <label className="text-label-caps !text-[11px] font-bold uppercase tracking-widest ml-1 opacity-40">Email Address</label>
               <input
                 type="email"
-                placeholder="admin@tiffinbox.com"
+                placeholder="admin@TiffinPoint.com"
                 value={email}
                 onChange={e => setEmail(e.target.value)}
                 className="w-full input-field !rounded-2xl !py-4"

@@ -75,7 +75,7 @@ async function sendViaResend(to: string, subject: string, html: string): Promise
 
 async function sendViaSmtp(to: string, subject: string, html: string): Promise<void> {
   await withTimeout(
-    transporter!.sendMail({ from: `TiffinBox <${env.GMAIL_USER}>`, to, subject, html })
+    transporter!.sendMail({ from: `TiffinPoint <${env.GMAIL_USER}>`, to, subject, html })
   );
 }
 
@@ -109,13 +109,13 @@ function wrap(body: string): string {
   return `
     <div style="font-family:sans-serif;max-width:520px;margin:auto;background:#0f172a;color:#e2e8f0;border-radius:12px;overflow:hidden">
       <div style="background:#0d9488;padding:20px 24px">
-        <h1 style="margin:0;font-size:20px;color:#fff">🍱 TiffinBox</h1>
+        <h1 style="margin:0;font-size:20px;color:#fff">🍱 TiffinPoint</h1>
       </div>
       <div style="padding:24px">
         ${body}
       </div>
       <div style="padding:16px 24px;border-top:1px solid #1e293b;font-size:12px;color:#475569;text-align:center">
-        TiffinBox · Fresh meals, delivered daily
+        TiffinPoint · Fresh meals, delivered daily
       </div>
     </div>`;
 }
@@ -130,13 +130,13 @@ export async function sendVerificationOtpEmail(opts: {
   const html = wrap(`
     <h2 style="color:#2dd4bf;margin-top:0">Verify your phone 📱</h2>
     <p>Hi ${opts.name},</p>
-    <p>Use the following code to verify your mobile number on TiffinBox:</p>
+    <p>Use the following code to verify your mobile number on TiffinPoint:</p>
     <div style="background:#1e293b;border-radius:12px;padding:24px;margin:24px 0;text-align:center">
       <span style="font-size:32px;font-weight:900;letter-spacing:8px;color:#2dd4bf">${opts.otp}</span>
     </div>
     <p style="color:#94a3b8;font-size:12px">This code expires in 5 minutes. If you didn't request this, please ignore this email.</p>
   `);
-  await send(opts.to, `${opts.otp} is your TiffinBox verification code`, html);
+  await send(opts.to, `${opts.otp} is your TiffinPoint verification code`, html);
 }
 
 export async function sendPaymentReceipt(opts: {
@@ -174,7 +174,7 @@ export async function sendDeliveryFailureNotice(opts: {
     <p>Hi ${opts.name},</p>
     <p>We're sorry — your <strong>${opts.meal_type}</strong> delivery on <strong>${opts.date}</strong> could not be completed.</p>
     <div style="background:#1e293b;border-radius:8px;padding:16px;margin:16px 0">
-      <p style="margin:0;color:#5eead4">₹${opts.credited_amount} has been credited to your TiffinBox wallet.</p>
+      <p style="margin:0;color:#5eead4">₹${opts.credited_amount} has been credited to your TiffinPoint wallet.</p>
       <p style="margin:8px 0 0;font-size:13px;color:#64748b">It will be automatically applied at your next checkout.</p>
     </div>
     <p style="color:#94a3b8;font-size:14px">We apologize for the inconvenience.</p>
@@ -198,7 +198,7 @@ export async function sendPlanExpiryReminder(opts: {
       Renew my plan →
     </a>
   `);
-  await send(opts.to, `Your TiffinBox plan ends on ${opts.end_date} — renew now`, html);
+  await send(opts.to, `Your TiffinPoint plan ends on ${opts.end_date} — renew now`, html);
 }
 
 export async function sendStreakMilestone(opts: {

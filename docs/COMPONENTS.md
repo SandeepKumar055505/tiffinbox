@@ -1,4 +1,4 @@
-# TiffinBox — Component Library
+# TiffinPoint — Component Library
 
 > All reusable components. Located in `frontend/src/components/`. Use glass design system from `THEME.md`.
 

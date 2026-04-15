@@ -1,4 +1,4 @@
-# TiffinBox — UX & User Flows
+# TiffinPoint — UX & User Flows
 
 > Interaction patterns, edge cases, and UX decisions. Read with PRODUCT.md for full context.
 
@@ -53,7 +53,7 @@ First payment
 
 **UX Notes:**
 - If user is already logged in when visiting /invite/:code → goes straight to /
-- Referral code stored in localStorage (`tb_referral_code`), cleared after use
+- Referral code stored in localStorage (`tp_referral_code`), cleared after use
 - Profile page shows live referral stats: invited count + converted count
 
 ---

@@ -221,7 +221,7 @@ export default function ProfilePage() {
         <header className="pt-6 pb-3 border-b border-border/10 mb-6 flex justify-between items-end">
           <div className="space-y-1">
             <h1 className="text-h1 !text-[34px] font-extrabold tracking-tight">Account</h1>
-            <p className="text-[10px] font-black uppercase tracking-widest opacity-40">TiffinBox v1.0.4</p>
+            <p className="text-[10px] font-black uppercase tracking-widest opacity-40">TiffinPoint v1.0.4</p>
           </div>
           <button
             onClick={async () => {
@@ -917,7 +917,7 @@ export default function ProfilePage() {
               onComplete={() => deleteAccount.mutate()}
             />
             <div className="text-center space-y-2 mt-8">
-              <p className="text-[9px] opacity-20 font-black uppercase tracking-[0.3em]">TiffinBox Diamond Framework • 2026</p>
+              <p className="text-[9px] opacity-20 font-black uppercase tracking-[0.3em]">TiffinPoint Diamond Framework • 2026</p>
               <p className="text-[8px] opacity-10 italic">Proudly serving fresh home-cooked health.</p>
             </div>
           </div>

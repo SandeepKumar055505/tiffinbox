@@ -1,10 +1,10 @@
-# TiffinBox — AI Project Guide
+# TiffinPoint — AI Project Guide
 
 > READ THIS FILE FIRST. It tells you exactly what each doc file contains so you only read what you need.
 
 ## What Is This Project?
 
-TiffinBox is a **meal subscription web app** for Delhi/NCR. Users subscribe to daily tiffin (home-cooked meal delivery) plans — choosing Breakfast (₹100), Lunch (₹120), Dinner (₹100) for 1 day / 1 week / 2 weeks. Plans have automatic discounts. Users can skip meals, customize daily dishes, and add extras. Admins manage menus, pricing, orders, and customers.
+TiffinPoint is a **meal subscription web app** for Delhi/NCR. Users subscribe to daily tiffin (home-cooked meal delivery) plans — choosing Breakfast (₹100), Lunch (₹120), Dinner (₹100) for 1 day / 1 week / 2 weeks. Plans have automatic discounts. Users can skip meals, customize daily dishes, and add extras. Admins manage menus, pricing, orders, and customers.
 
 ## Tech Stack (Quick Reference)
 

@@ -1,5 +1,5 @@
 /**
- * Centralized contact information for TiffinBox.
+ * Centralized contact information for TiffinPoint.
  * Use these constants everywhere to ensure data consistency.
  */
 
@@ -8,7 +8,7 @@ export const BUSINESS_PHONE = '+91-8901221068';
 export const BUSINESS_EMAIL = 'info@mypinnakle.com';
 
 export const WHATSAPP_NUMBER = '918901221068'; // Raw number without symbols for wa.me
-export const WHATSAPP_MESSAGE = 'Hi TiffinBox! I need help with my subscription.';
+export const WHATSAPP_MESSAGE = 'Hi TiffinPoint! I need help with my subscription.';
 
 export const BUSINESS_STREET = '';
 export const BUSINESS_LOCALITY = '';

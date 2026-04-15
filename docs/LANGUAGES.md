@@ -1,4 +1,4 @@
-# TiffinBox — Translations (i18n)
+# TiffinPoint — Translations (i18n)
 
 > English (default) + Hindi. All UI strings go here. Mirror in `frontend/src/i18n/`.
 
@@ -228,7 +228,7 @@ export default {
     email: 'Email',
     member_since: 'Member Since',
     logout: 'Logout',
-    logout_confirm: 'Logout from TiffinBox?',
+    logout_confirm: 'Logout from TiffinPoint?',
     language: 'Language',
     lang_en: 'English',
     lang_hi: 'Hindi',
@@ -432,7 +432,7 @@ export default {
     email: 'ईमेल',
     member_since: 'सदस्यता तिथि',
     logout: 'लॉगआउट',
-    logout_confirm: 'TiffinBox से लॉगआउट करें?',
+    logout_confirm: 'TiffinPoint से लॉगआउट करें?',
     language: 'भाषा',
     lang_en: 'अंग्रेज़ी',
     lang_hi: 'हिंदी',

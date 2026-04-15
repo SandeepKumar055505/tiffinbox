@@ -44,7 +44,7 @@ export default function Footer() {
     //           <div className="w-10 h-10 bg-amber-500 rounded-xl flex items-center justify-center shadow-lg">
     //             <ChefHat className="text-white" size={20} />
     //           </div>
-    //           <span className="text-2xl font-black tracking-tighter text-amber-600 font-zenith">TiffinBox</span>
+    //           <span className="text-2xl font-black tracking-tighter text-amber-600 font-zenith">TiffinPoint</span>
     //         </div>
     //         <p className="text-base font-bold text-slate-400 uppercase tracking-widest leading-relaxed">
     //           Elevating the home-dining experience with sovereign precision and motherly care.
@@ -95,7 +95,7 @@ export default function Footer() {
     //     </div>
 
     //     <div className="pt-12 border-t border-slate-50 dark:border-white/5 flex flex-col md:flex-row justify-between items-center gap-8">
-    //        <span className="text-[10px] font-black text-slate-300 uppercase tracking-[0.5em]">© {year} TiffinBox • The Sovereign Collective</span>
+    //        <span className="text-[10px] font-black text-slate-300 uppercase tracking-[0.5em]">© {year} TiffinPoint • The Sovereign Collective</span>
     //        <div className="flex gap-8">
     //           <span className="text-[10px] font-black text-slate-300 uppercase tracking-[0.2em] flex items-center gap-2">
     //             <ShieldCheck size={12} /> Encrypted Sanctuary
@@ -112,7 +112,7 @@ export default function Footer() {
         <div className="max-w-5xl mx-auto space-y-8 sm:space-y-10">
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-8 sm:gap-10">
             <div className="space-y-3">
-              <div className="flex items-center gap-2"><div className="w-8 h-8 bg-amber-500 rounded-xl flex items-center justify-center"><ChefHat className="text-white" size={15} /></div><span className="text-lg font-black italic tracking-tighter font-heritage uppercase">TiffinBox</span></div>
+              <div className="flex items-center gap-2"><div className="w-8 h-8 bg-amber-500 rounded-xl flex items-center justify-center"><ChefHat className="text-white" size={15} /></div><span className="text-lg font-black italic tracking-tighter font-heritage uppercase">TiffinPoint</span></div>
               <p className="text-xs text-white/30 font-heritage italic leading-relaxed">Ghar ka khana, roz ka sukoon. Real home chefs cooking real food with real love.</p>
             </div>
             <div className="space-y-3">
@@ -123,7 +123,7 @@ export default function Footer() {
               <p className="text-[9px] font-black uppercase tracking-widest text-white/20 font-zenith">Contact</p>
               <div className="space-y-1.5">
                 <a href="tel:+918901221068" className="flex items-center gap-2 text-xs text-white/30 hover:text-amber-400 transition-all"><Phone size={12} />+91 89012 21068</a>
-                <a href="mailto:hello@tiffinbox.in" className="flex items-center gap-2 text-xs text-white/30 hover:text-amber-400 transition-all"><Mail size={12} />info@mypinnakle.com</a>
+                <a href="mailto:info@mypinnakle.com" className="flex items-center gap-2 text-xs text-white/30 hover:text-amber-400 transition-all"><Mail size={12} />info@mypinnakle.com</a>
                 <p className="flex items-center gap-2 text-xs text-white/30"><MapPin size={12} className="text-amber-500/50" />Gurugram, Haryana</p>
               </div>
             </div>
@@ -134,7 +134,7 @@ export default function Footer() {
           </div>
         </div>
       </footer>
-      <a href="https://wa.me/918901221068?text=Hi%20TiffinBox!%20Mujhe%20info%20chahiye" target="_blank" rel="noopener noreferrer" className="fixed bottom-3 sm:bottom-5 right-3 sm:right-5 z-50 w-11 h-11 sm:w-12 sm:h-12 bg-green-500 rounded-full flex items-center justify-center text-white shadow-lg shadow-green-500/25 hover:scale-110 active:scale-95 transition-all animate-float" style={{ animationDelay: '2s' }}><MessageCircle size={20} fill="currentColor" /></a>
+      <a href="https://wa.me/918901221068?text=Hi%20TiffinPoint!%20Mujhe%20info%20chahiye" target="_blank" rel="noopener noreferrer" className="fixed bottom-3 sm:bottom-5 right-3 sm:right-5 z-50 w-11 h-11 sm:w-12 sm:h-12 bg-green-500 rounded-full flex items-center justify-center text-white shadow-lg shadow-green-500/25 hover:scale-110 active:scale-95 transition-all animate-float" style={{ animationDelay: '2s' }}><MessageCircle size={20} fill="currentColor" /></a>
     </>
   );
 }

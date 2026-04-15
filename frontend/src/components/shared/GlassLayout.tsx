@@ -1,3 +1,4 @@
+import '../../portal.css';
 import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import { useLocation } from 'react-router-dom';
 import { motion, useScroll, useSpring, AnimatePresence, useMotionValue } from 'framer-motion';
@@ -58,7 +59,7 @@ export default function GlassLayout({ children }: GlassLayoutProps) {
   return (
     <div 
       onClick={handleClick}
-      className="min-h-screen w-full bg-culinary-soul dark:bg-slate-950 relative overflow-x-hidden selection:bg-amber-200/50 selection:text-amber-800"
+      className="h-screen w-full bg-culinary-soul dark:bg-slate-950 relative overflow-x-hidden overflow-y-auto selection:bg-amber-200/50 selection:text-amber-800"
     >
       {/* ── Zenith Sovereign: Culinary Soul ── */}
       <div className="pointer-events-none fixed inset-0 overflow-hidden -z-10">
