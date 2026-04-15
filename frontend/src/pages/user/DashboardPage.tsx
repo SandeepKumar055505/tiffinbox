@@ -127,7 +127,7 @@ export default function DashboardPage() {
   return (
     <div className="min-h-screen pb-40 bg-bg-primary relative overflow-hidden transition-colors duration-1000">
       {/* 1. Vitality Fractals (Metaphysical Backdrop) */}
-      <VitalityFractals momentum={bestStreak} />
+      {/* <VitalityFractals momentum={bestStreak} /> */}
 
       {/* 2. Floating Atmospheric Mesh (Circadian Linked) */}
       <div className={`absolute top-[-20%] -left-40 w-[60rem] h-[60rem] bg-accent/5 blur-[220px] rounded-full animate-mesh pointer-events-none transition-all duration-[3000ms] ${atmosphere.gradient}`} />

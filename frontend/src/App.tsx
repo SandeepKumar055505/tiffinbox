@@ -90,67 +90,67 @@ export default function App() {
   return (
     <AdminAuthProvider>
       <ErrorBoundary>
-      <React.Suspense fallback={<Loader />}>
-        <ScrollToTop />
-        <GlassLayout>
-          <AnimatePresence mode="wait">
-            <motion.div
-              key={location.pathname.split('/')[1]} // Group animations by top-level route
-              initial="initial"
-              animate="animate"
-              exit="exit"
-              variants={pageVariants}
-              className="w-full h-full"
-            >
-              <Routes location={location}>
-                {/* Public/Auth routes */}
-                <Route path="/login" element={<LoginPage />} />
-                <Route path="/invite/:code" element={<InvitePage />} />
-                <Route path="/onboarding/phone" element={<RequireUser><PhoneVerificationPage /></RequireUser>} />
-                <Route path="/privacy" element={<PrivacyPolicy />} />
-                <Route path="/terms" element={<TermsOfService />} />
-                <Route path="/refund" element={<RefundPolicy />} />
-                <Route path="/shipping" element={<ShippingPolicy />} />
-                <Route path="/contact" element={<ContactUs />} />
-                
-                <Route path="/" element={user ? <Navigate to="/dashboard" replace /> : <LandingPage />} />
-                
-                {/* User routes — Wrapped in UserLayout */}
-                <Route element={<RequireUser><UserLayout /></RequireUser>}>
-                  <Route path="/dashboard" element={<DashboardPage />} />
-                  <Route path="/subscribe" element={<SubscribePage />} />
-                  <Route path="/subscriptions" element={<SubscriptionsPage />} />
-                  <Route path="/subscriptions/:id" element={<SubscriptionDetailPage />} />
-                  <Route path="/wallet" element={<WalletPage />} />
-                  <Route path="/support" element={<SupportPage />} />
-                  <Route path="/profile" element={<ProfilePage />} />
-                </Route>
+        <React.Suspense fallback={<Loader />}>
+          <ScrollToTop />
+          <GlassLayout>
+            <AnimatePresence mode="wait">
+              <motion.div
+                key={location.pathname.split('/')[1]} // Group animations by top-level route
+                initial="initial"
+                animate="animate"
+                exit="exit"
+                variants={pageVariants}
+                className="w-full h-full"
+              >
+                <Routes location={location}>
+                  {/* Public/Auth routes */}
+                  <Route path="/login" element={<LoginPage />} />
+                  <Route path="/invite/:code" element={<InvitePage />} />
+                  <Route path="/onboarding/phone" element={<RequireUser><PhoneVerificationPage /></RequireUser>} />
+                  <Route path="/privacy" element={<PrivacyPolicy />} />
+                  <Route path="/terms" element={<TermsOfService />} />
+                  <Route path="/refund" element={<RefundPolicy />} />
+                  <Route path="/shipping" element={<ShippingPolicy />} />
+                  <Route path="/contact" element={<ContactUs />} />
 
-                {/* Admin routes */}
-                <Route path="/admin/login" element={<AdminLoginPage />} />
-                <Route path="/admin" element={<RequireAdmin><AdminLayout /></RequireAdmin>}>
-                  <Route index element={<AdminDashboardPage />} />
-                  <Route path="delivery" element={<AdminLogisticsPage />} />
-                  <Route path="subscriptions" element={<AdminSubscriptionsPage />} />
-                  <Route path="menu" element={<AdminMenuPage />} />
-                  <Route path="support" element={<AdminSupportPage />} />
-                  <Route path="settings" element={<AdminSettingsPage />} />
-                  <Route path="holidays" element={<AdminHolidaysPage />} />
-                  <Route path="areas" element={<AdminAreaPage />} />
-                  <Route path="ledger" element={<AdminLedgerPage />} />
-                  <Route path="referrals" element={<AdminReferralPage />} />
-                  <Route path="notifications" element={<AdminNotificationPage />} />
-                  <Route path="skip" element={<AdminSkipPage />} />
-                  <Route path="users" element={<AdminUsersPage />} />
-                  <Route path="users/:id" element={<AdminUserDetailPage />} />
-                </Route>
+                  <Route path="/" element={user ? <Navigate to="/dashboard" replace /> : <LandingPage />} />
 
-                <Route path="*" element={<NotFoundPage />} />
-              </Routes>
-            </motion.div>
-          </AnimatePresence>
-        </GlassLayout>
-      </React.Suspense>
+                  {/* User routes — Wrapped in UserLayout */}
+                  <Route element={<RequireUser><UserLayout /></RequireUser>}>
+                    <Route path="/dashboard" element={<DashboardPage />} />
+                    <Route path="/subscribe" element={<SubscribePage />} />
+                    <Route path="/subscriptions" element={<SubscriptionsPage />} />
+                    <Route path="/subscriptions/:id" element={<SubscriptionDetailPage />} />
+                    <Route path="/wallet" element={<WalletPage />} />
+                    <Route path="/support" element={<SupportPage />} />
+                    <Route path="/profile" element={<ProfilePage />} />
+                  </Route>
+
+                  {/* Admin routes */}
+                  <Route path="/admin/login" element={<AdminLoginPage />} />
+                  <Route path="/admin" element={<RequireAdmin><AdminLayout /></RequireAdmin>}>
+                    <Route index element={<AdminDashboardPage />} />
+                    <Route path="delivery" element={<AdminLogisticsPage />} />
+                    <Route path="subscriptions" element={<AdminSubscriptionsPage />} />
+                    <Route path="menu" element={<AdminMenuPage />} />
+                    <Route path="support" element={<AdminSupportPage />} />
+                    <Route path="settings" element={<AdminSettingsPage />} />
+                    <Route path="holidays" element={<AdminHolidaysPage />} />
+                    <Route path="areas" element={<AdminAreaPage />} />
+                    <Route path="ledger" element={<AdminLedgerPage />} />
+                    <Route path="referrals" element={<AdminReferralPage />} />
+                    <Route path="notifications" element={<AdminNotificationPage />} />
+                    <Route path="skip" element={<AdminSkipPage />} />
+                    <Route path="users" element={<AdminUsersPage />} />
+                    <Route path="users/:id" element={<AdminUserDetailPage />} />
+                  </Route>
+
+                  <Route path="*" element={<NotFoundPage />} />
+                </Routes>
+              </motion.div>
+            </AnimatePresence>
+          </GlassLayout>
+        </React.Suspense>
       </ErrorBoundary>
     </AdminAuthProvider>
   );
