@@ -12,9 +12,7 @@ import { useSensorial, haptics } from '../../context/SensorialContext';
 import { useLivingTheme } from '../../hooks/useLivingTheme';
 import { useHeartbeatSync } from '../../hooks/useHeartbeatSync';
 import { ChronosStatusOrb } from '../../components/dashboard/ChronosStatusOrb';
-import { VitalityFractals } from '../../components/dashboard/VitalityFractals';
 import { GhostChefInsight } from '../../components/meal/GhostChefInsight';
-import { motion, AnimatePresence } from 'framer-motion';
 import api, { vouchers as vouchersApi } from '../../services/api';
 import { todayIST } from '../../utils/time';
 import GlassConfirmModal from '../../components/shared/GlassConfirmModal';
@@ -125,13 +123,7 @@ export default function DashboardPage() {
   };
 
   return (
-    <div className="min-h-screen pb-40 bg-bg-primary relative overflow-hidden transition-colors duration-1000">
-      {/* 1. Vitality Fractals (Metaphysical Backdrop) */}
-      {/* <VitalityFractals momentum={bestStreak} /> */}
-
-      {/* 2. Floating Atmospheric Mesh (Circadian Linked) */}
-      <div className={`absolute top-[-20%] -left-40 w-[60rem] h-[60rem] bg-accent/5 blur-[220px] rounded-full animate-mesh pointer-events-none transition-all duration-[3000ms] ${atmosphere.gradient}`} />
-      <div className={`absolute bottom-[-10%] -right-20 w-[60rem] h-[60rem] bg-orange-500/5 blur-[220px] rounded-full animate-mesh pointer-events-none transition-all duration-[3000ms] style={{ animationDelay: '5s' }}`} />
+    <div className="min-h-screen pb-40 bg-bg-primary relative overflow-hidden transition-colors duration-300">
 
       <div className="max-w-2xl mx-auto px-6 space-y-10 relative z-10">
         {/* Header */}
@@ -146,7 +138,7 @@ export default function DashboardPage() {
             <Link
               to="/profile"
               onClick={() => haptics.impact('light')}
-              className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl sm:rounded-2xl bg-accent text-white flex items-center justify-center font-bold text-base sm:text-lg hover:rotate-6 transition-all shadow-elite"
+              className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl sm:rounded-2xl bg-accent text-white flex items-center justify-center font-bold text-base sm:text-lg transition-colors shadow-md"
             >
               {user?.name?.[0]?.toUpperCase()}
             </Link>
@@ -162,12 +154,9 @@ export default function DashboardPage() {
         <div className="space-y-10">
           {/* Draft payment banner (Liquid - Compact) */}
           {draft && (
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="surface-liquid group p-6 sm:p-7 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6 sm:gap-8 animate-glass rounded-3xl shadow-elite ring-1 ring-orange-500/10 bg-orange-500/5 relative overflow-hidden"
+            <div
+              className="surface-liquid group p-6 sm:p-7 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6 sm:gap-8 rounded-3xl shadow-md ring-1 ring-orange-500/10 bg-orange-500/5 relative overflow-hidden"
             >
-              <div className="absolute inset-0 bg-gradient-to-r from-orange-500/0 via-orange-500/5 to-orange-500/0 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-1000" />
               <div className="space-y-3 relative z-10">
                 <div className="flex items-center gap-3">
                   <span className="w-2.5 h-2.5 rounded-full bg-orange-500 animate-pulse shadow-[0_0_15px_rgba(249,115,22,0.6)]" />
@@ -185,22 +174,20 @@ export default function DashboardPage() {
               <Link
                 to={`/subscriptions/${draft.id}`}
                 onClick={() => haptics.impact('medium')}
-                className="btn-primary w-full sm:w-auto !py-4 !px-8 !bg-orange-600 !shadow-[0_15px_30px_rgba(249,115,22,0.3)] hover:scale-105 rounded-2xl transition-all relative z-10"
+                className="btn-primary w-full sm:w-auto !py-4 !px-8 !bg-orange-600 rounded-2xl transition-colors relative z-10"
               >
                 Pay Now →
               </Link>
-            </motion.div>
+            </div>
           )}
 
           {/* Today hero (The Chronos Orb) */}
           {active ? (
             <section className="relative py-4">
-              <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full h-full bg-accent/5 blur-[120px] rounded-full pointer-events-none" />
-
-              {/* 3D Depth Tracking Header */}
+              {/* Today's Meals Header */}
               <div className="text-center space-y-2 mb-10">
-                <p className="text-label-caps !text-[10px] text-accent font-black tracking-[0.3em] uppercase">Chronos Synchronized</p>
-                <h2 className="text-h1 !text-[32px] tracking-tighter">Liquid Intelligence</h2>
+                <p className="text-label-caps !text-[10px] text-accent font-black tracking-[0.3em] uppercase">Today's Meals</p>
+                <h2 className="text-h1 !text-[32px] tracking-tighter">Live Tracking</h2>
               </div>
 
               {todayCells.length > 0 ? (
@@ -223,16 +210,10 @@ export default function DashboardPage() {
                   {/* Compact Carousel of Details */}
                   <div className="flex gap-4 overflow-x-auto pb-4 scrollbar-none snap-x px-1">
                     {todayCells.filter(c => c.is_included).map(cell => (
-                      <motion.div
+                      <div
                         key={cell.id}
-                        whileHover={{ y: -5 }}
-                        className="surface-glass p-5 rounded-2xl min-w-[200px] snap-center border-white/5 ring-1 ring-white/5 shadow-inner space-y-4 overflow-hidden relative"
+                        className="surface-glass p-5 rounded-2xl min-w-[200px] snap-center border-white/5 ring-1 ring-white/5 shadow-sm space-y-4 overflow-hidden relative hover:-translate-y-1 transition-transform duration-200"
                       >
-                        {cell.delivery_status === 'delivered' && cell.proof_image_url && (
-                          <div className="absolute inset-0 opacity-10 blur-xl scale-150">
-                            <img src={cell.proof_image_url} className="w-full h-full object-cover" alt="Background Proof" />
-                          </div>
-                        )}
 
                         <div className="flex items-center justify-between gap-3 relative z-10">
                           <span className="text-2xl">{MEAL_ICON[cell.meal_type]}</span>
@@ -253,9 +234,9 @@ export default function DashboardPage() {
                             onClick={() => haptics.impact('light')}
                             className="relative z-10 w-full h-20 rounded-xl overflow-hidden group/proof ring-1 ring-white/10"
                           >
-                            <img src={cell.proof_image_url} className="w-full h-full object-cover group-hover/proof:scale-110 transition-transform duration-700" alt="Arrival Proof" />
+                            <img src={cell.proof_image_url} className="w-full h-full object-cover group-hover/proof:scale-105 transition-transform duration-300" alt="Arrival Proof" />
                             <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover/proof:opacity-100 transition-opacity">
-                              <span className="text-[8px] font-black uppercase tracking-tighter">View Arrival Spotlight</span>
+                              <span className="text-[8px] font-black uppercase tracking-tighter">View Photo</span>
                             </div>
                           </button>
                         )}
@@ -266,7 +247,7 @@ export default function DashboardPage() {
                             <span className="text-lg font-black tracking-widest text-yellow-500">{otpData.otp}</span>
                           </div>
                         )}
-                      </motion.div>
+                      </div>
                     ))}
                   </div>
                 </div>
@@ -278,8 +259,8 @@ export default function DashboardPage() {
               )}
             </section>
           ) : (
-            <section className="surface-liquid p-10 text-center space-y-8 rounded-2xl sm:rounded-[2rem] shadow-elite border-white/5 ring-1 ring-white/10">
-              <div className="text-6xl animate-mesh drop-shadow-2xl" style={{ animationDuration: '60s' }}>🍽️</div>
+            <section className="surface-liquid p-10 text-center space-y-8 rounded-2xl sm:rounded-[2rem] shadow-md border-white/5 ring-1 ring-white/10">
+              <div className="text-6xl">🍽️</div>
               <div className="space-y-3">
                 <h2 className="text-h1 tracking-tighter">Your Journey Awaits</h2>
                 <p className="text-[11px] max-w-[240px] mx-auto opacity-50 font-black tracking-tight">Delicious, home-cooked tiffins delivered with love. Ready to start?</p>
@@ -287,9 +268,9 @@ export default function DashboardPage() {
               <Link
                 to="/subscribe"
                 onClick={() => haptics.impact('heavy')}
-                className="btn-primary !px-12 !py-5 rounded-2xl shadow-elite text-xs font-black tracking-[0.3em] uppercase hover:scale-105 active:scale-95 transition-all"
+                className="btn-primary !px-12 !py-5 rounded-2xl shadow-md text-xs font-black tracking-[0.3em] uppercase active:scale-95 transition-transform duration-150"
               >
-                Inaugurate Journey →
+                Start Subscription →
               </Link>
             </section>
           )}
@@ -299,35 +280,33 @@ export default function DashboardPage() {
         {vouchers.length > 0 && (
           <section className="space-y-6">
             <div className="flex items-center gap-4 px-1">
-              <h3 className="text-label-caps">Voucher Vault</h3>
+              <h3 className="text-label-caps">Your Vouchers</h3>
               <div className="h-px flex-1 bg-white/5" />
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
               {vouchers.map((v: Voucher) => (
-                <motion.div
+                <div
                   key={v.id}
-                  whileHover={{ scale: 1.02, y: -5 }}
-                  className="surface-glass p-6 rounded-[2rem] border-teal-500/20 bg-teal-500/5 ring-1 ring-teal-500/10 flex flex-col justify-between gap-6 group relative overflow-hidden"
+                  className="surface-glass p-6 rounded-2xl border-teal-500/20 bg-teal-500/5 ring-1 ring-teal-500/10 flex flex-col justify-between gap-6 group relative overflow-hidden hover:-translate-y-1 transition-transform duration-200"
                 >
-                  <div className="absolute -top-10 -right-10 w-32 h-32 bg-teal-500/10 blur-[60px] rounded-full group-hover:scale-150 transition-transform duration-1000" />
 
                   <div className="space-y-1 relative z-10">
                     <div className="flex items-center gap-2 mb-2">
-                      <span className="w-2 h-2 rounded-full bg-teal-400 animate-pulse shadow-[0_0_10px_rgba(45,212,191,0.6)]" />
-                      <p className="text-[9px] font-black uppercase text-teal-400 tracking-widest">Manifestable Asset</p>
+                      <span className="w-2 h-2 rounded-full bg-teal-400" />
+                      <p className="text-[9px] font-black uppercase text-teal-400 tracking-widest">Available Voucher</p>
                     </div>
                     <p className="text-h1 !text-2xl capitalize font-black tracking-tighter">{v.meal_type}</p>
-                    <p className="text-[10px] font-medium opacity-40 uppercase tracking-[0.2em]">{v.id.toString(16).toUpperCase().slice(-6)} // Diamond Sovereign</p>
+                    <p className="text-[10px] font-medium opacity-40 uppercase tracking-[0.2em]">#{v.id.toString(16).toUpperCase().slice(-6)}</p>
                   </div>
 
                   <Link
                     to="/subscribe"
                     onClick={() => { manifest(); haptics.impact('medium'); }}
-                    className="btn-primary !bg-teal-600 !py-4 rounded-2xl text-[10px] font-black uppercase tracking-widest text-center shadow-glow-subtle relative z-10 hover:scale-[1.02] active:scale-95 transition-all"
+                    className="btn-primary !bg-teal-600 !py-4 rounded-2xl text-[10px] font-black uppercase tracking-widest text-center relative z-10 active:scale-95 transition-transform duration-150"
                   >
-                    Inaugurate Journey →
+                    Use Voucher →
                   </Link>
-                </motion.div>
+                </div>
               ))}
             </div>
           </section>
@@ -344,7 +323,7 @@ export default function DashboardPage() {
               key={item.to}
               to={item.to}
               onClick={() => haptics.impact('light')}
-              className="flex flex-col items-center gap-2 py-5 surface-glass rounded-[2rem] hover:scale-[1.03] active:scale-[0.97] transition-all duration-200 ring-1 ring-white/5 shadow-sm"
+              className="flex flex-col items-center gap-2 py-5 surface-glass rounded-2xl hover:bg-bg-secondary/30 active:scale-[0.97] transition-colors duration-200 ring-1 ring-white/5 shadow-sm"
             >
               <span className="text-2xl">{item.icon}</span>
               <span className="text-[10px] font-black uppercase tracking-widest opacity-40">{item.label}</span>
@@ -353,9 +332,9 @@ export default function DashboardPage() {
 
           <button
             onClick={() => { haptics.impact('medium'); setIsWhatsAppModalOpen(true); }}
-            className="flex flex-col items-center gap-2 py-5 surface-glass rounded-[2rem] hover:scale-[1.03] active:scale-[0.97] transition-all duration-200 ring-1 ring-white/5 shadow-sm group"
+            className="flex flex-col items-center gap-2 py-5 surface-glass rounded-2xl hover:bg-bg-secondary/30 active:scale-[0.97] transition-colors duration-200 ring-1 ring-white/5 shadow-sm group"
           >
-            <div className="text-2xl transition-transform group-hover:scale-110 duration-500">🟢</div>
+            <div className="text-2xl">🟢</div>
             <span className="text-[10px] font-black uppercase tracking-widest text-green-500">WhatsApp</span>
           </button>
         </div>
@@ -374,30 +353,30 @@ export default function DashboardPage() {
 
         {/* Stats Row (The Sovereignty Metrics) */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
-          <Link to="/wallet" className="surface-glass p-6 sm:p-7 space-y-4 hover:scale-[1.02] transition-all duration-700 group rounded-[2.5rem] shadow-elite border-white/5 ring-1 ring-white/10 relative overflow-hidden">
-            <div className="absolute top-0 right-0 p-6 text-3xl opacity-10 group-hover:scale-110 transition-transform duration-1000 group-hover:rotate-12">💳</div>
+          <Link to="/wallet" className="surface-glass p-6 sm:p-7 space-y-4 hover:bg-bg-secondary/30 transition-colors duration-200 group rounded-2xl shadow-md border-white/5 ring-1 ring-white/10 relative overflow-hidden">
+            <div className="absolute top-0 right-0 p-6 text-3xl opacity-10">💳</div>
             <div className="space-y-1 relative z-10">
-              <p className="text-label-caps !text-[10px] opacity-40 font-bold">Zenith Capital</p>
+              <p className="text-label-caps !text-[10px] opacity-40 font-bold">Wallet Balance</p>
               <p className="text-h1 !text-[32px] text-accent tracking-tighter font-black">
                 {walletData ? formatRupees(walletData.balance) : '—'}
               </p>
               {vouchers.length > 0 && (
                 <div className="pt-2 flex items-center gap-2">
                   <span className="w-2 h-2 rounded-full bg-teal-500" />
-                  <p className="text-[10px] font-black uppercase text-teal-500">{vouchers.length} Soul Swaps Available</p>
+                  <p className="text-[10px] font-black uppercase text-teal-500">{vouchers.length} Vouchers Available</p>
                 </div>
               )}
             </div>
           </Link>
 
-          <div className="surface-glass p-6 sm:p-7 space-y-4 group rounded-[2.5rem] shadow-elite border-white/5 ring-1 ring-white/10 relative overflow-hidden">
-            <div className="absolute top-0 right-0 p-6 text-3xl opacity-10 group-hover:scale-110 transition-transform duration-1000 group-hover:-rotate-12">🔥</div>
+          <div className="surface-glass p-6 sm:p-7 space-y-4 group rounded-2xl shadow-md border-white/5 ring-1 ring-white/10 relative overflow-hidden">
+            <div className="absolute top-0 right-0 p-6 text-3xl opacity-10">🔥</div>
             <div className="space-y-1 relative z-10">
-              <p className="text-label-caps !text-[10px] opacity-40 font-bold">Covenant Momentum</p>
+              <p className="text-label-caps !text-[10px] opacity-40 font-bold">Streak</p>
               <p className={`text-h1 !text-[32px] tracking-tighter font-black ${bestStreak > 0 ? 'text-orange-500' : 'text-text-muted/10'}`}>
-                {bestStreak > 0 ? `${bestStreak} Cycles` : 'Fresh Start'}
+                {bestStreak > 0 ? `${bestStreak} Days` : 'Fresh Start'}
               </p>
-              <p className="text-[10px] font-black uppercase opacity-20 tracking-widest">Planetary Resonance 0.8%</p>
+              <p className="text-[10px] font-black uppercase opacity-20 tracking-widest">Consecutive meals delivered</p>
             </div>
           </div>
         </div>
@@ -409,15 +388,15 @@ export default function DashboardPage() {
             const daysLeft = Math.ceil(msLeft / 86_400_000);
             if (daysLeft > 3 || daysLeft < 0) return null;
             return (
-              <div className="surface-liquid border-orange-500/20 bg-orange-500/5 p-5 sm:p-6 flex items-center gap-5 animate-glass rounded-2xl shadow-elite">
-                <span className="text-4xl animate-pulse drop-shadow-xl rotate-6">⏰</span>
+              <div className="surface-liquid border-orange-500/20 bg-orange-500/5 p-5 sm:p-6 flex items-center gap-5 rounded-2xl shadow-md">
+                <span className="text-4xl">⏰</span>
                 <div className="flex-1 space-y-0.5">
                   <p className="text-orange-500 font-black text-[8.5px] uppercase tracking-widest">Plan Expiring</p>
                   <p className="text-[11px] opacity-60 font-black leading-tight">Ends in {daysLeft} day(s). Renew now.</p>
                 </div>
                 <Link
                   to="/subscribe"
-                  className="btn-primary !bg-orange-600 !py-3 !px-6 rounded-2xl shadow-elite text-[10px] font-black tracking-widest uppercase"
+                  className="btn-primary !bg-orange-600 !py-3 !px-6 rounded-2xl shadow-md text-[10px] font-black tracking-widest uppercase"
                 >
                   Renew Now →
                 </Link>
@@ -426,14 +405,13 @@ export default function DashboardPage() {
           })()}
 
           {user?.monthly_plan_unlocked && !active && (
-            <div className="surface-liquid border-accent/20 bg-accent/5 p-5 sm:p-6 flex items-center gap-5 animate-glass rounded-2xl shadow-elite relative overflow-hidden group">
-              <div className="absolute -right-10 -top-10 w-40 h-40 bg-accent/10 blur-3xl rounded-full group-hover:scale-150 transition-transform duration-1000" />
-              <span className="text-4xl shadow-glow-subtle drop-shadow-2xl relative z-10 group-hover:scale-110 transition-transform">✨</span>
+            <div className="surface-liquid border-accent/20 bg-accent/5 p-5 sm:p-6 flex items-center gap-5 rounded-2xl shadow-md relative overflow-hidden group">
+              <span className="text-4xl relative z-10">✨</span>
               <div className="flex-1 space-y-0.5 relative z-10">
                 <p className="text-accent font-black text-[8.5px] uppercase tracking-widest">Premium Access</p>
                 <p className="text-[11px] opacity-60 font-black leading-tight">Unlock exclusive 30-day savings.</p>
               </div>
-              <Link to="/subscribe" className="btn-primary !bg-accent !py-2 !px-4 rounded-lg shadow-elite relative z-10 text-[9px]">Go Premium</Link>
+              <Link to="/subscribe" className="btn-primary !bg-accent !py-2 !px-4 rounded-lg shadow-md relative z-10 text-[9px]">Go Premium</Link>
             </div>
           )}
         </div>
@@ -449,8 +427,8 @@ export default function DashboardPage() {
             {personsList.map(p => {
               const streak = streaks.find((s: PersonStreak) => s.person_id === p.id);
               return (
-                <div key={p.id} className="surface-glass px-5 py-4 flex flex-col items-center gap-3 shrink-0 group snap-start min-w-[140px] rounded-2xl transition-all duration-700 hover:bg-bg-secondary/40 border-white/5 ring-1 ring-white/5 relative overflow-hidden">
-                  <div className="w-12 h-12 rounded-xl bg-accent/5 border border-accent/10 flex items-center justify-center text-h2 !text-xl text-accent group-hover:bg-accent group-hover:text-white transition-all duration-700 shadow-glow-subtle">
+                <div key={p.id} className="surface-glass px-5 py-4 flex flex-col items-center gap-3 shrink-0 group snap-start min-w-[140px] rounded-2xl transition-colors duration-200 hover:bg-bg-secondary/30 border-white/5 ring-1 ring-white/5 relative overflow-hidden">
+                  <div className="w-12 h-12 rounded-xl bg-accent/5 border border-accent/10 flex items-center justify-center text-h2 !text-xl text-accent group-hover:bg-accent group-hover:text-white transition-colors duration-200">
                     {p.name[0].toUpperCase()}
                   </div>
                   <div className="text-center space-y-0.5">
@@ -473,7 +451,7 @@ export default function DashboardPage() {
               <Link
                 to="/profile"
                 onClick={() => haptics.impact('light')}
-                className="surface-liquid hover:bg-bg-subtle px-6 py-5 text-label-caps text-text-faint flex items-center justify-center gap-3 border-dashed border-2 rounded-2xl transition-all duration-700 group min-w-[140px]"
+                className="surface-liquid hover:bg-bg-subtle px-6 py-5 text-label-caps text-text-faint flex items-center justify-center gap-3 border-dashed border-2 rounded-2xl transition-colors duration-200 group min-w-[140px]"
               >
                 <span className="text-xl opacity-20 group-hover:scale-125 transition-transform">+</span>
                 <span className="text-[10px]">Add Member</span>
@@ -484,7 +462,7 @@ export default function DashboardPage() {
 
         {/* Suggestion (Liquid) */}
         {!active && personsList.length > 0 && (
-          <div className="text-center py-16 opacity-20 hover:opacity-100 transition-all duration-1000 cursor-default">
+          <div className="text-center py-16 opacity-20 hover:opacity-60 transition-opacity duration-300 cursor-default">
             <p className="text-label-caps !text-[12px] font-semibold tracking-widest italic flex items-center justify-center gap-3">
               <span className="w-12 h-px bg-current opacity-20" />
               Choose a family member to begin
