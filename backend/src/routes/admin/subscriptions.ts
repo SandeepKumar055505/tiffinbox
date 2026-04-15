@@ -39,7 +39,7 @@ router.get('/:id', requireAdmin, async (req, res) => {
     .select('s.*', 'u.name as user_name', 'u.email', 'p.name as person_name')
     .first();
 
-  if (!sub) return res.status(404).json({ error: 'Subscription not found' });
+  if (!sub) return res.status(400).json({ error: 'Subscription not found' });
 
   const cells = await db('meal_cells as mc')
     .join('meal_items as mi', 'mi.id', 'mc.item_id')
@@ -113,7 +113,7 @@ router.patch(
   })),
   async (req, res) => {
     const subId = parseInt(req.params.id, 10);
-    
+
     // Ω.7: Recursive Defensive Mapping
     const validKeys = ['breakfast_cutoff_hour', 'lunch_cutoff_hour', 'dinner_cutoff_hour'];
     const updateData: any = {};
