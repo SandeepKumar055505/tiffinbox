@@ -23,7 +23,7 @@ export default function UserLayout() {
   return (
     <div className="h-[100dvh] flex flex-col bg-bg-primary overflow-hidden relative">
       <SovereignBanner />
-      
+
       {/* Nexus Content Shell: The Scroll Chamber */}
       <main className="flex-1 overflow-y-auto overflow-x-hidden scrollbar-none relative z-0">
         <div className="min-h-full pb-32">
@@ -71,15 +71,15 @@ export default function UserLayout() {
               >
                 {/* Icon Volumetrics */}
                 <div className={`relative transition-all duration-700 ${isActive ? 'scale-110 -translate-y-0.5' : 'opacity-60 group-hover:opacity-100 group-active:scale-90'}`}>
-                  <Icon 
-                    size={20} 
+                  <Icon
+                    size={20}
                     strokeWidth={isActive ? 2.5 : 2}
                     className="transition-colors duration-500"
                   />
-                  
+
                   {/* Item Bloom */}
                   {isActive && (
-                    <motion.div 
+                    <motion.div
                       layoutId="nav-bloom"
                       className="absolute -inset-4 bg-accent/20 blur-xl rounded-full -z-10"
                     />

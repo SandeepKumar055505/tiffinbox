@@ -1,0 +1,102 @@
+/*
+ * portal.css — Styles ONLY for Landing Page + Login Page
+ * Imported by LandingPage.tsx, LoginPage.tsx, and Footer.tsx
+ * Does NOT affect dashboard, settings, admin, or any other route.
+ */
+
+/* ── Portal Fonts ─────────────────────────────────────────────────── */
+@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400..900;1,400..900&display=swap');
+
+.font-heritage {
+  font-family: "Playfair Display", serif;
+}
+
+.font-zenith {
+  font-family: "Outfit", sans-serif;
+}
+
+/* ── Glass Prismatic (Portal Navbar) ──────────────────────────────── */
+.glass-prismatic {
+  background: rgba(255, 255, 255, 0.6);
+  backdrop-filter: blur(40px) saturate(200%);
+  border: 1px solid rgba(255, 255, 255, 0.5);
+  box-shadow: 
+    0 20px 50px rgba(0, 0, 0, 0.02),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.3);
+}
+
+/* ── Culinary Soul Background ─────────────────────────────────────── */
+.bg-culinary-soul {
+  background: linear-gradient(135deg, #FFFAF0 0%, #FFF4F4 50%, #F5F3FF 100%);
+}
+
+/* ── Shadow Warm (Hover glow for cards) ───────────────────────────── */
+.shadow-warm {
+  box-shadow: 0 8px 30px rgba(245, 158, 11, 0.08),
+              0 2px 8px rgba(0, 0, 0, 0.04);
+}
+
+/* ── Shadow Glow (Amber accent) ───────────────────────────────────── */
+.shadow-glow {
+  box-shadow: 0 0 40px rgba(245, 158, 11, 0.2);
+}
+
+/* ── Perspective ──────────────────────────────────────────────────── */
+.perspective-1200 {
+  perspective: 1200px;
+}
+
+/* ── Text Reveal Highlight ───────────────────────────────────────── */
+.text-highlight {
+  background: linear-gradient(120deg, rgba(245, 158, 11, 0.15) 0%, rgba(245, 158, 11, 0.15) 100%);
+  background-repeat: no-repeat;
+  background-size: 100% 35%;
+  background-position: 0 85%;
+}
+
+/* ── Marquee / Testimonial Scroll ─────────────────────────────────── */
+.marquee-feed {
+  display: flex;
+  overflow: hidden;
+  user-select: none;
+  gap: 40px;
+}
+
+.marquee-content {
+  flex-shrink: 0;
+  display: flex;
+  justify-content: space-around;
+  gap: 40px;
+  min-width: 100%;
+  animation: scroll-marquee 40s linear infinite;
+}
+
+@keyframes scroll-marquee {
+  from { transform: translateX(0); }
+  to { transform: translateX(-100%); }
+}
+
+/* ── Badge Shine Sweep ───────────────────────────────────────────── */
+@keyframes badgeShine {
+  0% { background-position: -200% center; }
+  100% { background-position: 200% center; }
+}
+.badge-shine {
+  background-image: linear-gradient(90deg, transparent 30%, rgba(255,255,255,0.15) 50%, transparent 70%);
+  background-size: 200% 100%;
+  animation: badgeShine 4s ease-in-out infinite;
+}
+
+/* ── Float Animation (WhatsApp button) ────────────────────────────── */
+@keyframes float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-12px); }
+}
+.animate-float { animation: float 4s ease-in-out infinite; }
+
+/* ── Scrollbar Hiding (Chef horizontal scroll) ────────────────────── */
+.no-scrollbar::-webkit-scrollbar { display: none; }
+.no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
+/* ── Snap Scroll ──────────────────────────────────────────────────── */
+.snap-mandatory { scroll-snap-type: x mandatory; }

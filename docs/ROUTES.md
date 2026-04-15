@@ -1,4 +1,4 @@
-# TiffinBox — Frontend Routes
+# TiffinPoint — Frontend Routes
 
 > React Router v6. User routes use `UserLayout` (with bottom nav). Admin routes use `AdminLayout` (with sidebar). Auth routes are standalone.
 

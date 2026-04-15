@@ -1,4 +1,4 @@
-# TiffinBox — UI Theme Specification
+# TiffinPoint — UI Theme Specification
 
 > Same glassmorphism system as VeilLink/AntiGravity. Copy this file as the single source of truth for all styling.
 

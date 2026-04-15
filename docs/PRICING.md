@@ -1,4 +1,4 @@
-# TiffinBox — Pricing & Discount Logic
+# TiffinPoint — Pricing & Discount Logic
 
 > Single source of truth for all price calculations. Mirror in `frontend/src/utils/pricing.ts` and `backend/src/services/pricing.ts`.
 

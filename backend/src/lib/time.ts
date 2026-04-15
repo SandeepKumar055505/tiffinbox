@@ -1,7 +1,7 @@
 /**
  * IST Timezone Helpers
  *
- * TiffinBox operates in India Standard Time (UTC+5:30).
+ * TiffinPoint operates in India Standard Time (UTC+5:30).
  * All cutoff checks, cron schedules, and date comparisons
  * MUST use these helpers — never raw `new Date()`.
  *

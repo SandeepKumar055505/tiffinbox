@@ -86,7 +86,7 @@ const GOURMET_DICTIONARY: Record<string, { title: string; message: string }> = {
   },
   'service_unavailable': {
     title: 'Moments of Perfection',
-    message: 'TiffinBox is undergoing scheduled maintenance to ensure world-class service. Check back shortly.'
+    message: 'TiffinPoint is undergoing scheduled maintenance to ensure world-class service. Check back shortly.'
   },
   'network_error': {
     title: 'Connectivity Drift',

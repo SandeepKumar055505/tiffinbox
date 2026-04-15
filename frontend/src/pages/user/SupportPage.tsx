@@ -144,7 +144,7 @@ const CONCIERGE_CHIPS = [
     label: 'Feedback', 
     icon: Heart, 
     subject: 'Appreciation / Suggestion', 
-    template: 'Hi, mujhe TiffinBox bahut pasand aaya! [Write your message here]' 
+    template: 'Hi, mujhe TiffinPoint bahut pasand aaya! [Write your message here]' 
   },
   { 
     id: 'other', 
@@ -295,7 +295,7 @@ export default function SupportPage() {
                     )}
                   </div>
                   <div className={`flex items-center gap-2 mt-2 px-2 opacity-30 text-[9px] font-bold uppercase tracking-widest ${isUser ? 'justify-end' : 'justify-start'}`}>
-                    <span>{isUser ? 'Aap' : 'TiffinBox Help'}</span>
+                    <span>{isUser ? 'Aap' : 'TiffinPoint Help'}</span>
                     <span className="w-0.5 h-0.5 rounded-full bg-current" />
                     <span>{getTime(m)}</span>
                   </div>

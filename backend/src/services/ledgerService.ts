@@ -197,7 +197,7 @@ export async function creditSignupBonus(user_id: number, amount: number): Promis
     direction: 'credit',
     entry_type: 'signup_bonus',
     amount,
-    description: `Welcome to TiffinBox! ${formatRupees(amount)} added to your wallet.`,
+    description: `Welcome to TiffinPoint! ${formatRupees(amount)} added to your wallet.`,
     idempotency_key: `signup_bonus_${user_id}`,
     created_by: 'system',
   });
@@ -218,7 +218,7 @@ export async function creditReferralReward(
     entry_type: 'referral_credit',
     amount,
     description: role === 'referrer'
-      ? `Referral reward: your friend joined TiffinBox! ${formatRupees(amount)} added to wallet.`
+      ? `Referral reward: your friend joined TiffinPoint! ${formatRupees(amount)} added to wallet.`
       : `Welcome bonus: ${formatRupees(amount)} added to your wallet for joining via referral.`,
     idempotency_key: `referral_${role}_${referral_id}_${user_id}`,
     created_by: 'system',

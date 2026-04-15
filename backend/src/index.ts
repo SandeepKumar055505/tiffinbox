@@ -95,7 +95,7 @@ const corsOptions: cors.CorsOptions = {
       /\.vercel\.app$/.test(origin);
 
     if (isAllowed) return cb(null, true);
-    
+
     console.warn(`[CORS PULSE] Blocked: "${origin}" — Add this to ALLOWED_ORIGINS if valid.`);
     return cb(new Error(`CORS blocked for origin: ${origin}`));
   },
@@ -119,7 +119,7 @@ app.use((_req, res, next) => {
   if (process.env.MAINTENANCE_MODE === 'true') {
     return res.status(503).json({
       error: 'Service Temporarily Unavailable',
-      message: 'TiffinBox is undergoing scheduled maintenance.',
+      message: 'TiffinPoint is undergoing scheduled maintenance.',
     });
   }
   next();
@@ -135,7 +135,7 @@ app.use('/api/auth/admin/login', rateLimit({ windowMs: 60 * 60 * 1000, max: 5, s
 
 // ── Health Check ──────────────────────────────────────────────────────────────
 app.get('/api/health', (_req, res) => res.json({ status: 'ok', ts: new Date().toISOString() }));
-app.get('/', (_req, res) => res.json({ status: 'TiffinBox API Live', website: env.FRONTEND_URL }));
+app.get('/', (_req, res) => res.json({ status: 'TiffinPoint API Live', website: env.FRONTEND_URL }));
 
 // ── User routes ───────────────────────────────────────────────────────────────
 app.use('/api/config', configRoutes);
@@ -231,7 +231,7 @@ app.use(async (err: any, req: express.Request, res: express.Response, _next: exp
 
 async function main() {
   app.listen(env.PORT, '0.0.0.0', () => {
-    console.log(`TiffinBox backend running on port ${env.PORT} (bound to 0.0.0.0)`);
+    console.log(`TiffinPoint backend running on port ${env.PORT} (bound to 0.0.0.0)`);
   });
   startJobWorkers().catch(err => {
     console.error('[pg-boss] Failed to start background workers:', err.message);
@@ -252,7 +252,7 @@ async function shutdown(signal: string) {
     const { db } = await import('./config/db');
     await boss.stop();
     await db.destroy();
-  } catch {}
+  } catch { }
   process.exit(0);
 }
 process.on('SIGTERM', () => shutdown('SIGTERM'));

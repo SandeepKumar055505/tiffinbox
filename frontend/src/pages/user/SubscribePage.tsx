@@ -235,7 +235,7 @@ export default function SubscribePage() {
         amount,
         currency: 'INR',
         order_id,
-        name: 'TiffinBox',
+        name: 'TiffinPoint',
         description: `${planDays}-day meal plan`,
         prefill: { name: user?.name, email: user?.email },
         theme: { color: '#14b8a6' },
