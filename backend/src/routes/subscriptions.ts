@@ -329,71 +329,61 @@ router.post('/', requireUser, validate(createSchema), async (req, res) => {
 // POST /api/subscriptions/:id/cancel
 router.post('/:id/cancel', requireUser, async (req, res) => {
   let finalSub: any = null;
-  let statusResult: string = 'cancelled';
+  let statusResult = 'cancelled';
 
-  await db.transaction(async trx => {
-    const sub = await trx('subscriptions')
-      .where({ id: req.params.id, user_id: req.userId })
-      .forUpdate()
-      .noWait()
-      .first();
+  try {
+    await db.transaction(async trx => {
+      const sub = await trx('subscriptions')
+        .where({ id: req.params.id, user_id: req.userId })
+        .forUpdate()
+        .noWait()
+        .first();
 
-    if (!sub) {
-      return res.status(404).json({ error: 'Subscription not found' });
-    }
+      if (!sub) throw Object.assign(new Error('Subscription not found'), { status: 404 });
+      if (!canTransitionTo(sub.state, 'cancelled')) {
+        throw Object.assign(new Error(`Cannot cancel from state: ${sub.state}`), { status: 409 });
+      }
 
-    if (!canTransitionTo(sub.state, 'cancelled')) {
-      return res.status(409).json({ error: `Cannot cancel from state: ${sub.state}` });
-    }
+      const today = todayIST();
+      if (sub.start_date > today) {
+        [finalSub] = await trx('subscriptions')
+          .where({ id: sub.id })
+          .update({ state: 'cancelled', updated_at: db.fn.now() })
+          .returning('*');
+        const amountToRefund = sub.wallet_applied || 0;
+        if (amountToRefund > 0) {
+          await creditFullSubscriptionRefund(req.userId!, sub.id, amountToRefund, trx);
+        }
+        statusResult = 'refunded';
+        return;
+      }
 
-    const today = todayIST();
-    if (sub.start_date > today) {
-      // Full Refund Window (Automated)
       [finalSub] = await trx('subscriptions')
         .where({ id: sub.id })
-        .update({ state: 'cancelled', updated_at: db.fn.now() })
+        .update({ state: 'cancelled', cancel_reason: req.body.reason || null, updated_at: db.fn.now() })
         .returning('*');
 
-      const amountToRefund = sub.wallet_applied || 0;
-      if (amountToRefund > 0) {
-        await creditFullSubscriptionRefund(req.userId!, sub.id, amountToRefund, trx);
-      }
-      statusResult = 'refunded';
-      return;
-    }
+      await trx('meal_cells')
+        .where({ subscription_id: sub.id })
+        .whereIn('delivery_status', ['scheduled', 'preparing', 'out_for_delivery'])
+        .update({ delivery_status: 'cancelled', is_included: false, updated_at: db.fn.now() });
+    });
+  } catch (err: any) {
+    const status = (err as any).status || 500;
+    return res.status(status).json({ error: err.message || 'Cancel failed' });
+  }
 
-    // Standard Cancellation
-    [finalSub] = await trx('subscriptions')
-      .where({ id: sub.id })
-      .update({ state: 'cancelled', cancel_reason: req.body.reason || null, updated_at: db.fn.now() })
-      .returning('*');
-
-    // Cancel all future meal cells for this subscription
-    await trx('meal_cells')
-      .where({ subscription_id: sub.id })
-      .whereIn('delivery_status', ['scheduled', 'preparing', 'out_for_delivery'])
-      .update({
-        delivery_status: 'cancelled',
-        is_included: false,
-        updated_at: db.fn.now(),
-      });
-  });
-
-  // 1. Respond immediately after transaction commits
-  if (!finalSub) return; // Should have been handled by errors inside if any, but added for safety
-  
   if (statusResult === 'refunded') {
     res.json({ message: 'Subscription cancelled with full refund (plan not yet started)', status: 'refunded', subscription: finalSub });
   } else {
     res.json(finalSub);
   }
 
-  // 2. Fire-and-forget: notification + domain event (OUTSIDE transaction)
   sendNotification(
     finalSub.user_id,
     NotificationType.SYSTEM,
-    'Subscription Cancelled',
-    `Your ritual #${finalSub.id} has been cancelled as requested.`,
+    'Subscription cancelled',
+    `Your plan #${finalSub.id} has been cancelled.`,
   ).catch(() => { });
 
   emitEvent(DomainEvent.SUBSCRIPTION_CANCELLED, {

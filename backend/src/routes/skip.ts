@@ -52,60 +52,59 @@ router.post(
     let message = '';
 
     if (eligibility.type === 'auto') {
-      await db.transaction(async trx => {
-        // Lock the cell to prevent race conditions during skip
-        const cellLock = await trx('meal_cells')
-          .where({ id: cell.id })
-          .forUpdate()
-          .noWait()
-          .first();
+      try {
+        await db.transaction(async trx => {
+          const cellLock = await trx('meal_cells')
+            .where({ id: cell.id })
+            .forUpdate()
+            .noWait()
+            .first();
 
-        if (!cellLock || !cellLock.is_included) {
-          throw new Error('Meal already skipped or modified');
-        }
+          if (!cellLock || !cellLock.is_included) {
+            throw new Error('Meal already skipped or modified');
+          }
 
-        // Determine if this is a grace skip (eligible for wallet credit)
-        const settings = await settingsService.getSettings();
-        const graceLimit = settings?.max_grace_skips_per_week ?? 2;
-        const { start, end } = weekRangeUTC(cell.date);
-        const graceSkipsUsed = await trx('ledger_entries')
-          .where({ user_id: cell.user_id, entry_type: 'skip_credit' })
-          .where('created_at', '>=', start)
-          .where('created_at', '<', end)
-          .count('id as cnt')
-          .first();
-        
-        const usedCount = Number(graceSkipsUsed?.cnt ?? 0);
-        isGraceSkip = usedCount < graceLimit;
+          const settings = await settingsService.getSettings();
+          const graceLimit = settings?.max_grace_skips_per_week ?? 2;
+          const { start, end } = weekRangeUTC(cell.date);
+          const graceSkipsUsed = await trx('ledger_entries')
+            .where({ user_id: cell.user_id, entry_type: 'skip_credit' })
+            .where('created_at', '>=', start)
+            .where('created_at', '<', end)
+            .count('id as cnt')
+            .first();
 
-        // Auto-approve: mark skipped
-        await trx('meal_cells').where({ id: cell.id }).update({
-          is_included: false,
-          delivery_status: 'skipped',
-          updated_at: db.fn.now(),
+          const usedCount = Number(graceSkipsUsed?.cnt ?? 0);
+          isGraceSkip = usedCount < graceLimit;
+
+          await trx('meal_cells').where({ id: cell.id }).update({
+            is_included: false,
+            delivery_status: 'skipped',
+            updated_at: db.fn.now(),
+          });
+
+          await trx('skip_requests').insert({
+            subscription_id: cell.subscription_id,
+            meal_cell_id: cell.id,
+            date: cell.date,
+            meal_type: cell.meal_type,
+            status: 'auto',
+          });
+
+          await trx('subscriptions')
+            .where({ id: cell.subscription_id, state: 'active' })
+            .update({ state: 'partially_skipped', updated_at: db.fn.now() });
+
+          message = isGraceSkip
+            ? 'Meal skipped. Wallet credit will be added shortly.'
+            : 'Meal skipped. Weekly grace skip limit reached — no wallet credit.';
+
+          skipResult = { status: 'auto', is_grace_skip: isGraceSkip, message };
         });
+      } catch (err: any) {
+        return res.status(409).json({ error: err.message || 'Skip failed' });
+      }
 
-        await trx('skip_requests').insert({
-          subscription_id: cell.subscription_id,
-          meal_cell_id: cell.id,
-          date: cell.date,
-          meal_type: cell.meal_type,
-          status: 'auto',
-        });
-
-        // Update subscription state if needed
-        await trx('subscriptions')
-          .where({ id: cell.subscription_id, state: 'active' })
-          .update({ state: 'partially_skipped', updated_at: db.fn.now() });
-
-        message = isGraceSkip
-          ? 'Your meal skip has been confirmed. Wallet credit will be added shortly.'
-          : 'Meal skip confirmed. No wallet credit — weekly grace skip limit reached.';
-
-        skipResult = { status: 'auto', is_grace_skip: isGraceSkip, message };
-      });
-
-      // Respond immediately — OUTSIDE transaction
       res.json(skipResult);
 
       // Fire-and-forget: event + notification

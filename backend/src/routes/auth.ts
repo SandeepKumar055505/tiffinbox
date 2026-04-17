@@ -10,6 +10,7 @@ import { creditSignupBonus, creditReferralReward } from '../services/ledgerServi
 import { isPincodeServiceable } from '../lib/geo';
 import * as emailService from '../services/emailService';
 import { settingsService } from '../services/settingsService';
+import { sendNotification, NotificationType } from '../services/notificationService';
 
 const router = Router();
 const googleClient = new OAuth2Client(env.GOOGLE_CLIENT_ID);
@@ -353,10 +354,16 @@ async function onNewUserCreated(
 ): Promise<void> {
   const settings = await settingsService.getSettings();
 
-  // 1. Credit signup wallet bonus (amount is in normalized Paise)
+  // 1. Credit signup wallet bonus (amount is in Paise)
   const bonusPaise = settings?.signup_wallet_credit ?? 12000;
   if (bonusPaise > 0) {
     await creditSignupBonus(user_id, bonusPaise);
+    await sendNotification(
+      user_id,
+      NotificationType.PAYMENTS,
+      'Welcome bonus added! 🎉',
+      `₹${Math.floor(bonusPaise / 100)} has been added to your wallet. Start your first plan today!`,
+    );
   }
 
   // 2. Referral Shield: Fraud Detection Logic
