@@ -19,7 +19,6 @@ import { SensorialStatusSpotlight } from '../../components/sensorial/SensorialSt
 import { SelectionConfirmModal } from '../../components/meal/SelectionConfirmModal';
 import { translateToGourmet } from '../../utils/GourmetTranslator';
 import api from '../../services/api';
-import { motion, AnimatePresence } from 'framer-motion';
 import { ChevronLeft } from 'lucide-react';
 
 interface PromoResult { code: string; description: string; discount_type: 'flat' | 'percent'; value: number; min_order_amount?: number; }
@@ -692,9 +691,7 @@ export default function SubscribePage() {
                 <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-6 relative z-10">
                   <div className="flex items-center gap-4 sm:gap-5">
                     <div className="relative flex-shrink-0">
-                      <motion.div
-                        animate={{ scale: [1, 1.15, 1], opacity: [0.3, 0.1, 0.3] }}
-                        transition={{ duration: 4, repeat: Infinity }}
+                      <div
                         className="absolute -inset-3 bg-accent/20 blur-xl rounded-full"
                       />
                       <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl bg-gradient-to-br from-indigo-500 to-violet-600 flex items-center justify-center text-[22px] sm:text-[24px] font-black text-white shadow-glow-subtle ring-2 ring-white/10">
@@ -850,9 +847,7 @@ export default function SubscribePage() {
 
                 {/* Savings Ribbon of Honor */}
                 {(snapshot.discount_total + snapshot.promo_discount + snapshot.wallet_applied) > 0 && (
-                  <motion.div
-                    initial={{ scale: 0.95, opacity: 0 }}
-                    animate={{ scale: 1, opacity: 1 }}
+                  <div
                     className="bg-teal-500/5 border border-teal-500/10 rounded-2xl p-3 flex items-center justify-between"
                   >
                     <div className="flex items-center gap-2.5">
@@ -862,7 +857,7 @@ export default function SubscribePage() {
                     <p className="text-[12px] font-black text-teal-400 tabular-nums">
                       Saved {formatRupees(snapshot.discount_total + snapshot.promo_discount + snapshot.wallet_applied)}
                     </p>
-                  </motion.div>
+                  </div>
                 )}
 
                 <div className="pt-4 border-t border-border/10">
@@ -910,9 +905,7 @@ export default function SubscribePage() {
                 </div>
               </div>
             ) : (
-              <motion.div
-                initial={{ scale: 0.98, opacity: 0 }}
-                animate={{ scale: 1, opacity: 1 }}
+              <div
                 className="surface-liquid p-4 rounded-[1.8rem] flex items-center justify-between ring-2 ring-accent/30 shadow-glow-subtle bg-accent/5"
               >
                 <div className="flex items-center gap-4">
@@ -930,7 +923,7 @@ export default function SubscribePage() {
                     <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
                   </svg>
                 </button>
-              </motion.div>
+              </div>
             )}
 
             {(walletData?.balance ?? 0) > 0 && (
@@ -953,9 +946,7 @@ export default function SubscribePage() {
                 </div>
                 <div className={`w-10 h-5 rounded-full relative transition-colors duration-500 p-0.5 flex-shrink-0
                   ${applyWallet ? 'bg-violet-500' : 'bg-border/20'}`}>
-                  <motion.div
-                    animate={{ x: applyWallet ? 20 : 0 }}
-                    transition={{ type: 'spring', stiffness: 500, damping: 30 }}
+                  <div
                     className="w-4 h-4 bg-white rounded-full shadow-md"
                   />
                 </div>
@@ -1036,24 +1027,18 @@ export default function SubscribePage() {
         </div>
 
         <div className="relative surface-liquid py-14 px-10 text-center max-w-sm w-full space-y-10 rounded-[3rem] shadow-elite ring-1 ring-border/20">
-          <motion.div
-            initial={{ scale: 0.5, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1 }}
-            transition={{ type: 'spring', damping: 15 }}
+          <div
             className="flex justify-center"
           >
             <div className="w-20 h-20 rounded-[2rem] bg-accent/15 border border-accent/20 flex items-center justify-center shadow-glow-subtle relative overflow-hidden">
               <div className="absolute inset-0 bg-gradient-to-br from-accent/10 to-transparent" />
               <svg className="w-10 h-10 text-accent relative z-10" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
-                <motion.path
-                  initial={{ pathLength: 0 }}
-                  animate={{ pathLength: 1 }}
-                  transition={{ duration: 0.8, delay: 0.2 }}
+                <path
                   strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7"
                 />
               </svg>
             </div>
-          </motion.div>
+          </div>
 
           <div className="space-y-3">
             <h2 className="text-[32px] font-black t-text-primary leading-[1.1] tracking-tighter">Manifest Complete!</h2>

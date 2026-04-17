@@ -1,5 +1,5 @@
 import React from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { AlertCircle } from 'lucide-react';
 
 interface GlassErrorModalProps {
   isOpen: boolean;
@@ -10,65 +10,34 @@ interface GlassErrorModalProps {
 }
 
 export default function GlassErrorModal({ isOpen, title, message, requestId, onClose }: GlassErrorModalProps) {
+  if (!isOpen) return null;
+
   return (
-    <AnimatePresence>
-      {isOpen && (
-        <div className="fixed inset-0 z-[1000] flex items-center justify-center p-6 sm:p-8">
-          {/* Ivory-Crimson Blur Overlay */}
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            onClick={onClose}
-            className="absolute inset-0 bg-white/40 dark:bg-black/40 backdrop-blur-md"
-          />
-
-          {/* Modal Container (Squircle) */}
-          <motion.div
-            initial={{ opacity: 0, scale: 0.95, y: 30 }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.95, y: 30 }}
-            className="relative w-full max-w-sm surface-glass border-rose-500/20 shadow-[0_30px_60px_-15px_rgba(225,29,72,0.3)] rounded-[2.5rem] overflow-hidden"
-          >
-            {/* Sensorial Header (Rose Gradient) */}
-            <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-rose-500 via-pink-500 to-rose-500" />
-
-            <div className="p-10 text-center space-y-8">
-              {/* Visual Indicator */}
-              <div className="relative inline-block">
-                <div className="text-6xl animate-pulse">🍷</div>
-                <div className="absolute inset-0 bg-rose-500/10 blur-2xl rounded-full" />
-              </div>
-
-              {/* Narrative Content */}
-              <div className="space-y-3">
-                <h3 className="text-h1 !text-2xl tracking-tighter text-rose-600 dark:text-rose-400">
-                  {title}
-                </h3>
-                <p className="text-label-caps !text-[11px] opacity-60 font-medium leading-relaxed max-w-[240px] mx-auto uppercase tracking-widest">
-                  {message}
-                </p>
-                {requestId && (
-                  <p className="font-mono text-[9px] opacity-30 tracking-[0.1em] pt-2">
-                     REF_ID: {requestId}
-                  </p>
-                )}
-              </div>
-
-              {/* Action (Standardised Squircle) */}
-              <button
-                onClick={onClose}
-                className="btn-primary !bg-rose-600 hover:!bg-rose-700 !py-4 !px-12 !rounded-2xl shadow-elite text-[10px] font-black tracking-[0.2em] uppercase transition-all active:scale-95"
-              >
-                Acknowledged
-              </button>
+    <div className="fixed inset-0 z-[1000] flex items-center justify-center p-6">
+      <div className="absolute inset-0 bg-black/40" onClick={onClose} />
+      <div className="relative w-full max-w-sm bg-white rounded-2xl shadow-xl overflow-hidden">
+        <div className="h-1 bg-rose-500" />
+        <div className="p-8 text-center space-y-4">
+          <div className="flex items-center justify-center">
+            <div className="w-12 h-12 rounded-xl bg-rose-50 flex items-center justify-center">
+              <AlertCircle size={24} className="text-rose-500" />
             </div>
-
-            {/* Subtle Texture */}
-            <div className="absolute inset-0 pointer-events-none bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')] opacity-[0.03] mix-blend-overlay" />
-          </motion.div>
+          </div>
+          <div className="space-y-1.5">
+            <h3 className="text-lg font-bold text-gray-900">{title}</h3>
+            <p className="text-sm text-gray-500 leading-relaxed">{message}</p>
+            {requestId && (
+              <p className="font-mono text-[10px] text-gray-300 pt-1">ref: {requestId}</p>
+            )}
+          </div>
+          <button
+            onClick={onClose}
+            className="w-full py-3 rounded-xl bg-rose-500 hover:bg-rose-600 text-white text-sm font-semibold transition-colors"
+          >
+            Close
+          </button>
         </div>
-      )}
-    </AnimatePresence>
+      </div>
+    </div>
   );
 }

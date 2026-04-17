@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { motion, AnimatePresence } from 'framer-motion';
 import { MapPin, Plus, Pencil, Trash2, Check, X, ToggleLeft, ToggleRight, AlertTriangle, Shield } from 'lucide-react';
 import api from '../../services/api';
 import { useSensorial, haptics } from '../../context/SensorialContext';
@@ -152,12 +151,9 @@ export default function AdminAreaPage() {
       </div>
 
       {/* Add zone form */}
-      <AnimatePresence>
+      <>
         {showAdd && (
-          <motion.div
-            initial={{ opacity: 0, y: -10 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -10 }}
+          <div
             className="rounded-2xl border border-accent/20 bg-accent/[0.03] p-6 space-y-4"
           >
             <p className="text-sm font-bold t-text">New Delivery Zone</p>
@@ -178,9 +174,9 @@ export default function AdminAreaPage() {
                 Cancel
               </button>
             </div>
-          </motion.div>
+          </div>
         )}
-      </AnimatePresence>
+      </>
 
       {/* Zones list */}
       {isLoading ? (
@@ -195,18 +191,14 @@ export default function AdminAreaPage() {
         </div>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
-          <AnimatePresence mode="popLayout">
+          <>
             {areas.map(area => {
               const pins = parsePincodes(area.pincodes ?? '');
               const isEditing = editingId === area.id;
 
               return (
-                <motion.div
+                <div
                   key={area.id}
-                  layout
-                  initial={{ opacity: 0, scale: 0.96 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  exit={{ opacity: 0, scale: 0.96 }}
                   className={`rounded-2xl border bg-bg-card transition-all ${
                     area.is_active ? 'border-border/20' : 'border-border/10 opacity-60'
                   }`}
@@ -306,10 +298,10 @@ export default function AdminAreaPage() {
                       </div>
                     </div>
                   )}
-                </motion.div>
+                </div>
               );
             })}
-          </AnimatePresence>
+          </>
         </div>
       )}
 

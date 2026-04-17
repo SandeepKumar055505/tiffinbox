@@ -6,7 +6,7 @@ import { motion } from 'framer-motion';
 import { haptics } from '../../context/SensorialContext';
 
 const NAV_ITEMS = [
-  { to: '/', icon: Home, label: 'Home' },
+  { to: '/dashboard', icon: Home, label: 'Home' },
   { to: '/subscribe', icon: Bookmark, label: 'Plans' },
   { to: '/wallet', icon: Wallet, label: 'Wallet' },
   { to: '/support', icon: HelpCircle, label: 'Support' },

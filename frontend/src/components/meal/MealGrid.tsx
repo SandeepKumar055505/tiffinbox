@@ -1,6 +1,5 @@
 import React, { useState, useCallback } from 'react';
 import { formatRupees, type MealPrices } from '../../utils/pricing';
-import { motion, AnimatePresence } from 'framer-motion';
 import { haptics } from '../../context/SensorialContext';
 import DishSwapModal from './DishSwapModal';
 import { GhostChefInsight } from './GhostChefInsight';
@@ -122,11 +121,8 @@ export default function MealGrid({ days, weekMenu, planDays, maxDayOffs, mealPri
           const month = d.toLocaleDateString('en-IN', { month: 'short' });
 
           return (
-            <motion.div
+            <div
               key={day.date}
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: idx * 0.03, duration: 0.3 }}
             >
               <div className="grid gap-2" style={{ gridTemplateColumns: `48px repeat(${activeMealTypes.length}, 1fr)` }}>
                 {/* Date column */}
@@ -154,9 +150,8 @@ export default function MealGrid({ days, weekMenu, planDays, maxDayOffs, mealPri
                   const isSwapped = !!day.overrides[mealType];
 
                   return (
-                    <motion.div
+                    <div
                       key={mealType}
-                      whileTap={!blocked ? { scale: 0.94 } : {}}
                       onClick={() => {
                         if (blocked) { haptics.heavy(); return; }
                         toggleMeal(day.date, mealType);
@@ -228,11 +223,11 @@ export default function MealGrid({ days, weekMenu, planDays, maxDayOffs, mealPri
                       {included && isSwapped && (
                         <div className="absolute top-2 right-2 w-1.5 h-1.5 rounded-full bg-orange-400" />
                       )}
-                    </motion.div>
+                    </div>
                   );
                 })}
               </div>
-            </motion.div>
+            </div>
           );
         })}
       </div>

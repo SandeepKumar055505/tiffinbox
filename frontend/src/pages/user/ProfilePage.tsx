@@ -1,7 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Link, useNavigate } from 'react-router-dom';
-import { motion, AnimatePresence } from 'framer-motion';
 import { ChevronDown, Plus, Pencil, Trash2, Users, X } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useToast } from '../../context/ToastContext';
@@ -535,16 +534,14 @@ export default function ProfilePage() {
                   </p>
                 </div>
                 <div className="relative">
-                  <motion.div
-                    animate={{ x: [0, 4, 0] }}
-                    transition={{ repeat: Infinity, duration: 1.5 }}
+                  <div
                     className="group-hover:text-indigo-400 transition-colors"
                   >
                     <svg className="w-3.5 h-3.5 t-text-muted opacity-20 group-hover:opacity-100 flex-shrink-0"
                       fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
                       <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
                     </svg>
-                  </motion.div>
+                  </div>
                   <div className="absolute inset-0 bg-indigo-500/20 blur-md opacity-0 group-hover:opacity-100 rounded-full transition-opacity" />
                 </div>
               </Link>
@@ -599,14 +596,10 @@ export default function ProfilePage() {
           </div>
 
           {/* Inline form */}
-          <AnimatePresence initial={false}>
+          <>
             {(showForm || editing !== null) && (
-              <motion.div
-                initial={{ opacity: 0, y: -6 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -6 }}
-                transition={{ duration: 0.2 }}
-              >
+              <div>
+
                 <MemberForm
                   form={form}
                   setForm={setForm}
@@ -616,9 +609,9 @@ export default function ProfilePage() {
                   loading={editing ? update.isPending : create.isPending}
                   title={editing ? 'Edit member' : 'New member'}
                 />
-              </motion.div>
+              </div>
             )}
-          </AnimatePresence>
+          </>
 
           {/* Person cards */}
           {persons.length > 0 && !showForm && editing === null && (
@@ -846,22 +839,16 @@ export default function ProfilePage() {
             className="w-full flex items-center justify-between px-4 pb-2 group"
           >
             <h3 className="text-label-caps !text-[12px] !opacity-50 font-bold uppercase tracking-widest group-hover:opacity-70 transition-opacity">About & Legal</h3>
-            <motion.span
-              animate={{ rotate: showLegal ? 180 : 0 }}
-              transition={{ duration: 0.22, ease: 'easeInOut' }}
+            <span
               className="opacity-30 group-hover:opacity-60 transition-opacity"
             >
               <ChevronDown size={15} strokeWidth={2.5} />
-            </motion.span>
+            </span>
           </button>
 
-          <AnimatePresence initial={false}>
+          <>
             {showLegal && (
-              <motion.div
-                initial={{ height: 0, opacity: 0 }}
-                animate={{ height: 'auto', opacity: 1 }}
-                exit={{ height: 0, opacity: 0 }}
-                transition={{ duration: 0.26, ease: [0.32, 0.72, 0, 1] }}
+              <div
                 className="overflow-hidden"
               >
                 <div className="surface-glass rounded-3xl ring-1 ring-border/15 overflow-hidden shadow-sm divide-y divide-border/10">
@@ -903,9 +890,9 @@ export default function ProfilePage() {
                     </div>
                   </div>
                 </div>
-              </motion.div>
+              </div>
             )}
-          </AnimatePresence>
+          </>
         </section>
 
         {/* Danger zone */}

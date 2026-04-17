@@ -1,7 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { adminDashboard } from '../../services/adminApi';
-import { motion, AnimatePresence } from 'framer-motion';
 import { haptics } from '../../context/SensorialContext';
 import LogisticsConfirmModal from '../../components/admin/LogisticsConfirmModal';
 import { todayIST } from '../../utils/time'; // Corrected import or local definition
@@ -72,7 +71,7 @@ export default function AdminLogisticsPage() {
 
              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
                 {items.map((item: any) => (
-                  <motion.div 
+                  <div 
                     key={item.id}
                     className="surface-liquid p-6 rounded-[2.5rem] border-white/5 ring-1 ring-white/10 space-y-5 flex flex-col justify-between"
                   >
@@ -127,14 +126,14 @@ export default function AdminLogisticsPage() {
                           </div>
                         )}
                      </div>
-                  </motion.div>
+                  </div>
                 ))}
              </div>
           </section>
         ))}
       </div>
 
-      <AnimatePresence>
+      <>
         {confirming && (
           <LogisticsConfirmModal 
             title={confirming.title}
@@ -149,7 +148,7 @@ export default function AdminLogisticsPage() {
             onCancel={() => setConfirming(null)}
           />
         )}
-      </AnimatePresence>
+      </>
     </div>
   );
 }

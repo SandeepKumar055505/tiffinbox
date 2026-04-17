@@ -4,7 +4,6 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { adminUsers, adminLedger } from '../../services/adminApi';
 import { formatRupees } from '../../utils/pricing';
 import { haptics } from '../../context/SensorialContext';
-import { motion, AnimatePresence } from 'framer-motion';
 
 export default function AdminUserDetailPage() {
   const { id } = useParams<{ id: string }>();

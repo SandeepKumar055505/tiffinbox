@@ -259,7 +259,7 @@ export default function DashboardPage() {
               )}
             </section>
           ) : (
-            <section className="surface-liquid p-10 text-center space-y-8 rounded-2xl sm:rounded-[2rem] shadow-md border-white/5 ring-1 ring-white/10">
+            <section className="surface-liquid p-6 sm:p-10 text-center space-y-6 rounded-2xl sm:rounded-[2rem] shadow-md ring-1 ring-border/10">
               <div className="text-6xl">🍽️</div>
               <div className="space-y-3">
                 <h2 className="text-h1 tracking-tighter">Your Journey Awaits</h2>
@@ -268,7 +268,7 @@ export default function DashboardPage() {
               <Link
                 to="/subscribe"
                 onClick={() => haptics.impact('heavy')}
-                className="btn-primary !px-12 !py-5 rounded-2xl shadow-md text-xs font-black tracking-[0.3em] uppercase active:scale-95 transition-transform duration-150"
+                className="btn-primary !px-8 !py-3.5 rounded-xl text-xs font-black tracking-[0.3em] uppercase active:scale-95 transition-transform duration-150"
               >
                 Start Subscription →
               </Link>

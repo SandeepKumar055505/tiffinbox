@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Send, 
   Paperclip, 
@@ -247,10 +246,7 @@ export default function SupportPage() {
   // Rendering Dialogue Thread
   if (selectedId && thread) {
     return (
-      <motion.div 
-        initial={{ opacity: 0, scale: 0.98 }}
-        animate={{ opacity: 1, scale: 1 }}
-        exit={{ opacity: 0, scale: 0.98 }}
+      <div
         className="fixed inset-0 z-[100] bg-bg-primary flex flex-col h-[100dvh]"
       >
         {/* Thread Header */}
@@ -275,10 +271,8 @@ export default function SupportPage() {
           {thread.messages.map((m, idx) => {
             const isUser = (m.sender || m.author_role) === 'user';
             return (
-              <motion.div 
+              <div 
                 key={m.id || idx}
-                initial={{ opacity: 0, y: 10, x: isUser ? 20 : -20 }}
-                animate={{ opacity: 1, y: 0, x: 0 }}
                 className={`flex ${isUser ? 'justify-end' : 'justify-start'}`}
               >
                 <div className={`max-w-[85%] relative group`}>
@@ -300,7 +294,7 @@ export default function SupportPage() {
                     <span>{getTime(m)}</span>
                   </div>
                 </div>
-              </motion.div>
+              </div>
             );
           })}
           <div ref={threadEnd} />
@@ -349,7 +343,7 @@ export default function SupportPage() {
             </div>
           )}
         </footer>
-      </motion.div>
+      </div>
     );
   }
 
@@ -415,24 +409,19 @@ export default function SupportPage() {
             {tickets.length > 0 && <span className="text-[9px] font-black opacity-40">{tickets.length} messages</span>}
           </div>
 
-          <AnimatePresence mode="popLayout">
+          <>
             {tickets.length === 0 ? (
-              <motion.div 
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
+              <div
                 className="py-16 text-center space-y-3 opacity-20"
               >
                 <MessageSquare size={48} className="mx-auto" />
                 <p className="text-sm font-bold tracking-widest uppercase">No Active Requests</p>
-              </motion.div>
+              </div>
             ) : (
               <div className="space-y-3">
                 {tickets.map((t, idx) => (
-                  <motion.button
+                  <button
                     key={t.id}
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: idx * 0.05 }}
                     onClick={() => { setSelectedId(t.id); haptics.light(); }}
                     className="w-full surface-glass rounded-2xl p-5 border border-white/5 flex items-center justify-between group hover:bg-white/5 transition-all active:scale-[0.98]"
                   >
@@ -459,11 +448,11 @@ export default function SupportPage() {
                       </div>
                       <ChevronLeft size={16} className="rotate-180 opacity-20 group-hover:opacity-100 group-hover:translate-x-1 transition-all" />
                     </div>
-                  </motion.button>
+                  </button>
                 ))}
               </div>
             )}
-          </AnimatePresence>
+          </>
         </section>
       </div>
     </div>

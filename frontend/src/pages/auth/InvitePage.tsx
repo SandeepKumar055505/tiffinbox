@@ -1,6 +1,5 @@
 import React, { useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '../../context/AuthContext';
 import { ChefHat, Sparkles, Gift, ShieldCheck } from 'lucide-react';
 
@@ -33,10 +32,7 @@ export default function InvitePage() {
       <div className="absolute top-[-10%] -left-20 w-[45rem] h-[45rem] bg-amber-500/10 blur-[180px] rounded-full animate-mesh" />
       <div className="absolute bottom-[-10%] -right-20 w-[50rem] h-[50rem] bg-amber-600/10 blur-[200px] rounded-full animate-mesh" style={{ animationDelay: '3s' }} />
 
-      <motion.div 
-        initial={{ opacity: 0, y: 30 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 1, ease: [0.16, 1, 0.3, 1] }}
+      <div
         className="relative max-w-md w-full space-y-12 text-center"
       >
         {/* The Digital Invitation */}
@@ -44,34 +40,22 @@ export default function InvitePage() {
           <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-amber-500 to-transparent opacity-50" />
           
           <div className="flex flex-col items-center gap-6">
-            <motion.div 
-              animate={{ 
-                scale: [1, 1.05, 1],
-                rotate: [0, 2, -2, 0]
-              }}
-              transition={{ 
-                repeat: Infinity, 
-                duration: 6,
-                ease: "easeInOut"
-              }}
+            <div
               className="w-20 h-20 bg-amber-500 rounded-3xl flex items-center justify-center shadow-glow-amber text-white relative"
             >
               <Gift size={36} />
               <div className="absolute -top-3 -right-3 bg-slate-900 text-white text-[9px] font-black px-3 py-1.5 rounded-full shadow-lg font-zenith tracking-widest uppercase">
                 GIFT: ₹120
               </div>
-            </motion.div>
+            </div>
 
             <div className="space-y-4">
-              <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ delay: 0.5 }}
+              <div
                 className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-amber-500/15 bg-amber-50/50"
               >
                 <Sparkles size={12} className="text-amber-600" />
                 <span className="text-[10px] font-black uppercase tracking-[0.2em] text-amber-800">Exclusive Entry Unlocked</span>
-              </motion.div>
+              </div>
 
               <h1 className="text-3xl sm:text-4xl font-heritage font-black italic tracking-tighter text-slate-900 leading-[0.9]">
                 You've been gifted <span className="text-amber-500">Health</span>.
@@ -100,10 +84,7 @@ export default function InvitePage() {
         </div>
 
         {/* Global Network Proof */}
-        <motion.div 
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 1.2 }}
+        <div
           className="flex flex-col items-center gap-4"
         >
           <div className="flex -space-x-3">
@@ -117,8 +98,8 @@ export default function InvitePage() {
             <ShieldCheck size={12} className="text-amber-500" />
             Join 2,400+ Families in Gurugram
           </p>
-        </motion.div>
-      </motion.div>
+        </div>
+      </div>
     </div>
   );
 }

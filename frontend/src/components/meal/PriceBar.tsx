@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { PriceSnapshot } from '../../types';
 import { formatRupees } from '../../utils/pricing';
-import { motion, AnimatePresence } from 'framer-motion';
 import { useTheme } from '../../context/ThemeContext';
 
 interface Props {
@@ -23,21 +22,15 @@ export default function PriceBar({ snapshot, planDays, onNext, loading }: Props)
   return (
     // <div className="fixed bottom-0 left-0 right-0 z-40 px-3 sm:px-4 pb-3 pt-1">
     <div className="max-w-lg mx-auto sm:max-w-2xl">
-      <motion.div
+      <div
         className={`glass rounded-2xl shadow-elite ring-1 overflow-hidden
           ${isDark ? 'ring-white/10' : 'ring-indigo-900/10'}`}
-        layout
-        transition={{ duration: 0.2, ease: [0.4, 0, 0.2, 1] }}
       >
         {/* Expandable breakdown */}
-        <AnimatePresence initial={false}>
+        <>
           {expanded && hasBreakdown && (
-            <motion.div
+            <div
               key="breakdown"
-              initial={{ height: 0, opacity: 0 }}
-              animate={{ height: 'auto', opacity: 1 }}
-              exit={{ height: 0, opacity: 0 }}
-              transition={{ duration: 0.22, ease: [0.4, 0, 0.2, 1] }}
               className="overflow-hidden"
             >
               <div className={`px-4 pt-3.5 pb-2.5 border-b space-y-2
@@ -76,9 +69,9 @@ export default function PriceBar({ snapshot, planDays, onNext, loading }: Props)
                   </div>
                 )}
               </div>
-            </motion.div>
+            </div>
           )}
-        </AnimatePresence>
+        </>
 
         {/* Main row */}
         <div className="flex items-center gap-3 px-4 py-3">
@@ -130,7 +123,7 @@ export default function PriceBar({ snapshot, planDays, onNext, loading }: Props)
             )}
           </button>
         </div>
-      </motion.div>
+      </div>
     </div>
     // </div>
   );

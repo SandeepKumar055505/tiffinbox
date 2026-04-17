@@ -1,5 +1,4 @@
 import React from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
 import { haptics } from '../../context/SensorialContext';
 import { type PriceSnapshot } from '../../types';
 import { formatRupees } from '../../utils/pricing';
@@ -24,25 +23,17 @@ export const SelectionConfirmModal: React.FC<SelectionConfirmModalProps> = ({
   const avgPerMeal  = mealCount > 0 ? Math.round(snapshot.final_total / mealCount) : 0;
 
   return (
-    <AnimatePresence>
+    <>
       {isOpen && (
         <div className="fixed inset-0 z-[500] flex items-center justify-center p-6">
           {/* Backdrop */}
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.18 }}
+          <div
             className="absolute inset-0 bg-bg-primary/70 backdrop-blur-xl"
             onClick={onCancel}
           />
 
           {/* Card */}
-          <motion.div
-            initial={{ y: 32, opacity: 0, scale: 0.97 }}
-            animate={{ y: 0, opacity: 1, scale: 1 }}
-            exit={{ y: 16, opacity: 0, scale: 0.97 }}
-            transition={{ type: 'spring', damping: 30, stiffness: 320 }}
+          <div
             className={`relative w-full max-w-sm surface-liquid p-6 rounded-3xl
               shadow-elite border overflow-hidden space-y-5
               ${isDark ? 'border-white/10' : 'border-indigo-900/10'}`}
@@ -143,9 +134,9 @@ export const SelectionConfirmModal: React.FC<SelectionConfirmModalProps> = ({
                 Change something
               </button>
             </div>
-          </motion.div>
+          </div>
         </div>
       )}
-    </AnimatePresence>
+    </>
   );
 };

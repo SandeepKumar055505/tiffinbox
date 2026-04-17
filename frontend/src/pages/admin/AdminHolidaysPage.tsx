@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { adminHolidays } from '../../services/adminApi';
-import { motion, AnimatePresence } from 'framer-motion';
 import { haptics } from '../../context/SensorialContext';
 import { todayIST, formatDateSensorial } from '../../utils/time';
 
@@ -87,7 +86,7 @@ export default function AdminHolidaysPage() {
          
          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {holidays?.map((h: any) => (
-              <motion.div 
+              <div 
                 key={h.id}
                 className="surface-glass p-6 rounded-[2.5rem] border-white/5 ring-1 ring-white/10 space-y-4"
               >
@@ -96,18 +95,15 @@ export default function AdminHolidaysPage() {
                     <span className="text-[9px] opacity-40 font-black uppercase">PAUSED</span>
                  </div>
                  <p className="text-h1 !text-lg truncate">{h.name}</p>
-              </motion.div>
+              </div>
             ))}
          </div>
       </div>
 
-      <AnimatePresence>
+      <>
         {showConfirm && (
           <div className="fixed inset-0 z-[100] flex items-center justify-center p-6 bg-black/60 backdrop-blur-md">
-             <motion.div 
-               initial={{ scale: 0.9, opacity: 0 }}
-               animate={{ scale: 1, opacity: 1 }}
-               exit={{ scale: 0.9, opacity: 0 }}
+             <div
                className="surface-liquid w-full max-w-[450px] p-10 text-center space-y-8 rounded-[4rem] shadow-elite border-white/5 ring-1 ring-white/10"
              >
                 <div className="text-6xl">🕰️</div>
@@ -130,10 +126,10 @@ export default function AdminHolidaysPage() {
                      Relinquish manifestation
                    </button>
                 </div>
-             </motion.div>
+             </div>
           </div>
         )}
-      </AnimatePresence>
+      </>
     </div>
   );
 }

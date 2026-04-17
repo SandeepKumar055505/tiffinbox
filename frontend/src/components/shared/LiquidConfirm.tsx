@@ -1,6 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
-import { motion, useMotionValue, useTransform, useAnimation } from 'framer-motion';
-import { haptics } from '../../context/SensorialContext';
+import React, { useState, useRef } from 'react';
 
 interface LiquidConfirmProps {
   onConfirm: () => void;
@@ -9,87 +7,70 @@ interface LiquidConfirmProps {
   className?: string;
 }
 
-export function LiquidConfirm({ 
-  onConfirm, 
-  label = 'Slide to Confirm Manifest', 
-  successLabel = 'Manifested',
-  className = '' 
+export function LiquidConfirm({
+  onConfirm,
+  label = 'Slide to Confirm',
+  successLabel = 'Confirmed',
+  className = ''
 }: LiquidConfirmProps) {
   const [complete, setComplete] = useState(false);
-  const x = useMotionValue(0);
+  const [dragX, setDragX] = useState(0);
   const containerRef = useRef<HTMLDivElement>(null);
-  const controls = useAnimation();
+  const dragging = useRef(false);
+  const startX = useRef(0);
+  const MAX = 220;
 
-  // Calculate opacity and progress based on drag distance
-  // Assuming a max width of ~300px
-  const opacity = useTransform(x, [0, 240], [1, 0]);
-  const bgOpacity = useTransform(x, [0, 240], [0.1, 0.3]);
-  const scale = useTransform(x, [240, 260], [1, 1.1]);
+  const onPointerDown = (e: React.PointerEvent) => {
+    dragging.current = true;
+    startX.current = e.clientX;
+    (e.target as HTMLElement).setPointerCapture(e.pointerId);
+  };
 
-  const handleDragEnd = async (_: any, info: any) => {
-    // If dragged past 80% of the container (arbitrary 240px for safety)
-    if (info.offset.x > 220) {
+  const onPointerMove = (e: React.PointerEvent) => {
+    if (!dragging.current) return;
+    const delta = Math.max(0, Math.min(MAX, e.clientX - startX.current));
+    setDragX(delta);
+  };
+
+  const onPointerUp = () => {
+    if (!dragging.current) return;
+    dragging.current = false;
+    if (dragX >= MAX * 0.85) {
       setComplete(true);
-      haptics.heavy();
-      haptics.success();
       onConfirm();
     } else {
-      // Snap back if not reached
-      haptics.impact();
-      controls.start({ x: 0 });
+      setDragX(0);
     }
   };
 
-  const handleDrag = (_: any, info: any) => {
-    // Progressive haptic feedback
-    if (Math.abs(info.offset.x % 40) < 5) {
-      haptics.light();
-    }
-  };
+  const progress = (dragX / MAX) * 100;
 
   return (
-    <div 
+    <div
       ref={containerRef}
-      className={`relative h-16 w-full max-w-[340px] glass overflow-hidden flex items-center p-1.5 select-none ${className}`}
-      style={{ borderRadius: '2rem' }}
+      className={`relative h-14 w-full max-w-sm bg-[var(--color-bg-subtle)] border border-[var(--color-border)] rounded-xl overflow-hidden flex items-center px-1.5 select-none ${className}`}
     >
-      {/* Liquid Progress Background */}
-      <motion.div 
-        style={{ width: x, opacity: bgOpacity }}
-        className="absolute left-0 inset-y-0 bg-accent rounded-l-[1.5rem] pointer-events-none"
+      {/* Progress fill */}
+      <div
+        className="absolute left-0 inset-y-0 bg-[var(--color-accent)] opacity-10 rounded-xl transition-none"
+        style={{ width: `${progress}%` }}
       />
 
-      {/* Placeholder Track Text */}
-      <motion.div 
-        style={{ opacity }}
-        className="absolute inset-0 flex items-center justify-center pointer-events-none"
-      >
-        <p className="text-[10px] font-black uppercase tracking-[0.25em] opacity-40 ml-8">
-          {complete ? successLabel : label}
-        </p>
-      </motion.div>
+      {/* Track label */}
+      <p className="absolute inset-0 flex items-center justify-center text-[10px] font-bold uppercase tracking-widest text-[var(--color-text-muted)] pointer-events-none">
+        {complete ? successLabel : label}
+      </p>
 
-      {/* The Draggable Orb */}
-      <motion.div
-        drag="x"
-        dragConstraints={{ left: 0, right: 260 }}
-        dragElastic={0.1}
-        onDrag={handleDrag}
-        onDragEnd={handleDragEnd}
-        animate={controls}
-        style={{ x }}
-        className={`relative z-10 w-12 h-12 rounded-[1.2rem] flex items-center justify-center cursor-grab active:cursor-grabbing shadow-elite transition-colors duration-500 ${complete ? 'bg-teal-500 scale-110' : 'bg-white'}`}
+      {/* Draggable thumb */}
+      <div
+        className={`relative z-10 w-11 h-11 rounded-lg flex items-center justify-center cursor-grab active:cursor-grabbing transition-colors ${complete ? 'bg-[var(--color-accent)] text-white' : 'bg-white shadow-sm border border-[var(--color-border)]'}`}
+        style={{ transform: `translateX(${dragX}px)`, transition: dragging.current ? 'none' : 'transform 0.2s' }}
+        onPointerDown={onPointerDown}
+        onPointerMove={onPointerMove}
+        onPointerUp={onPointerUp}
       >
-        <span className={`text-lg transition-transform duration-500 ${complete ? 'rotate-12 scale-110' : ''}`}>
-          {complete ? '💎' : '→'}
-        </span>
-        
-        {/* Glow Shadow for the Orb */}
-        <div className={`absolute -inset-2 blur-xl -z-10 rounded-full transition-opacity duration-500 ${complete ? 'bg-teal-500/40 opacity-100' : 'bg-white/10 opacity-0'}`} />
-      </motion.div>
-
-      {/* Edge Anchor */}
-      <div className="absolute right-4 w-2 h-2 rounded-full bg-white/5 border border-white/10" />
+        <span className="text-sm">{complete ? '✓' : '→'}</span>
+      </div>
     </div>
   );
 }

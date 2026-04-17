@@ -5,7 +5,6 @@ import { subscriptions as subsApi } from '../../services/api';
 import { formatRupees } from '../../utils/pricing';
 import { haptics } from '../../context/SensorialContext';
 import { usePublicConfig } from '../../hooks/usePublicConfig';
-import { motion, AnimatePresence } from 'framer-motion';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 
 const STATE_CONFIG: Record<string, { label: string; color: string; dot: string }> = {
@@ -133,7 +132,7 @@ export default function SubscriptionsPage() {
           </div>
         ) : (
           <div className="space-y-3">
-            <AnimatePresence>
+            <>
               {filtered.map((sub: any, idx: number) => {
                 const stCfg = STATE_CONFIG[sub.state] ?? STATE_CONFIG.draft;
                 const snapshot = typeof sub.price_snapshot === 'string'
@@ -144,12 +143,8 @@ export default function SubscriptionsPage() {
                 const isPendingPayment = sub.state === 'pending_payment' || sub.state === 'failed_payment';
 
                 return (
-                  <motion.div
+                  <div
                     key={sub.id}
-                    initial={{ opacity: 0, y: 12 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, scale: 0.97 }}
-                    transition={{ delay: idx * 0.04, duration: 0.25 }}
                     className="bg-bg-card ring-1 ring-border/15 rounded-[1.5rem] overflow-hidden"
                   >
                     {/* Card body */}
@@ -240,29 +235,22 @@ export default function SubscriptionsPage() {
                         ) : null}
                       </div>
                     )}
-                  </motion.div>
+                  </div>
                 );
               })}
-            </AnimatePresence>
+            </>
           </div>
         )}
       </div>
 
       {/* Cancel modal — centered */}
-      <AnimatePresence>
+      <>
         {cancelModal && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
+          <div
             className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
             onClick={() => setCancelModal(null)}
           >
-            <motion.div
-              initial={{ scale: 0.93, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.93, opacity: 0 }}
-              transition={{ duration: 0.2 }}
+            <div
               onClick={e => e.stopPropagation()}
               className="w-full max-w-sm bg-bg-card rounded-[1.8rem] p-6 space-y-4 ring-1 ring-border/20 shadow-2xl"
             >
@@ -295,10 +283,10 @@ export default function SubscriptionsPage() {
                   {cancelMutation.isPending ? 'Cancelling…' : 'Yes, cancel'}
                 </button>
               </div>
-            </motion.div>
-          </motion.div>
+            </div>
+          </div>
         )}
-      </AnimatePresence>
+      </>
     </div>
   );
 }

@@ -1,6 +1,5 @@
 import React from 'react';
 import { MealType, MealItem } from '../../types';
-import { motion, AnimatePresence } from 'framer-motion';
 import { haptics } from '../../context/SensorialContext';
 import { useTheme } from '../../context/ThemeContext';
 
@@ -41,24 +40,16 @@ export default function DishSwapModal({
   const swappableItems = allItems.filter(i => i.id !== currentItemId);
 
   return (
-    <AnimatePresence>
+    <>
       <div className="fixed inset-0 z-[500] flex items-center justify-center p-6">
         {/* The Sensory Backdrop */}
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          transition={{ duration: 0.4 }}
+        <div
           className={`absolute inset-0 backdrop-blur-3xl ${isDark ? 'bg-black/60' : 'bg-indigo-950/20'}`}
           onClick={onClose}
         />
 
         {/* The Sovereign Sheet */}
-        <motion.div
-          initial={{ y: 40, opacity: 0, scale: 0.95 }}
-          animate={{ y: 0, opacity: 1, scale: 1 }}
-          exit={{ y: 20, opacity: 0, scale: 0.95 }}
-          transition={{ type: 'spring', damping: 28, stiffness: 220 }}
+        <div
           className={`
             relative w-full max-w-lg overflow-hidden
             rounded-[2.5rem]
@@ -128,9 +119,7 @@ export default function DishSwapModal({
                 </div>
                 {/* Active Indicator */}
                 <div className="relative flex items-center justify-center w-6 h-6">
-                  <motion.div 
-                    animate={{ scale: [1, 1.8, 1], opacity: [0.5, 0.2, 0.5] }}
-                    transition={{ duration: 2, repeat: Infinity }}
+                  <div
                     className="absolute w-full h-full rounded-full bg-accent" 
                   />
                   <div className="w-2 h-2 rounded-full bg-accent shadow-[0_0_8px_#14b8a6]" />
@@ -147,10 +136,8 @@ export default function DishSwapModal({
                 </p>
                 <div className="grid grid-cols-2 gap-4">
                   {swappableItems.map(item => (
-                    <motion.button
+                    <button
                       key={item.id}
-                      whileHover={{ y: -4, scale: 1.02 }}
-                      whileTap={{ scale: 0.96 }}
                       onClick={() => {
                         onSelect(item.id);
                         haptics.success();
@@ -196,7 +183,7 @@ export default function DishSwapModal({
                           {item.description || 'Curated for today.'}
                         </p>
                       </div>
-                    </motion.button>
+                    </button>
                   ))}
                 </div>
               </div>
@@ -219,8 +206,8 @@ export default function DishSwapModal({
               Maintain Current Ritual
             </button>
           </div>
-        </motion.div>
+        </div>
       </div>
-    </AnimatePresence>
+    </>
   );
 }

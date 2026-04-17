@@ -15,7 +15,6 @@ import {
   ArrowUp,
   MessageCircle
 } from 'lucide-react';
-import { motion } from 'framer-motion';
 
 const SANCTUARY_LINKS = [
   { name: 'The Artisans', path: '/#theartisans' },

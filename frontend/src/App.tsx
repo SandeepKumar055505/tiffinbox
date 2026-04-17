@@ -1,6 +1,5 @@
 import React from 'react';
 import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
-import { AnimatePresence, motion } from 'framer-motion';
 import { useAuth } from './context/AuthContext';
 import { AdminAuthProvider, useAdminAuth } from './context/AdminAuthContext';
 import ErrorBoundary from './components/shared/ErrorBoundary';
@@ -93,13 +92,9 @@ export default function App() {
         <React.Suspense fallback={<Loader />}>
           <ScrollToTop />
           <GlassLayout>
-            <AnimatePresence mode="wait">
-              <motion.div
-                key={location.pathname.split('/')[1]} // Group animations by top-level route
-                initial="initial"
-                animate="animate"
-                exit="exit"
-                variants={pageVariants}
+            <>
+              <div
+                key={location.pathname.split('/')[1]}
                 className="w-full h-full"
               >
                 <Routes location={location}>
@@ -147,8 +142,8 @@ export default function App() {
 
                   <Route path="*" element={<NotFoundPage />} />
                 </Routes>
-              </motion.div>
-            </AnimatePresence>
+              </div>
+            </>
           </GlassLayout>
         </React.Suspense>
       </ErrorBoundary>

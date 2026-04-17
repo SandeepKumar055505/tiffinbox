@@ -1,5 +1,4 @@
 import React, { useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
 import { haptics } from '../../context/SensorialContext';
 
 /**
@@ -55,10 +54,7 @@ export default function LogisticsConfirmModal({
 
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-6 bg-black/60 backdrop-blur-md">
-       <motion.div 
-         initial={{ scale: 0.9, opacity: 0, y: 20 }}
-         animate={{ scale: 1, opacity: 1, y: 0 }}
-         exit={{ scale: 0.9, opacity: 0, y: 20 }}
+       <div
          className="surface-liquid w-full max-w-[500px] p-8 space-y-8 rounded-[4rem] shadow-elite border-white/5 ring-1 ring-white/10"
        >
           <div className="space-y-2 text-center">
@@ -113,7 +109,7 @@ export default function LogisticsConfirmModal({
                Relinquish manifestation
              </button>
           </div>
-       </motion.div>
+       </div>
     </div>
   );
 }

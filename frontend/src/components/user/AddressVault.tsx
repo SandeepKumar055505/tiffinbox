@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
 import { Plus, Trash2, Home, Briefcase, Map as MapIcon, Loader2, Pencil } from 'lucide-react';
 import { addresses as addressApi } from '../../services/api';
 import { useSensorial, haptics } from '../../context/SensorialContext';
@@ -141,14 +140,10 @@ const AddressVault: React.FC<AddressVaultProps> = ({ onUpdate }) => {
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2">
-        <AnimatePresence mode="popLayout">
+        <>
           {addresses.map((addr) => (
-            <motion.div
+            <div
               key={addr.id}
-              layout
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.95 }}
               className={`relative overflow-hidden rounded-[2rem] transition-all duration-500 border
                 ${addr.is_default ? 'bg-bg-secondary border-accent/20 ring-1 ring-accent/5 shadow-glow-accent/5' : 'surface-glass border-white/5'}`}
             >
@@ -244,14 +239,12 @@ const AddressVault: React.FC<AddressVaultProps> = ({ onUpdate }) => {
                   </div>
                 </div>
               )}
-            </motion.div>
+            </div>
           ))}
-        </AnimatePresence>
+        </>
 
         {isAdding && (
-          <motion.div
-            initial={{ opacity: 0, y: 15 }}
-            animate={{ opacity: 1, y: 0 }}
+          <div
             className="rounded-[2.5rem] bg-accent/[0.03] p-6 border-2 border-dashed border-accent/20 shadow-inner"
           >
             <div className="mb-5 space-y-2">
@@ -297,7 +290,7 @@ const AddressVault: React.FC<AddressVaultProps> = ({ onUpdate }) => {
                 Cancel
               </button>
             </div>
-          </motion.div>
+          </div>
         )}
       </div>
     </div>
