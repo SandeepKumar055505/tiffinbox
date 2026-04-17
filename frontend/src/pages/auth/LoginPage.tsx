@@ -6,7 +6,7 @@ import { auth } from '../../services/api';
 import { usePublicConfig } from '../../hooks/usePublicConfig';
 import { useToast } from '../../context/ToastContext';
 import { formatRupees } from '../../utils/pricing';
-import { ChefHat, ShieldCheck, Timer, Utensils, Users, Star, Check, MapPin } from 'lucide-react';
+import { ChefHat, ShieldCheck, Timer, Utensils, Users, Star, Check, MapPin, ArrowLeft } from 'lucide-react';
 
 declare global {
   interface Window { google?: any; }
@@ -92,12 +92,15 @@ export default function LoginPage() {
 
         <div className="relative z-10 flex flex-col justify-between p-8 md:p-12 min-h-[380px] md:min-h-screen">
 
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-8 bg-amber-500 rounded-lg flex items-center justify-center">
-              <ChefHat className="text-white" size={15} />
+          <Link to="/" className="flex items-center gap-3 group transition-all hover:translate-x-[-4px]">
+            <ArrowLeft className="text-white/20 group-hover:text-amber-500 transition-colors" size={16} />
+            <div className="flex items-center gap-2">
+              <div className="w-8 h-8 bg-amber-500 rounded-lg flex items-center justify-center shadow-lg shadow-amber-500/20">
+                <ChefHat className="text-white" size={15} />
+              </div>
+              <span className="text-base font-bold text-white font-heritage tracking-tight uppercase">TiffinPoint</span>
             </div>
-            <span className="text-base font-bold text-white font-heritage tracking-tight">TiffinPoint</span>
-          </div>
+          </Link>
 
           <div className="space-y-6 py-8 md:py-0">
             <h1 className="text-3xl md:text-4xl lg:text-5xl font-heritage font-black italic tracking-tight text-white leading-tight">

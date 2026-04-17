@@ -35,77 +35,6 @@ export default function Footer() {
   const year = new Date().getFullYear();
 
   return (
-    // <footer className="py-24 bg-white dark:bg-slate-950 border-t border-slate-100 dark:border-white/5">
-    //   <div className="max-w-[1440px] mx-auto px-8">
-    //     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-16 mb-24">
-    //       <div className="flex flex-col gap-8">
-    //         <div className="flex items-center gap-2">
-    //           <div className="w-10 h-10 bg-amber-500 rounded-xl flex items-center justify-center shadow-lg">
-    //             <ChefHat className="text-white" size={20} />
-    //           </div>
-    //           <span className="text-2xl font-black tracking-tighter text-amber-600 font-zenith">TiffinPoint</span>
-    //         </div>
-    //         <p className="text-base font-bold text-slate-400 uppercase tracking-widest leading-relaxed">
-    //           Elevating the home-dining experience with sovereign precision and motherly care.
-    //         </p>
-    //         <div className="flex gap-4">
-    //            {[Instagram, Facebook, Twitter, Linkedin].map((Icon, i) => (
-    //              <motion.div key={i} whileHover={{ y: -5 }} className="w-10 h-10 glass-prismatic rounded-xl flex items-center justify-center cursor-pointer text-slate-400 hover:text-amber-500 transition-colors">
-    //                <Icon size={18} />
-    //              </motion.div>
-    //            ))}
-    //         </div>
-    //       </div>
-
-    //       <div className="flex flex-col gap-8">
-    //          <h4 className="text-xs font-black uppercase tracking-[0.4em] text-slate-900 dark:text-white">Sanctuary</h4>
-    //          <div className="flex flex-col gap-4">
-    //             {SANCTUARY_LINKS.map(link => (
-    //               <a key={link.name} href={link.path} className="text-sm font-bold text-slate-400 hover:text-amber-600 uppercase tracking-widest transition-colors">{link.name}</a>
-    //             ))}
-    //          </div>
-    //       </div>
-
-    //       <div className="flex flex-col gap-8">
-    //          <h4 className="text-xs font-black uppercase tracking-[0.4em] text-slate-900 dark:text-white">Sacred</h4>
-    //          <div className="flex flex-col gap-4">
-    //             {SACRED_LINKS.map(link => (
-    //               <Link key={link.name} to={link.path} className="text-sm font-bold text-slate-400 hover:text-amber-600 uppercase tracking-widest transition-colors">{link.name}</Link>
-    //             ))}
-    //          </div>
-    //       </div>
-
-    //       <div className="flex flex-col gap-8">
-    //          <h4 className="text-xs font-black uppercase tracking-[0.4em] text-slate-900 dark:text-white">Reach Us</h4>
-    //          <div className="flex flex-col gap-6">
-    //             <div className="flex items-start gap-4">
-    //               <MapPin className="text-amber-500 flex-shrink-0" size={20} />
-    //               <span className="text-sm font-bold text-slate-400 uppercase tracking-widest leading-relaxed">Gurugram, Haryana, India</span>
-    //             </div>
-    //             <div className="p-4 glass-prismatic rounded-2xl border-white/40">
-    //               <span className="text-[10px] font-black text-slate-900 dark:text-white uppercase tracking-[0.2em] block mb-1">Newsletter Ritual</span>
-    //               <div className="flex gap-2">
-    //                  <input type="email" placeholder="YOUR SOUL@EMAIL" className="bg-transparent text-[10px] font-black uppercase tracking-widest w-full outline-none" />
-    //                  <ArrowRight size={14} className="text-amber-500 cursor-pointer" />
-    //               </div>
-    //             </div>
-    //          </div>
-    //       </div>
-    //     </div>
-
-    //     <div className="pt-12 border-t border-slate-50 dark:border-white/5 flex flex-col md:flex-row justify-between items-center gap-8">
-    //        <span className="text-[10px] font-black text-slate-300 uppercase tracking-[0.5em]">© {year} TiffinPoint • The Sovereign Collective</span>
-    //        <div className="flex gap-8">
-    //           <span className="text-[10px] font-black text-slate-300 uppercase tracking-[0.2em] flex items-center gap-2">
-    //             <ShieldCheck size={12} /> Encrypted Sanctuary
-    //           </span>
-    //           <span className="text-[10px] font-black text-slate-300 uppercase tracking-[0.2em] flex items-center gap-2">
-    //              <Heart size={12} fill="currentColor" /> Crafted for Gurugram
-    //           </span>
-    //        </div>
-    //     </div>
-    //   </div>
-    // </footer>
     <>
       <footer className="py-10 sm:py-14 px-4 sm:px-6 bg-slate-950 text-white">
         <div className="max-w-5xl mx-auto space-y-8 sm:space-y-10">
@@ -129,7 +58,7 @@ export default function Footer() {
           </div>
           <div className="flex flex-col sm:flex-row items-center justify-between pt-6 sm:pt-8 border-t border-white/5 gap-4">
             <p className="text-[9px] font-black uppercase tracking-widest text-white/15 font-zenith">© 2025 TiffinPoint Services Pvt. Ltd.</p>
-            <button onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })} className="flex items-center gap-1 text-[9px] font-black uppercase tracking-widest text-white/20 hover:text-amber-400 transition-all group"><ArrowUp size={10} className="group-hover:-translate-y-1 transition-transform" />Back to Top</button>
+            {/* <button onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })} className="flex items-center gap-1 text-[9px] font-black uppercase tracking-widest text-white/20 hover:text-amber-400 transition-all group"><ArrowUp size={10} className="group-hover:-translate-y-1 transition-transform" />Back to Top</button> */}
           </div>
         </div>
       </footer>
