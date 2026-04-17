@@ -4,6 +4,7 @@ import { db } from '../../config/db';
 import { requireAdmin } from '../../middleware/auth';
 import { validate } from '../../middleware/validate';
 import { canTransitionTo } from '../../services/policyEngine';
+import { creditPartialSubscriptionRefund } from '../../services/ledgerService';
 
 const router = Router();
 
@@ -76,7 +77,6 @@ router.post('/:id/cancel', requireAdmin, async (req, res) => {
     const totalRefund = perMealValue * futureCells.length;
 
     // 2. Issue automated ledger credit (The Zenith Fix)
-    const { creditPartialSubscriptionRefund } = await import('../../services/ledgerService');
     await creditPartialSubscriptionRefund(sub.user_id, sub.id, totalRefund, futureCells.length);
 
     // 3. Update cells to cancelled
@@ -85,7 +85,6 @@ router.post('/:id/cancel', requireAdmin, async (req, res) => {
       .update({
         delivery_status: 'cancelled',
         is_included: false,
-        updated_at: db.fn.now(),
       });
   }
 

@@ -31,9 +31,13 @@ export async function postLedgerEntry(entry: {
   idempotency_key: string;
   created_by: 'system' | 'admin' | 'user';
 }, trxOverride?: any): Promise<LedgerEntry | null> {
-  const execute = async (trx: any) => {
-    // Lock the user record to serialize wallet operations for this specific user
-    await trx('users').where({ id: entry.user_id }).forUpdate().first();
+  const execute = async (trx: any, isNested: boolean) => {
+    // Lock the user record to serialize concurrent wallet operations.
+    // Skip when called inside an existing transaction — the outer trx already
+    // provides isolation and an inner forUpdate() can deadlock on Neon free tier.
+    if (!isNested) {
+      await trx('users').where({ id: entry.user_id }).forUpdate().first();
+    }
 
     // Idempotency check inside transaction
     const existing = await trx('ledger_entries')
@@ -86,9 +90,9 @@ export async function postLedgerEntry(entry: {
   };
 
   if (trxOverride) {
-    return execute(trxOverride);
+    return execute(trxOverride, true);   // nested — skip forUpdate
   } else {
-    return db.transaction(execute);
+    return db.transaction(trx => execute(trx, false));  // standalone — lock the row
   }
 }
 

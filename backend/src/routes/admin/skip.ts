@@ -4,6 +4,7 @@ import { db } from '../../config/db';
 import { requireAdmin } from '../../middleware/auth';
 import { validate } from '../../middleware/validate';
 import { sendNotification, NotificationType } from '../../services/notificationService';
+import { postLedgerEntry } from '../../services/ledgerService';
 
 const router = Router();
 
@@ -74,7 +75,6 @@ router.post(
 
       // Credit wallet if admin set an amount > 0
       if (creditPaise > 0) {
-        const { postLedgerEntry } = await import('../../services/ledgerService');
         await postLedgerEntry({
           user_id: sub.user_id,
           direction: 'credit',
