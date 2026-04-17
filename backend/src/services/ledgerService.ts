@@ -15,6 +15,7 @@ export type LedgerEntryType =
   | 'streak_reward'
   | 'admin_credit'
   | 'admin_debit'
+  | 'cancel_refund'
   | 'other';
 
 export async function postLedgerEntry(entry: {

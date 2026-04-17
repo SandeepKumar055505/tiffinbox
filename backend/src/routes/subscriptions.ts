@@ -6,9 +6,9 @@ import { validate } from '../middleware/validate';
 import { nowIST, todayIST, tomorrowIST, addDays, parseDateIST, formatDateIST } from '../lib/time';
 import { calculateQuote, buildDateRange } from '../services/pricingEngine';
 import { canAccessMonthlyPlan, canTransitionTo } from '../services/policyEngine';
-import { getWalletBalance, debitWalletAtCheckout, creditFullSubscriptionRefund } from '../services/ledgerService';
+import { getWalletBalance, debitWalletAtCheckout } from '../services/ledgerService';
 import { sendNotification, NotificationType } from '../services/notificationService';
-import { emitEvent, DomainEvent } from '../jobs/events';
+import { DomainEvent } from '../jobs/events';
 import { boss } from '../jobs/client';
 import { isPincodeServiceable } from '../lib/geo';
 import { settingsService } from '../services/settingsService';
@@ -326,70 +326,59 @@ router.post('/', requireUser, validate(createSchema), async (req, res) => {
   }).catch(err => console.error('[bg] SUBSCRIPTION_CREATED emit failed:', err?.message));
 });
 
-// POST /api/subscriptions/:id/cancel
+// GET /api/subscriptions/:id/cancel-request — check if a pending cancel request exists
+router.get('/:id/cancel-request', requireUser, async (req, res) => {
+  const sub = await db('subscriptions')
+    .where({ id: req.params.id, user_id: req.userId })
+    .first();
+  if (!sub) return res.status(404).json({ error: 'Subscription not found' });
+
+  const request = await db('cancel_requests')
+    .where({ subscription_id: sub.id })
+    .orderBy('requested_at', 'desc')
+    .first();
+
+  res.json(request || null);
+});
+
+// POST /api/subscriptions/:id/cancel — submits a cancel request for admin review
 router.post('/:id/cancel', requireUser, async (req, res) => {
-  let finalSub: any = null;
-  let statusResult = 'cancelled';
+  const sub = await db('subscriptions')
+    .where({ id: req.params.id, user_id: req.userId })
+    .first();
 
-  try {
-    await db.transaction(async trx => {
-      const sub = await trx('subscriptions')
-        .where({ id: req.params.id, user_id: req.userId })
-        .forUpdate()
-        .noWait()
-        .first();
-
-      if (!sub) throw Object.assign(new Error('Subscription not found'), { status: 404 });
-      if (!canTransitionTo(sub.state, 'cancelled')) {
-        throw Object.assign(new Error(`Cannot cancel from state: ${sub.state}`), { status: 409 });
-      }
-
-      const today = todayIST();
-      if (sub.start_date > today) {
-        [finalSub] = await trx('subscriptions')
-          .where({ id: sub.id })
-          .update({ state: 'cancelled', updated_at: db.fn.now() })
-          .returning('*');
-        const amountToRefund = sub.wallet_applied || 0;
-        if (amountToRefund > 0) {
-          await creditFullSubscriptionRefund(req.userId!, sub.id, amountToRefund, trx);
-        }
-        statusResult = 'refunded';
-        return;
-      }
-
-      [finalSub] = await trx('subscriptions')
-        .where({ id: sub.id })
-        .update({ state: 'cancelled', cancel_reason: req.body.reason || null, updated_at: db.fn.now() })
-        .returning('*');
-
-      await trx('meal_cells')
-        .where({ subscription_id: sub.id })
-        .whereIn('delivery_status', ['scheduled', 'preparing', 'out_for_delivery'])
-        .update({ delivery_status: 'cancelled', is_included: false });
-    });
-  } catch (err: any) {
-    const status = (err as any).status || 500;
-    return res.status(status).json({ error: err.message || 'Cancel failed' });
+  if (!sub) return res.status(404).json({ error: 'Subscription not found' });
+  if (!canTransitionTo(sub.state, 'cancelled')) {
+    return res.status(409).json({ error: `Cannot cancel from state: ${sub.state}` });
   }
 
-  if (statusResult === 'refunded') {
-    res.json({ message: 'Subscription cancelled with full refund (plan not yet started)', status: 'refunded', subscription: finalSub });
-  } else {
-    res.json(finalSub);
+  // Prevent duplicate pending requests
+  const existing = await db('cancel_requests')
+    .where({ subscription_id: sub.id, status: 'pending' })
+    .first();
+  if (existing) {
+    return res.status(409).json({ error: 'A cancellation request for this subscription is already pending admin review' });
   }
+
+  const [request] = await db('cancel_requests').insert({
+    subscription_id: sub.id,
+    user_id: req.userId,
+    reason: req.body.reason || null,
+    status: 'pending',
+  }).returning('*');
+
+  res.json({
+    status: 'pending',
+    message: 'Your cancellation request has been submitted. Admin will review and you will be notified.',
+    request_id: request.id,
+  });
 
   sendNotification(
-    finalSub.user_id,
+    req.userId!,
     NotificationType.SYSTEM,
-    'Subscription cancelled',
-    `Your plan #${finalSub.id} has been cancelled.`,
+    'Cancellation request submitted',
+    `Your request to cancel plan #${sub.id} is under review. We will notify you once it is processed.`,
   ).catch(() => { });
-
-  emitEvent(DomainEvent.SUBSCRIPTION_CANCELLED, {
-    subscription_id: finalSub.id,
-    user_id: finalSub.user_id,
-  }).catch(e => console.error('[bg] SUBSCRIPTION_CANCELLED emit failed:', e?.message));
 });
 
 // POST /api/subscriptions/:id/pause
@@ -409,7 +398,7 @@ router.post('/:id/pause', requireUser, async (req, res) => {
   await db('meal_cells')
     .where({ subscription_id: sub.id, delivery_status: 'scheduled' })
     .where('date', '>=', db.raw('CURRENT_DATE'))
-    .update({ delivery_status: 'paused', updated_at: db.fn.now() });
+    .update({ delivery_status: 'paused' });
 
   res.json(updated);
 });
@@ -441,7 +430,7 @@ router.post('/:id/resume', requireUser, async (req, res) => {
       await trx('meal_cells')
         .where({ subscription_id: sub.id, delivery_status: 'paused' })
         .where('date', '>=', db.raw('CURRENT_DATE'))
-        .update({ delivery_status: 'scheduled', updated_at: db.fn.now() });
+        .update({ delivery_status: 'scheduled' });
     }
   });
 
@@ -489,7 +478,6 @@ async function shiftRemainingCells(subId: number, trx: any) {
       .update({
         date: dateMap[cell.date],
         delivery_status: 'scheduled',
-        updated_at: db.fn.now()
       });
   }
 
@@ -521,7 +509,6 @@ export async function liquidShiftForHoliday(date: string) {
       .whereIn('delivery_status', ['scheduled', 'preparing'])
       .update({
         delivery_status: 'skipped', // we use 'skipped' for now, but fail_reason can be holiday
-        updated_at: db.fn.now()
       });
 
     // 2. Identify all affected subscriptions
@@ -606,7 +593,7 @@ router.patch('/:id/cells/:cellId/swap', requireUser, validate(z.object({
 
   const [updated] = await db('meal_cells')
     .where({ id: cell.id })
-    .update({ item_id: req.body.item_id, updated_at: db.fn.now() })
+    .update({ item_id: req.body.item_id })
     .returning('*');
 
   res.json(updated);
