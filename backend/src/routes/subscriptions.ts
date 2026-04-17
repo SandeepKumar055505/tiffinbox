@@ -366,7 +366,7 @@ router.post('/:id/cancel', requireUser, async (req, res) => {
       await trx('meal_cells')
         .where({ subscription_id: sub.id })
         .whereIn('delivery_status', ['scheduled', 'preparing', 'out_for_delivery'])
-        .update({ delivery_status: 'cancelled', is_included: false, updated_at: db.fn.now() });
+        .update({ delivery_status: 'cancelled', is_included: false });
     });
   } catch (err: any) {
     const status = (err as any).status || 500;

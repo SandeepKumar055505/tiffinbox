@@ -80,7 +80,6 @@ router.post(
           await trx('meal_cells').where({ id: cell.id }).update({
             is_included: false,
             delivery_status: 'skipped',
-            updated_at: db.fn.now(),
           });
 
           await trx('skip_requests').insert({

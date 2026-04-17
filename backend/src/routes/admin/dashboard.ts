@@ -248,7 +248,7 @@ router.patch('/delivery/cells/:id', requireAdmin, async (req, res) => {
   const sub = await db('subscriptions').where({ id: cell.subscription_id }).first();
 
   if (status === 'failed' && !cell.wallet_credited) {
-    await db('meal_cells').where({ id: req.params.id }).update({ delivery_status: status, updated_at: db.fn.now() });
+    await db('meal_cells').where({ id: req.params.id }).update({ delivery_status: status });
     const { boss } = await import('../../jobs/client');
     const { DomainEvent } = await import('../../jobs/events');
     await boss.send(DomainEvent.DELIVERY_FAILED, {
@@ -259,7 +259,7 @@ router.patch('/delivery/cells/:id', requireAdmin, async (req, res) => {
       date: cell.date,
     });
   } else if (status === 'delivered') {
-    await db('meal_cells').where({ id: req.params.id }).update({ delivery_status: status, updated_at: db.fn.now() });
+    await db('meal_cells').where({ id: req.params.id }).update({ delivery_status: status });
     const { boss } = await import('../../jobs/client');
     const { DomainEvent } = await import('../../jobs/events');
     await boss.send(DomainEvent.DELIVERY_COMPLETED, {
@@ -269,7 +269,7 @@ router.patch('/delivery/cells/:id', requireAdmin, async (req, res) => {
       date: cell.date,
     });
   } else if (status === 'out_for_delivery') {
-    await db('meal_cells').where({ id: req.params.id }).update({ delivery_status: status, updated_at: db.fn.now() });
+    await db('meal_cells').where({ id: req.params.id }).update({ delivery_status: status });
     const settings = await db('app_settings').where({ id: 1 }).first();
     if (settings?.delivery_otp_enabled !== false) {
       const otp = String(Math.floor(1000 + Math.random() * 9000));
@@ -280,8 +280,7 @@ router.patch('/delivery/cells/:id', requireAdmin, async (req, res) => {
     }
   } else {
     await db('meal_cells').where({ id: req.params.id }).update({
-      delivery_status: status,
-      updated_at: db.fn.now()
+      delivery_status: status
     });
   }
 
@@ -314,7 +313,7 @@ router.post('/delivery/bulk-deliver', requireAdmin, async (req, res) => {
   }
 
   const cellIds = cells.map((c: any) => c.id);
-  await db('meal_cells').whereIn('id', cellIds).update({ delivery_status: 'delivered', updated_at: db.fn.now() });
+  await db('meal_cells').whereIn('id', cellIds).update({ delivery_status: 'delivered' });
 
   const { boss } = await import('../../jobs/client');
   const { DomainEvent } = await import('../../jobs/events');
