@@ -8,12 +8,14 @@ import { haptics } from '../../context/SensorialContext';
 import { usePublicConfig } from '../../hooks/usePublicConfig';
 import ResumeConfirmModal from '../../components/shared/ResumeConfirmModal';
 import CancelRitualModal from '../../components/shared/CancelRitualModal';
+import SkipConfirmModal from '../../components/shared/SkipConfirmModal';
 
 export default function SubscriptionDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const [showResumeModal, setShowResumeModal] = useState(false);
   const [showCancelModal, setShowCancelModal] = useState(false);
+  const [skipConfirmCell, setSkipConfirmCell] = useState<{ id: number; meal_type: string; date: string } | null>(null);
   const [skipSuccessCell, setSkipSuccessCell] = useState<number | null>(null);
   const [retryingPayment, setRetryingPayment] = useState(false);
   const { config: publicConfig } = usePublicConfig();
@@ -366,12 +368,12 @@ export default function SubscriptionDetailPage() {
                             <button
                               onClick={() => {
                                 haptics.impact('medium');
-                                skipMeal.mutate(cell.id);
+                                setSkipConfirmCell({ id: cell.id, meal_type: cell.meal_type, date: cell.date });
                               }}
                               disabled={skipMeal.isPending}
                               className="text-[10px] font-black text-orange-500 hover:text-white uppercase tracking-widest px-4 py-2 rounded-xl disabled:opacity-50 transition-all border border-orange-500/10 hover:bg-orange-500 active:scale-95"
                             >
-                              {skipMeal.isPending ? '…' : 'Skip'}
+                              Skip
                             </button>
                           </div>
                         )}
@@ -418,6 +420,19 @@ export default function SubscriptionDetailPage() {
             cancelSub.mutate(reason);
           }}
           isPending={cancelSub.isPending}
+        />
+      )}
+      {skipConfirmCell && (
+        <SkipConfirmModal
+          isOpen={!!skipConfirmCell}
+          onClose={() => setSkipConfirmCell(null)}
+          onConfirm={() => {
+            skipMeal.mutate(skipConfirmCell.id);
+            setSkipConfirmCell(null);
+          }}
+          mealType={skipConfirmCell.meal_type}
+          date={skipConfirmCell.date}
+          isPending={skipMeal.isPending}
         />
       )}
     </div>
