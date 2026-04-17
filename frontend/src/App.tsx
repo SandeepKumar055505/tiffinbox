@@ -38,6 +38,7 @@ const AdminDashboardPage = React.lazy(() => import('./pages/admin/AdminDashboard
 const AdminLogisticsPage = React.lazy(() => import('./pages/admin/AdminLogisticsPage'));
 const AdminSubscriptionsPage = React.lazy(() => import('./pages/admin/AdminSubscriptionsPage'));
 const AdminSkipPage = React.lazy(() => import('./pages/admin/AdminSkipPage'));
+const AdminCancelPage = React.lazy(() => import('./pages/admin/AdminCancelPage'));
 const AdminMenuPage = React.lazy(() => import('./pages/admin/AdminMenuPage'));
 const AdminSupportPage = React.lazy(() => import('./pages/admin/AdminSupportPage'));
 const AdminSettingsPage = React.lazy(() => import('./pages/admin/AdminSettingsPage'));
@@ -136,6 +137,7 @@ export default function App() {
                     <Route path="referrals" element={<AdminReferralPage />} />
                     <Route path="notifications" element={<AdminNotificationPage />} />
                     <Route path="skip" element={<AdminSkipPage />} />
+                    <Route path="cancel" element={<AdminCancelPage />} />
                     <Route path="users" element={<AdminUsersPage />} />
                     <Route path="users/:id" element={<AdminUserDetailPage />} />
                   </Route>

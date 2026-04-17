@@ -35,8 +35,16 @@ export const adminSubscriptions = {
 
 export const adminSkip = {
   list: (status?: string) => api.get('/admin/skip', { params: { status } }),
-  approve: (id: number, note?: string) => api.post(`/admin/skip/${id}/approve`, { note }),
+  approve: (id: number, credit_amount: number, note?: string) =>
+    api.post(`/admin/skip/${id}/approve`, { credit_amount, note }),
   deny: (id: number, note?: string) => api.post(`/admin/skip/${id}/deny`, { note }),
+};
+
+export const adminCancel = {
+  list: (status?: string) => api.get('/admin/cancel', { params: { status } }),
+  approve: (id: number, refund_amount: number, note?: string) =>
+    api.post(`/admin/cancel/${id}/approve`, { refund_amount, note }),
+  deny: (id: number, note?: string) => api.post(`/admin/cancel/${id}/deny`, { note }),
 };
 
 export const adminMenu = {

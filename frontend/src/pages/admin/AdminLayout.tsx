@@ -9,6 +9,7 @@ const NAV = [
   { to: '/admin/delivery', label: 'Delivery', icon: '🚚' },
   { to: '/admin/subscriptions', label: 'Subscriptions', icon: '📋' },
   { to: '/admin/skip', label: 'Skip Requests', icon: '⏭️' },
+  { to: '/admin/cancel', label: 'Cancel Requests', icon: '🚫' },
   { to: '/admin/areas', label: 'Sovereign Zones', icon: '🗺️' },
   { to: '/admin/menu', label: 'Menu', icon: '🍱' },
   { to: '/admin/support', label: 'Support', icon: '💬' },
