@@ -52,38 +52,23 @@ router.post(
 
     const creditPaise = req.body.credit_amount;
 
+    // Step 1: state changes — short transaction, no wallet involvement
     await db.transaction(async trx => {
-      // Mark request approved
       await trx('skip_requests').where({ id: request.id }).update({
         status: 'approved',
         credit_amount: creditPaise,
         admin_note: req.body.note || null,
       });
 
-      // Mark meal cell as skipped
       if (request.meal_cell_id) {
         await trx('meal_cells').where({ id: request.meal_cell_id }).update({
           is_included: false,
           delivery_status: 'skipped',
         });
 
-        // Update subscription state
         await trx('subscriptions')
           .where({ id: request.subscription_id, state: 'active' })
           .update({ state: 'partially_skipped', updated_at: db.fn.now() });
-      }
-
-      // Credit wallet if admin set an amount > 0
-      if (creditPaise > 0) {
-        await postLedgerEntry({
-          user_id: sub.user_id,
-          direction: 'credit',
-          entry_type: 'skip_credit',
-          amount: creditPaise,
-          description: `Skip approved: ${request.meal_type} on ${request.date}. ₹${creditPaise / 100} credited.`,
-          idempotency_key: `skip_credit_${request.id}`,
-          created_by: 'admin',
-        }, trx);
       }
 
       await trx('audit_logs').insert({
@@ -94,6 +79,19 @@ router.post(
         after_value: JSON.stringify({ credit_amount: creditPaise, note: req.body.note }),
       });
     });
+
+    // Step 2: wallet credit in its own transaction (idempotent, safe to retry)
+    if (creditPaise > 0) {
+      await postLedgerEntry({
+        user_id: sub.user_id,
+        direction: 'credit',
+        entry_type: 'skip_credit',
+        amount: creditPaise,
+        description: `Skip approved: ${request.meal_type} on ${request.date}. ₹${creditPaise / 100} credited.`,
+        idempotency_key: `skip_credit_${request.id}`,
+        created_by: 'admin',
+      });
+    }
 
     res.json({ success: true });
 

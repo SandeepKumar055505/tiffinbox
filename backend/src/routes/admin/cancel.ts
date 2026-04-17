@@ -52,8 +52,8 @@ router.post(
 
     const refundPaise = req.body.refund_amount;
 
+    // Step 1: state changes — short transaction, no wallet involvement
     await db.transaction(async trx => {
-      // Approve the cancel request
       await trx('cancel_requests').where({ id: request.id }).update({
         status: 'approved',
         refund_amount: refundPaise,
@@ -62,29 +62,14 @@ router.post(
         resolved_at: db.fn.now(),
       });
 
-      // Cancel the subscription
       await trx('subscriptions')
         .where({ id: sub.id })
         .update({ state: 'cancelled', cancel_reason: request.reason || null, updated_at: db.fn.now() });
 
-      // Mark all future meals as cancelled
       await trx('meal_cells')
         .where({ subscription_id: sub.id })
         .whereIn('delivery_status', ['scheduled', 'preparing', 'out_for_delivery'])
         .update({ delivery_status: 'cancelled', is_included: false });
-
-      // Credit wallet if admin set an amount > 0
-      if (refundPaise > 0) {
-        await postLedgerEntry({
-          user_id: sub.user_id,
-          direction: 'credit',
-          entry_type: 'cancel_refund',
-          amount: refundPaise,
-          description: `Cancellation approved for plan #${sub.id}. ₹${refundPaise / 100} refunded to wallet.`,
-          idempotency_key: `cancel_refund_${request.id}`,
-          created_by: 'admin',
-        }, trx);
-      }
 
       await trx('audit_logs').insert({
         admin_id: req.adminId,
@@ -94,6 +79,19 @@ router.post(
         after_value: JSON.stringify({ refund_amount: refundPaise, note: req.body.note }),
       });
     });
+
+    // Step 2: wallet refund in its own transaction (idempotent, safe to retry)
+    if (refundPaise > 0) {
+      await postLedgerEntry({
+        user_id: sub.user_id,
+        direction: 'credit',
+        entry_type: 'cancel_refund',
+        amount: refundPaise,
+        description: `Cancellation approved for plan #${sub.id}. ₹${refundPaise / 100} refunded to wallet.`,
+        idempotency_key: `cancel_refund_${request.id}`,
+        created_by: 'admin',
+      });
+    }
 
     res.json({ success: true });
 
