@@ -64,15 +64,15 @@ router.post(
       created_by: 'admin',
     });
 
-    await db('audit_logs').insert({
+    res.status(201).json(entry);
+
+    db('audit_logs').insert({
       admin_id: req.adminId,
       action: 'ledger.manual_credit',
       target_type: 'user',
       target_id: user_id,
       after_value: JSON.stringify({ amount, description, note }),
-    });
-
-    res.status(201).json(entry);
+    }).catch(err => console.error('[ledger.manual_credit] audit log failed:', err.message));
   }
 );
 
@@ -102,15 +102,15 @@ router.post(
       created_by: 'admin',
     });
 
-    await db('audit_logs').insert({
+    res.status(201).json(entry);
+
+    db('audit_logs').insert({
       admin_id: req.adminId,
       action: 'ledger.manual_debit',
       target_type: 'user',
       target_id: user_id,
       after_value: JSON.stringify({ amount, description, note }),
-    });
-
-    res.status(201).json(entry);
+    }).catch(err => console.error('[ledger.manual_debit] audit log failed:', err.message));
   }
 );
 

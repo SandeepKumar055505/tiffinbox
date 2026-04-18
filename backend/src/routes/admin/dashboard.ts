@@ -284,15 +284,15 @@ router.patch('/delivery/cells/:id', requireAdmin, async (req, res) => {
     });
   }
 
-  await db('audit_logs').insert({
+  res.status(202).json({ message: 'Request accepted', cell_id: cell.id, status });
+
+  db('audit_logs').insert({
     admin_id: req.adminId,
     action: `delivery.${status}${status === 'failed' || status === 'delivered' ? '_event_emitted' : ''}`,
     target_type: 'meal_cell',
     target_id: cell.id,
     after_value: JSON.stringify({ status, note }),
-  });
-
-  res.status(202).json({ message: 'Request accepted', cell_id: cell.id, status });
+  }).catch(err => console.error('[delivery.status] audit log failed:', err.message));
 });
 
 // POST /api/admin/delivery/bulk-deliver — mark all today's out_for_delivery as delivered
@@ -326,15 +326,15 @@ router.post('/delivery/bulk-deliver', requireAdmin, async (req, res) => {
     });
   }
 
-  await db('audit_logs').insert({
+  res.json({ updated: cells.length, date, meal_type });
+
+  db('audit_logs').insert({
     admin_id: req.adminId,
     action: 'delivery.bulk_deliver',
     target_type: 'meal_cells',
     target_id: cellIds[0],
     after_value: JSON.stringify({ date, meal_type, count: cells.length, cell_ids: cellIds }),
-  });
-
-  res.json({ updated: cells.length, date, meal_type });
+  }).catch(err => console.error('[bulk_deliver] audit log failed:', err.message));
 });
 
 // POST /api/admin/delivery/holiday-skip — mark all scheduled meals on a holiday as skipped_holiday
@@ -377,15 +377,15 @@ router.post('/delivery/holiday-skip', requireAdmin, async (req, res) => {
     });
   }
 
-  await db('audit_logs').insert({
+  res.json({ skipped: cells.length, date, holiday: holiday.name });
+
+  db('audit_logs').insert({
     admin_id: req.adminId,
     action: 'delivery.holiday_skip',
     target_type: 'meal_cells',
     target_id: cellIds[0],
     after_value: JSON.stringify({ date, holiday_name: holiday.name, count: cells.length }),
-  });
-
-  res.json({ skipped: cells.length, date, holiday: holiday.name });
+  }).catch(err => console.error('[holiday_skip] audit log failed:', err.message));
 });
 
 // POST /api/admin/delivery/cells/:id/refresh-otp — regenerate 4-digit OTP
@@ -400,15 +400,15 @@ router.post('/delivery/cells/:id/refresh-otp', requireAdmin, async (req, res) =>
     .insert({ meal_cell_id: cell.id, otp, expires_at: expiresAt })
     .onConflict('meal_cell_id').merge({ otp, attempts: 0, verified: false, expires_at: expiresAt });
 
-  await db('audit_logs').insert({
+  res.json({ message: 'OTP refreshed', expires_at: expiresAt });
+
+  db('audit_logs').insert({
     admin_id: req.adminId,
     action: 'delivery.otp_refreshed',
     target_type: 'meal_cell',
     target_id: cell.id,
     after_value: JSON.stringify({ otp_preview: otp.slice(0, 2) + '**' }),
-  });
-
-  res.json({ message: 'OTP refreshed', expires_at: expiresAt });
+  }).catch(err => console.error('[otp_refresh] audit log failed:', err.message));
 });
 
 export default router;

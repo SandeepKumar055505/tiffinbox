@@ -65,16 +65,16 @@ router.patch(
       .update({ is_active: req.body.is_active, updated_at: db.fn.now() })
       .returning('*');
 
-    await db('audit_logs').insert({
+    res.json(updated);
+
+    db('audit_logs').insert({
       admin_id: req.adminId,
       action: req.body.is_active ? 'user.reactivate' : 'user.suspend',
       target_type: 'user',
       target_id: user.id,
       before_value: JSON.stringify({ is_active: user.is_active }),
       after_value: JSON.stringify({ is_active: req.body.is_active, reason: req.body.reason }),
-    });
-
-    res.json(updated);
+    }).catch(err => console.error('[user.status] audit log failed:', err.message));
   }
 );
 
@@ -98,15 +98,15 @@ router.post(
       source: 'admin_gift',
     }).returning('*');
 
-    await db('audit_logs').insert({
+    res.status(201).json(entry);
+
+    db('audit_logs').insert({
       admin_id: req.adminId,
       action: 'wallet.gift',
       target_type: 'user',
       target_id: user.id,
       after_value: JSON.stringify({ amount: req.body.amount, description: req.body.description }),
-    });
-
-    res.status(201).json(entry);
+    }).catch(err => console.error('[wallet.gift] audit log failed:', err.message));
   }
 );
 
@@ -129,8 +129,9 @@ router.patch(
       .update({ ...req.body, updated_at: db.fn.now() })
       .returning('*');
 
-    // Audit personal info change
-    await db('audit_logs').insert({
+    res.json(updated);
+
+    db('audit_logs').insert({
       admin_id: req.adminId,
       action: 'user.update_pii',
       target_type: 'user',
@@ -142,9 +143,7 @@ router.patch(
         address: user.delivery_address
       }),
       after_value: JSON.stringify(req.body),
-    });
-
-    res.json(updated);
+    }).catch(err => console.error('[user.update_pii] audit log failed:', err.message));
   }
 );
 

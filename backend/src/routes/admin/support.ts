@@ -59,14 +59,13 @@ router.post(
 
     await db('support_tickets').where({ id: ticket.id }).update({ status: 'pending', updated_at: db.fn.now() });
 
-    // Audit Log
-    await db('audit_logs').insert({
+    db('audit_logs').insert({
       admin_id: req.adminId,
       action: 'support.reply',
       target_type: 'support_ticket',
       target_id: ticket.id,
       after_value: JSON.stringify({ message: req.body.message }),
-    });
+    }).catch(err => console.error('[support.reply] audit log failed:', err.message));
 
     // Notify user
     await sendNotification(
@@ -108,16 +107,16 @@ router.patch(
       .update(updates)
       .returning('*');
 
-    await db('audit_logs').insert({
+    res.json(updated);
+
+    db('audit_logs').insert({
       admin_id: req.adminId,
       action: 'support.status_change',
       target_type: 'support_ticket',
       target_id: parseInt(req.params.id),
       before_value: JSON.stringify(before),
       after_value: JSON.stringify({ status }),
-    });
-
-    res.json(updated);
+    }).catch(err => console.error('[support.status_change] audit log failed:', err.message));
   }
 );
 

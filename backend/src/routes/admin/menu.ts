@@ -38,15 +38,15 @@ router.patch(
       .returning('*');
     if (!updated) return res.status(404).json({ error: 'Menu slot not found' });
 
-    await db('audit_logs').insert({
+    res.json(updated);
+
+    db('audit_logs').insert({
       admin_id: req.adminId,
       action: 'menu.update_default',
       target_type: 'default_menu',
       target_id: parseInt(req.params.id),
       after_value: JSON.stringify({ item_id: req.body.item_id }),
-    });
-
-    res.json(updated);
+    }).catch(err => console.error('[menu.update_default] audit log failed:', err.message));
   }
 );
 
@@ -197,7 +197,9 @@ router.post(
       }
     }
 
-    await db('audit_logs').insert({
+    res.json({ success: true, count: updatedCount, notified: notify_users ? affectedUserIds.length : 0 });
+
+    db('audit_logs').insert({
       admin_id: req.adminId,
       action: 'menu.mass_swap',
       target_type: 'meal_cells',
@@ -205,9 +207,7 @@ router.post(
         date, meal_type, source_item_id, target_item_id,
         count: updatedCount, notified: notify_users ? affectedUserIds.length : 0,
       }),
-    });
-
-    res.json({ success: true, count: updatedCount, notified: notify_users ? affectedUserIds.length : 0 });
+    }).catch(err => console.error('[menu.mass_swap] audit log failed:', err.message));
   }
 );
 

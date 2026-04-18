@@ -79,17 +79,18 @@ router.patch(
       .update({ ...updateData, updated_at: db.fn.now() })
       .returning('*');
 
-    await db('audit_logs').insert({
+    // Respond immediately — don't await the audit log (Neon pool hang risk)
+    settingsService.clearCache();
+    res.json(updated);
+
+    db('audit_logs').insert({
       admin_id: req.adminId,
       action: 'settings.update',
       target_type: 'app_settings',
       target_id: 1,
       before_value: JSON.stringify(before || {}),
       after_value: JSON.stringify(updateData),
-    });
-
-    settingsService.clearCache();
-    res.json(updated);
+    }).catch(err => console.error('[settings.update] audit log failed:', err.message));
   }
 );
 
@@ -105,16 +106,16 @@ router.patch(
       .update({ discount_amount: req.body.discount_amount })
       .returning('*');
 
-    await db('audit_logs').insert({
+    res.json(updated);
+
+    db('audit_logs').insert({
       admin_id: req.adminId,
       action: 'discount.update',
       target_type: 'plan_discount',
       target_id: parseInt(req.params.id),
       before_value: JSON.stringify(before),
       after_value: JSON.stringify(req.body),
-    });
-
-    res.json(updated);
+    }).catch(err => console.error('[discount.update] audit log failed:', err.message));
   }
 );
 

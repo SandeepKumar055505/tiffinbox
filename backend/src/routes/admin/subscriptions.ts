@@ -88,7 +88,9 @@ router.post('/:id/cancel', requireAdmin, async (req, res) => {
       });
   }
 
-  await db('audit_logs').insert({
+  res.json(updated);
+
+  db('audit_logs').insert({
     admin_id: req.userId,
     action: 'subscription.cancel',
     target_type: 'subscription',
@@ -96,9 +98,7 @@ router.post('/:id/cancel', requireAdmin, async (req, res) => {
     before_value: JSON.stringify({ state: sub.state }),
     after_value: JSON.stringify({ state: 'cancelled' }),
     note: req.body.reason,
-  });
-
-  res.json(updated);
+  }).catch(err => console.error('[subscription.cancel] audit log failed:', err.message));
 });
 
 // PATCH /api/admin/subscriptions/:id/cutoff — override skip cutoffs for a subscription
@@ -129,15 +129,15 @@ router.patch(
       .update({ ...updateData, updated_at: db.fn.now() })
       .returning('*');
 
-    await db('audit_logs').insert({
+    res.json(updated);
+
+    db('audit_logs').insert({
       admin_id: req.adminId,
       action: 'subscription.cutoff_override',
       target_type: 'subscription',
       target_id: subId,
       after_value: JSON.stringify(req.body),
-    });
-
-    res.json(updated);
+    }).catch(err => console.error('[subscription.cutoff_override] audit log failed:', err.message));
   }
 );
 

@@ -42,15 +42,14 @@ router.post('/broadcast', requireAdmin, async (req, res) => {
 
     await db('notifications').insert(notifications);
 
-    // Ω.13: Manifest broadcast in pulse
-    await db('audit_logs').insert({
+    res.json({ success: true, count: users.length });
+
+    db('audit_logs').insert({
       admin_id: req.adminId,
       action: 'notification.broadcast',
       target_type: 'system',
       after_value: JSON.stringify({ title, users_reached: users.length }),
-    });
-
-    res.json({ success: true, count: users.length });
+    }).catch(err => console.error('[notification.broadcast] audit log failed:', err.message));
   } catch (error: any) {
     res.status(500).json({ error: error.message });
   }
