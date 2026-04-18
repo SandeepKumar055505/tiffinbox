@@ -80,9 +80,12 @@ router.post(
       });
     });
 
-    // Step 2: wallet credit in its own transaction (idempotent, safe to retry)
+    // Respond immediately — don't block on wallet or notification
+    res.json({ success: true });
+
+    // Fire-and-forget: wallet credit (idempotent key prevents double-credit on retry)
     if (creditPaise > 0) {
-      await postLedgerEntry({
+      postLedgerEntry({
         user_id: sub.user_id,
         direction: 'credit',
         entry_type: 'skip_credit',
@@ -90,11 +93,10 @@ router.post(
         description: `Skip approved: ${request.meal_type} on ${request.date}. ₹${creditPaise / 100} credited.`,
         idempotency_key: `skip_credit_${request.id}`,
         created_by: 'admin',
-      });
+      }).catch(err => console.error('[skip.approve] wallet credit failed for request', request.id, ':', err?.message));
     }
 
-    res.json({ success: true });
-
+    // Fire-and-forget: notification
     const creditText = creditPaise > 0
       ? ` ₹${creditPaise / 100} has been added to your wallet.`
       : ' No wallet credit was issued.';

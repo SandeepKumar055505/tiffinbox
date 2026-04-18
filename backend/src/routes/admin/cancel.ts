@@ -80,9 +80,12 @@ router.post(
       });
     });
 
-    // Step 2: wallet refund in its own transaction (idempotent, safe to retry)
+    // Respond immediately — don't block on wallet or notification
+    res.json({ success: true });
+
+    // Fire-and-forget: wallet refund (idempotent key prevents double-credit on retry)
     if (refundPaise > 0) {
-      await postLedgerEntry({
+      postLedgerEntry({
         user_id: sub.user_id,
         direction: 'credit',
         entry_type: 'cancel_refund',
@@ -90,11 +93,10 @@ router.post(
         description: `Cancellation approved for plan #${sub.id}. ₹${refundPaise / 100} refunded to wallet.`,
         idempotency_key: `cancel_refund_${request.id}`,
         created_by: 'admin',
-      });
+      }).catch(err => console.error('[cancel.approve] wallet refund failed for request', request.id, ':', err?.message));
     }
 
-    res.json({ success: true });
-
+    // Fire-and-forget: notification
     const refundText = refundPaise > 0
       ? ` ₹${refundPaise / 100} has been added to your wallet.`
       : ' No refund was issued.';
