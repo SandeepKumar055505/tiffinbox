@@ -24,7 +24,8 @@ export interface AuthAdmin {
 
 export type JwtPayload =
   | { type: 'user'; userId: number }
-  | { type: 'admin'; adminId: number };
+  | { type: 'admin'; adminId: number }
+  | { type: 'driver' };
 
 // ─── Person ──────────────────────────────────────────────────────────────────
 

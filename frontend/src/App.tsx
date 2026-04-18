@@ -52,6 +52,10 @@ const AdminUserDetailPage = React.lazy(() => import('./pages/admin/AdminUserDeta
 const PhoneVerificationPage = React.lazy(() => import('./pages/auth/PhoneVerificationPage'));
 const LandingPage = React.lazy(() => import('./pages/portal/LandingPage'));
 
+// Driver pages
+const DriverLoginPage = React.lazy(() => import('./pages/driver/DriverLoginPage'));
+const DriverPage = React.lazy(() => import('./pages/driver/DriverPage'));
+
 import GlassLayout from './components/shared/GlassLayout';
 import UserLayout from './components/user/UserLayout';
 import ScrollToTop from './components/shared/ScrollToTop';
@@ -141,6 +145,10 @@ export default function App() {
                     <Route path="users" element={<AdminUsersPage />} />
                     <Route path="users/:id" element={<AdminUserDetailPage />} />
                   </Route>
+
+                  {/* Driver portal — standalone, no admin/user layout */}
+                  <Route path="driver/login" element={<DriverLoginPage />} />
+                  <Route path="driver" element={<DriverPage />} />
 
                   <Route path="*" element={<NotFoundPage />} />
                 </Routes>

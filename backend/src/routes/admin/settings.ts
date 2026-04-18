@@ -39,6 +39,7 @@ router.patch(
     global_banner_active: z.boolean().optional(),
     geo_check_enabled: z.boolean().optional(),
     serviceable_pincodes: z.string().max(2000).optional(),
+    driver_pin: z.string().min(4).max(10).optional(),
   })),
   async (req, res) => {
     const validKeys = [
@@ -49,7 +50,7 @@ router.patch(
       'breakfast_enabled', 'lunch_enabled', 'dinner_enabled',
       'delivery_otp_enabled', 'ratings_enabled', 'user_cancel_enabled',
       'global_banner_text', 'global_banner_active',
-      'geo_check_enabled', 'serviceable_pincodes',
+      'geo_check_enabled', 'serviceable_pincodes', 'driver_pin',
     ];
     
     const updateData: any = {};

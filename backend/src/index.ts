@@ -36,6 +36,7 @@ import uploadRoutes from './routes/upload';
 
 // Routes — new Phase A1
 import deliveryRoutes from './routes/delivery';
+import driverRoutes from './routes/driver';
 import ratingsRoutes from './routes/ratings';
 import referralsRoutes from './routes/referrals';
 import voucherRoutes from './routes/vouchers';
@@ -153,6 +154,7 @@ app.use('/api/support', supportRoutes);
 app.use('/api/streaks', streakRoutes);
 app.use('/api/upload', uploadRoutes);
 app.use('/api/delivery', deliveryRoutes);
+app.use('/api/driver', driverRoutes);
 app.use('/api/ratings', ratingsRoutes);
 app.use('/api/referrals', referralsRoutes);
 app.use('/api/vouchers', voucherRoutes);

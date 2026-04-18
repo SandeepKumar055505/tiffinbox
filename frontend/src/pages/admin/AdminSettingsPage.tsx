@@ -50,6 +50,7 @@ export default function AdminSettingsPage() {
       delivery_otp_enabled: !!form.delivery_otp_enabled,
       ratings_enabled: !!form.ratings_enabled,
       user_cancel_enabled: !!form.user_cancel_enabled,
+      driver_pin: form.driver_pin || undefined,
     }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['admin-settings'] });
@@ -218,6 +219,21 @@ export default function AdminSettingsPage() {
               className="w-full glass border-transparent rounded px-2 py-1.5 t-text text-sm outline-none focus:border-teal-500" />
             <p className="text-[10px] t-text-faint">{form.referral_reward_amount ? `₹${Math.round(form.referral_reward_amount / 100)}` : ''}</p>
           </div>
+        </div>
+
+        <p className="text-xs font-semibold t-text-secondary pt-2">Driver Portal</p>
+        <div className="space-y-1">
+          <p className="text-xs t-text-muted">Driver PIN (4–10 digits, share with delivery person)</p>
+          <input
+            type="text"
+            inputMode="numeric"
+            maxLength={10}
+            value={form.driver_pin ?? ''}
+            onChange={e => setForm((s: any) => ({ ...s, driver_pin: e.target.value }))}
+            className="w-full glass border-transparent rounded px-2 py-1.5 t-text text-sm outline-none focus:border-teal-500 tracking-widest"
+            placeholder="e.g. 1234"
+          />
+          <p className="text-[10px] t-text-faint">Driver logs in at /driver/login using this PIN</p>
         </div>
 
         <p className="text-xs font-semibold t-text-secondary pt-2">Feature Toggles</p>
