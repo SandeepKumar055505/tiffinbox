@@ -64,31 +64,31 @@ router.patch(
       if (req.body[key] !== undefined) updateData[key] = req.body[key];
     }
 
+    // JSONB columns must be serialised to a JSON string — Knex/pg won't do it automatically
+    if (updateData.available_dietary_tags !== undefined) {
+      updateData.available_dietary_tags = JSON.stringify(updateData.available_dietary_tags);
+    }
+
     if (Object.keys(updateData).length === 0) {
       return res.status(400).json({ error: 'No valid fields provided for update.' });
     }
 
-    const before = await db('app_settings').where({ id: 1 }).first();
-    if (!before) {
-      // Emergency Integrity: Row 1 must exist. If missing, seed it now.
-      await db('app_settings').insert({ id: 1 });
-    }
-
+    // ONE db round-trip: just the UPDATE.
+    // The old SELECT (for `before`) has been removed — it only served the audit log,
+    // which is now fire-and-forget anyway. On Neon free tier every extra query risks a hang.
     const [updated] = await db('app_settings')
       .where({ id: 1 })
       .update({ ...updateData, updated_at: db.fn.now() })
       .returning('*');
 
-    // Respond immediately — don't await the audit log (Neon pool hang risk)
     settingsService.clearCache();
-    res.json(updated);
+    res.json(updated ?? { ok: true });
 
     db('audit_logs').insert({
       admin_id: req.adminId,
       action: 'settings.update',
       target_type: 'app_settings',
       target_id: 1,
-      before_value: JSON.stringify(before || {}),
       after_value: JSON.stringify(updateData),
     }).catch(err => console.error('[settings.update] audit log failed:', err.message));
   }
@@ -100,7 +100,6 @@ router.patch(
   requireAdmin,
   validate(z.object({ discount_amount: z.number().int().min(0) })),
   async (req, res) => {
-    const before = await db('plan_discounts').where({ id: req.params.id }).first();
     const [updated] = await db('plan_discounts')
       .where({ id: req.params.id })
       .update({ discount_amount: req.body.discount_amount })
@@ -113,7 +112,6 @@ router.patch(
       action: 'discount.update',
       target_type: 'plan_discount',
       target_id: parseInt(req.params.id),
-      before_value: JSON.stringify(before),
       after_value: JSON.stringify(req.body),
     }).catch(err => console.error('[discount.update] audit log failed:', err.message));
   }

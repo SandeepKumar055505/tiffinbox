@@ -101,7 +101,6 @@ router.patch(
       updates.resolved_at = db.fn.now();
     }
 
-    const before = await db('support_tickets').where({ id: req.params.id }).first();
     const [updated] = await db('support_tickets')
       .where({ id: req.params.id })
       .update(updates)
@@ -114,7 +113,6 @@ router.patch(
       action: 'support.status_change',
       target_type: 'support_ticket',
       target_id: parseInt(req.params.id),
-      before_value: JSON.stringify(before),
       after_value: JSON.stringify({ status }),
     }).catch(err => console.error('[support.status_change] audit log failed:', err.message));
   }
