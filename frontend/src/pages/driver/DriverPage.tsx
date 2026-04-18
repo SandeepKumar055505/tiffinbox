@@ -4,10 +4,10 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { driverDelivery } from '../../services/driverApi';
 
 const STATUS_META: Record<string, { label: string; bg: string; dot: string }> = {
-  preparing:        { label: 'Preparing',      bg: 'bg-blue-500/15 border-blue-500/30',   dot: 'bg-blue-400' },
-  out_for_delivery: { label: 'Out for Delivery', bg: 'bg-yellow-500/15 border-yellow-500/30', dot: 'bg-yellow-400' },
-  delivered:        { label: 'Delivered',       bg: 'bg-teal-500/15 border-teal-500/30',   dot: 'bg-teal-400' },
-  failed:           { label: 'Failed',          bg: 'bg-red-500/15 border-red-500/30',     dot: 'bg-red-400' },
+  preparing:        { label: 'Preparing',        bg: 'bg-blue-500/15 border-blue-500/30',    dot: 'bg-blue-400' },
+  out_for_delivery: { label: 'Out for Delivery',  bg: 'bg-yellow-500/15 border-yellow-500/30', dot: 'bg-yellow-400' },
+  delivered:        { label: 'Delivered',          bg: 'bg-teal-500/15 border-teal-500/30',    dot: 'bg-teal-400' },
+  failed:           { label: 'Failed',             bg: 'bg-red-500/15 border-red-500/30',      dot: 'bg-red-400' },
 };
 
 const MEAL_ICON: Record<string, string> = { breakfast: '🌅', lunch: '☀️', dinner: '🌙' };
@@ -15,8 +15,15 @@ const MEAL_ICON: Record<string, string> = { breakfast: '🌅', lunch: '☀️', 
 export default function DriverPage() {
   const navigate = useNavigate();
   const qc = useQueryClient();
+
+  // Fail reason modal
   const [failModal, setFailModal] = useState<{ id: number } | null>(null);
   const [failReason, setFailReason] = useState('');
+
+  // OTP verification modal
+  const [otpModal, setOtpModal] = useState<{ id: number; person: string } | null>(null);
+  const [otpValue, setOtpValue] = useState('');
+  const [otpError, setOtpError] = useState('');
 
   const { data, isLoading, refetch } = useQuery({
     queryKey: ['driver-manifest'],
@@ -25,14 +32,38 @@ export default function DriverPage() {
   });
 
   const update = useMutation({
-    mutationFn: ({ id, status, fail_reason }: { id: number; status: string; fail_reason?: string }) =>
-      driverDelivery.updateStatus(id, { status, fail_reason }),
+    mutationFn: ({ id, status, fail_reason, otp }: { id: number; status: string; fail_reason?: string; otp?: string }) =>
+      driverDelivery.updateStatus(id, { status, fail_reason, otp }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['driver-manifest'] });
       setFailModal(null);
       setFailReason('');
+      setOtpModal(null);
+      setOtpValue('');
+      setOtpError('');
+    },
+    onError: (err: any) => {
+      const msg = err?.response?.data?.error || 'Something went wrong';
+      const left = err?.response?.data?.attempts_left;
+      setOtpError(left !== undefined ? `${msg} (${left} attempts left)` : msg);
     },
   });
+
+  function openOtpModal(item: any) {
+    setOtpModal({ id: item.id, person: item.person_name || item.user_name });
+    setOtpValue('');
+    setOtpError('');
+  }
+
+  function handleOtpKey(digit: string) {
+    if (otpValue.length < 4) setOtpValue(v => v + digit);
+  }
+
+  function confirmDelivery() {
+    if (!otpModal || otpValue.length < 4) return;
+    setOtpError('');
+    update.mutate({ id: otpModal.id, status: 'delivered', otp: otpValue });
+  }
 
   function logout() {
     localStorage.removeItem('tb_driver_token');
@@ -111,7 +142,7 @@ export default function DriverPage() {
                     key={item.id}
                     className={`rounded-2xl border p-4 space-y-3 ${meta?.bg || 'bg-white/5 border-white/10'}`}
                   >
-                    {/* Status + meal */}
+                    {/* Status + meal type */}
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
                         <span className={`w-2 h-2 rounded-full ${meta?.dot}`} />
@@ -138,25 +169,6 @@ export default function DriverPage() {
                     </div>
 
                     {/* Action buttons */}
-                    {item.delivery_status === 'out_for_delivery' && (
-                      <div className="grid grid-cols-2 gap-2 pt-1">
-                        <button
-                          disabled={update.isPending}
-                          onClick={() => update.mutate({ id: item.id, status: 'delivered' })}
-                          className="bg-teal-500 hover:bg-teal-400 disabled:opacity-50 text-white py-3.5 rounded-xl text-sm font-bold transition-all active:scale-95"
-                        >
-                          ✓ Delivered
-                        </button>
-                        <button
-                          disabled={update.isPending}
-                          onClick={() => { setFailModal({ id: item.id }); setFailReason(''); }}
-                          className="bg-red-500/20 hover:bg-red-500/30 disabled:opacity-50 text-red-400 border border-red-500/30 py-3.5 rounded-xl text-sm font-bold transition-all active:scale-95"
-                        >
-                          ✗ Failed
-                        </button>
-                      </div>
-                    )}
-
                     {item.delivery_status === 'preparing' && (
                       <button
                         disabled={update.isPending}
@@ -167,9 +179,33 @@ export default function DriverPage() {
                       </button>
                     )}
 
+                    {item.delivery_status === 'out_for_delivery' && (
+                      <div className="space-y-2 pt-1">
+                        <p className="text-xs text-yellow-400/80 text-center">
+                          User received OTP on their phone — ask them for it
+                        </p>
+                        <div className="grid grid-cols-2 gap-2">
+                          <button
+                            disabled={update.isPending}
+                            onClick={() => openOtpModal(item)}
+                            className="bg-teal-500 hover:bg-teal-400 disabled:opacity-50 text-white py-3.5 rounded-xl text-sm font-bold transition-all active:scale-95"
+                          >
+                            ✓ Verify OTP & Deliver
+                          </button>
+                          <button
+                            disabled={update.isPending}
+                            onClick={() => { setFailModal({ id: item.id }); setFailReason(''); }}
+                            className="bg-red-500/20 hover:bg-red-500/30 disabled:opacity-50 text-red-400 border border-red-500/30 py-3.5 rounded-xl text-sm font-bold transition-all active:scale-95"
+                          >
+                            ✗ Failed
+                          </button>
+                        </div>
+                      </div>
+                    )}
+
                     {item.delivery_status === 'delivered' && (
                       <div className="text-center text-teal-400 text-sm font-bold py-2">
-                        ✓ Done
+                        ✓ Delivered
                       </div>
                     )}
 
@@ -183,6 +219,80 @@ export default function DriverPage() {
           </div>
         ))}
       </div>
+
+      {/* OTP verification modal */}
+      {otpModal && (
+        <>
+          <div className="fixed inset-0 bg-black/70 z-40" onClick={() => { setOtpModal(null); setOtpError(''); }} />
+          <div className="fixed bottom-0 left-0 right-0 z-50 bg-gray-900 rounded-t-3xl p-6 space-y-5 border-t border-white/10">
+            <div className="text-center space-y-1">
+              <h3 className="text-white font-bold text-lg">Confirm Delivery</h3>
+              <p className="text-gray-400 text-sm">Ask <span className="text-white font-semibold">{otpModal.person}</span> for their OTP</p>
+              <p className="text-gray-600 text-xs">They received it on their phone when you picked up</p>
+            </div>
+
+            {/* OTP dots display */}
+            <div className="flex justify-center gap-3">
+              {Array.from({ length: 4 }).map((_, i) => (
+                <div
+                  key={i}
+                  className={`w-14 h-14 rounded-2xl flex items-center justify-center text-2xl font-bold border-2 transition-all ${
+                    i < otpValue.length
+                      ? 'border-teal-400 bg-teal-500/20 text-white'
+                      : 'border-white/10 bg-white/5 text-transparent'
+                  }`}
+                >
+                  {i < otpValue.length ? '●' : '·'}
+                </div>
+              ))}
+            </div>
+
+            {otpError && (
+              <p className="text-center text-sm text-red-400 font-medium">{otpError}</p>
+            )}
+
+            {/* Number pad */}
+            <div className="grid grid-cols-3 gap-2">
+              {['1','2','3','4','5','6','7','8','9','','0','⌫'].map((key) => (
+                <button
+                  key={key}
+                  disabled={!key || update.isPending}
+                  onClick={() => {
+                    setOtpError('');
+                    if (key === '⌫') setOtpValue(v => v.slice(0, -1));
+                    else handleOtpKey(key);
+                  }}
+                  className={`h-14 rounded-2xl text-xl font-bold transition-all active:scale-95 ${
+                    key === '⌫'
+                      ? 'bg-red-500/10 text-red-400 border border-red-500/20'
+                      : key === ''
+                      ? 'invisible'
+                      : 'bg-white/5 text-white border border-white/10 hover:bg-white/10'
+                  }`}
+                >
+                  {key}
+                </button>
+              ))}
+            </div>
+
+            <div className="flex gap-3">
+              <button
+                onClick={() => { setOtpModal(null); setOtpValue(''); setOtpError(''); }}
+                className="flex-1 py-3.5 rounded-xl text-gray-400 bg-white/5 text-sm font-medium"
+              >
+                Cancel
+              </button>
+              <button
+                disabled={otpValue.length < 4 || update.isPending}
+                onClick={confirmDelivery}
+                className="flex-1 bg-teal-500 hover:bg-teal-400 disabled:opacity-40 text-white py-3.5 rounded-xl text-sm font-bold active:scale-95"
+              >
+                {update.isPending ? 'Verifying...' : 'Confirm Delivered'}
+              </button>
+            </div>
+          </div>
+        </>
+      )}
 
       {/* Fail reason modal */}
       {failModal && (

@@ -7,13 +7,7 @@ import { todayIST } from '../../lib/time';
 
 const router = Router();
 
-/**
- * Logistics Command Center (Admin Substrate)
- * Grouping: Route-Based (Area) 
- * Choice Architecture: Non-Reversal Status Anchoring
- */
-
-// GET /api/admin/delivery/manifest — Tactical view for drivers/kitchen
+// GET /api/admin/logistics/manifest — delivery view grouped by area
 router.get('/manifest', requireAdmin, async (req, res) => {
   const date = (req.query.date as string) || todayIST();
 
@@ -43,7 +37,6 @@ router.get('/manifest', requireAdmin, async (req, res) => {
     )
     .orderBy(['ua.area', 'mc.meal_type']);
 
-  // Group by Area for Route-Based Dispatch
   const grouped = manifest.reduce((acc: any, item: any) => {
     const area = item.area || 'Unassigned Area';
     if (!acc[area]) acc[area] = [];
@@ -51,14 +44,10 @@ router.get('/manifest', requireAdmin, async (req, res) => {
     return acc;
   }, {});
 
-  res.json({
-    date,
-    total_count: manifest.length,
-    routes: grouped
-  });
+  res.json({ date, total_count: manifest.length, routes: grouped });
 });
 
-// PATCH /api/admin/delivery/:cellId/status — High-Fidelity Status Anchor
+// PATCH /api/admin/logistics/:cellId/status
 router.patch(
   '/:cellId/status',
   requireAdmin,
@@ -66,25 +55,29 @@ router.patch(
     status: z.enum(['preparing', 'out_for_delivery', 'delivered', 'failed']),
     proof_image_url: z.string().optional(),
     fail_reason: z.string().optional(),
-    driver_name: z.string().optional()
+    driver_name: z.string().optional(),
   })),
   async (req, res) => {
     const { cellId } = req.params;
     const { status, proof_image_url, fail_reason, driver_name } = req.body;
 
-    const cell = await db('meal_cells').where({ id: cellId }).first();
+    // Fetch cell + user_id for notifications
+    const cell = await db('meal_cells as mc')
+      .join('subscriptions as s', 's.id', 'mc.subscription_id')
+      .where({ 'mc.id': cellId })
+      .select('mc.*', 's.user_id')
+      .first();
     if (!cell) return res.status(404).json({ error: 'Meal manifest not found' });
 
     const updateData: any = {
       delivery_status: status,
-      status_updated_by: req.adminId
+      status_updated_by: req.adminId,
     };
 
     if (status === 'out_for_delivery' && !cell.picked_at) {
       updateData.picked_at = db.fn.now();
       if (driver_name) updateData.driver_name = driver_name;
     }
-
     if (proof_image_url) updateData.proof_image_url = proof_image_url;
     if (fail_reason) updateData.fail_reason = fail_reason;
 
@@ -94,6 +87,40 @@ router.patch(
       .returning('*');
 
     res.json(updated);
+
+    // ── Fire-and-forget notifications ─────────────────────────────────────
+    const mealLabel = cell.meal_type.charAt(0).toUpperCase() + cell.meal_type.slice(1);
+
+    if (status === 'preparing') {
+      db('notifications').insert({
+        user_id: cell.user_id,
+        type: 'info',
+        title: `${mealLabel} is being prepared 🍱`,
+        message: `Your ${cell.meal_type} is being freshly prepared and will be dispatched soon.`,
+        is_read: false,
+      }).catch(err => console.error('[logistics] preparing notification failed:', err.message));
+    }
+
+    if (status === 'out_for_delivery') {
+      // Generate OTP and send to user
+      const otpCode = String(Math.floor(1000 + Math.random() * 9000));
+      const expiresAt = new Date(Date.now() + 2 * 60 * 60 * 1000);
+
+      db('delivery_otps')
+        .insert({ meal_cell_id: cell.id, otp: otpCode, expires_at: expiresAt })
+        .onConflict('meal_cell_id')
+        .merge({ otp: otpCode, attempts: 0, verified: false, expires_at: expiresAt })
+        .then(() =>
+          db('notifications').insert({
+            user_id: cell.user_id,
+            type: 'info',
+            title: `${mealLabel} is on the way! 🛵`,
+            message: `Your driver has picked up your ${cell.meal_type}. Share this OTP when they arrive: ${otpCode}`,
+            is_read: false,
+          })
+        )
+        .catch(err => console.error('[logistics] out_for_delivery notification failed:', err.message));
+    }
   }
 );
 

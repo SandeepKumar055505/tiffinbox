@@ -17,7 +17,7 @@ export const driverAuth = {
 
 export const driverDelivery = {
   manifest: (date?: string) => driverApi.get('/driver/manifest', { params: { date } }),
-  updateStatus: (id: number, data: { status: string; fail_reason?: string; driver_name?: string }) =>
+  updateStatus: (id: number, data: { status: string; otp?: string; fail_reason?: string; driver_name?: string }) =>
     driverApi.patch(`/driver/cells/${id}/status`, data),
 };
 
