@@ -90,7 +90,6 @@ router.post(
       .where({ id: meal_cell_id, delivery_status: 'out_for_delivery' })
       .update({
         delivery_status: 'delivered',
-        updated_at: db.fn.now(),
       });
 
     if (updated === 0) {

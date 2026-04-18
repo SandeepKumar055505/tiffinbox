@@ -361,7 +361,6 @@ router.post('/delivery/holiday-skip', requireAdmin, async (req, res) => {
   await db('meal_cells').whereIn('id', cellIds).update({
     delivery_status: 'skipped_holiday',
     is_included: false,
-    updated_at: db.fn.now(),
   });
 
   const { boss } = await import('../../jobs/client');

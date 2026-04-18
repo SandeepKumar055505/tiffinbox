@@ -77,7 +77,6 @@ router.patch(
 
     const updateData: any = {
       delivery_status: status,
-      updated_at: db.fn.now(),
       status_updated_by: req.adminId
     };
 

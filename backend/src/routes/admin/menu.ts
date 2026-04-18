@@ -173,7 +173,7 @@ router.post(
       .where({ date, meal_type })
       .whereIn('delivery_status', ['scheduled', 'preparing']);
     if (source_item_id) swapQuery.andWhere({ item_id: source_item_id });
-    const updatedCount = await swapQuery.update({ item_id: target_item_id, updated_at: db.fn.now() });
+    const updatedCount = await swapQuery.update({ item_id: target_item_id });
 
     // Bulk notification — single INSERT, not a loop.
     // Wrapped in try/catch: swap is already committed above; a notification
