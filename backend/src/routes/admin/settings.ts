@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { db } from '../../config/db';
 import { requireAdmin } from '../../middleware/auth';
 import { validate } from '../../middleware/validate';
+import { settingsService } from '../../services/settingsService';
 
 const router = Router();
 
@@ -40,6 +41,10 @@ router.patch(
     geo_check_enabled: z.boolean().optional(),
     serviceable_pincodes: z.string().max(2000).optional(),
     driver_pin: z.string().min(4).max(10).optional(),
+    user_pause_enabled: z.boolean().optional(),
+    max_meals_per_slot: z.number().int().min(1).optional(),
+    menu_rotation_index: z.number().int().min(0).optional(),
+    available_dietary_tags: z.array(z.string()).optional(),
   })),
   async (req, res) => {
     const validKeys = [
@@ -51,6 +56,7 @@ router.patch(
       'delivery_otp_enabled', 'ratings_enabled', 'user_cancel_enabled',
       'global_banner_text', 'global_banner_active',
       'geo_check_enabled', 'serviceable_pincodes', 'driver_pin',
+      'user_pause_enabled', 'max_meals_per_slot', 'menu_rotation_index', 'available_dietary_tags',
     ];
     
     const updateData: any = {};
@@ -82,6 +88,7 @@ router.patch(
       after_value: JSON.stringify(updateData),
     });
 
+    settingsService.clearCache();
     res.json(updated);
   }
 );

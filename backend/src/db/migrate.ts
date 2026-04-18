@@ -4,7 +4,7 @@ import * as path from 'path';
 
 import { db } from '../config/db';
 
-async function migrate() {
+export async function runMigrations() {
   await db.raw(`
     CREATE TABLE IF NOT EXISTS migrations (
       id         SERIAL PRIMARY KEY,
@@ -30,11 +30,15 @@ async function migrate() {
     console.log(`  ✓ Done`);
   }
 
-  console.log('\nAll migrations applied.');
-  await db.destroy();
+  console.log('All migrations applied.');
 }
 
-migrate().catch(err => {
-  console.error('Migration failed:', err.message);
-  process.exit(1);
-});
+// Run as standalone script
+if (require.main === module) {
+  runMigrations()
+    .then(() => db.destroy())
+    .catch(err => {
+      console.error('Migration failed:', err.message);
+      process.exit(1);
+    });
+}

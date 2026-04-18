@@ -41,6 +41,9 @@ import ratingsRoutes from './routes/ratings';
 import referralsRoutes from './routes/referrals';
 import voucherRoutes from './routes/vouchers';
 
+// DB migrations
+import { runMigrations } from './db/migrate';
+
 // Routes — admin
 import adminDashboardRoutes from './routes/admin/dashboard';
 import adminSubscriptionRoutes from './routes/admin/subscriptions';
@@ -234,6 +237,11 @@ app.use(async (err: any, req: express.Request, res: express.Response, _next: exp
 });
 
 async function main() {
+  // Run any pending DB migrations before accepting traffic
+  await runMigrations().catch(err => {
+    console.error('[migrate] Migration error (non-fatal, server will still start):', err.message);
+  });
+
   app.listen(env.PORT, '0.0.0.0', () => {
     console.log(`TiffinPoint backend running on port ${env.PORT} (bound to 0.0.0.0)`);
   });

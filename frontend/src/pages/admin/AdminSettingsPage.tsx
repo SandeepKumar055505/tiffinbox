@@ -27,31 +27,49 @@ export default function AdminSettingsPage() {
         breakfast_price: s.breakfast_price ? Math.round(s.breakfast_price / 100) : '',
         lunch_price: s.lunch_price ? Math.round(s.lunch_price / 100) : '',
         dinner_price: s.dinner_price ? Math.round(s.dinner_price / 100) : '',
+        // available_dietary_tags is a JSONB array — edit as comma-separated text
+        available_dietary_tags_text: Array.isArray(s.available_dietary_tags)
+          ? s.available_dietary_tags.join(', ')
+          : (s.available_dietary_tags || ''),
       });
     }
   }, [data]);
 
   const updateSettings = useMutation({
-    mutationFn: () => adminSettings.update({
-      breakfast_price: Math.round(Number(form.breakfast_price) * 100),
-      lunch_price: Math.round(Number(form.lunch_price) * 100),
-      dinner_price: Math.round(Number(form.dinner_price) * 100),
-      breakfast_cutoff_hour: parseInt(form.breakfast_cutoff_hour),
-      lunch_cutoff_hour: parseInt(form.lunch_cutoff_hour),
-      dinner_cutoff_hour: parseInt(form.dinner_cutoff_hour),
-      max_skip_days_per_week: parseInt(form.max_skip_days_per_week),
-      max_grace_skips_per_week: parseInt(form.max_grace_skips_per_week),
-      max_persons_per_user: parseInt(form.max_persons_per_user),
-      signup_wallet_credit: parseInt(form.signup_wallet_credit),
-      referral_reward_amount: parseInt(form.referral_reward_amount),
-      breakfast_enabled: !!form.breakfast_enabled,
-      lunch_enabled: !!form.lunch_enabled,
-      dinner_enabled: !!form.dinner_enabled,
-      delivery_otp_enabled: !!form.delivery_otp_enabled,
-      ratings_enabled: !!form.ratings_enabled,
-      user_cancel_enabled: !!form.user_cancel_enabled,
-      driver_pin: form.driver_pin || undefined,
-    }),
+    mutationFn: () => {
+      // Parse available_dietary_tags from comma-separated text back to array
+      const tagsText: string = form.available_dietary_tags_text || '';
+      const tags = tagsText.split(',').map((t: string) => t.trim()).filter(Boolean);
+
+      return adminSettings.update({
+        breakfast_price: Math.round(Number(form.breakfast_price) * 100),
+        lunch_price: Math.round(Number(form.lunch_price) * 100),
+        dinner_price: Math.round(Number(form.dinner_price) * 100),
+        breakfast_cutoff_hour: parseInt(form.breakfast_cutoff_hour),
+        lunch_cutoff_hour: parseInt(form.lunch_cutoff_hour),
+        dinner_cutoff_hour: parseInt(form.dinner_cutoff_hour),
+        max_skip_days_per_week: parseInt(form.max_skip_days_per_week),
+        max_grace_skips_per_week: parseInt(form.max_grace_skips_per_week),
+        max_persons_per_user: parseInt(form.max_persons_per_user),
+        max_meals_per_slot: parseInt(form.max_meals_per_slot) || undefined,
+        menu_rotation_index: parseInt(form.menu_rotation_index) || 0,
+        signup_wallet_credit: parseInt(form.signup_wallet_credit),
+        referral_reward_amount: parseInt(form.referral_reward_amount),
+        breakfast_enabled: !!form.breakfast_enabled,
+        lunch_enabled: !!form.lunch_enabled,
+        dinner_enabled: !!form.dinner_enabled,
+        delivery_otp_enabled: !!form.delivery_otp_enabled,
+        ratings_enabled: !!form.ratings_enabled,
+        user_cancel_enabled: !!form.user_cancel_enabled,
+        user_pause_enabled: !!form.user_pause_enabled,
+        geo_check_enabled: !!form.geo_check_enabled,
+        global_banner_active: !!form.global_banner_active,
+        global_banner_text: form.global_banner_text || undefined,
+        serviceable_pincodes: form.serviceable_pincodes || undefined,
+        driver_pin: form.driver_pin || undefined,
+        available_dietary_tags: tags.length > 0 ? tags : undefined,
+      });
+    },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['admin-settings'] });
       setSavedFlash(true);
@@ -245,6 +263,8 @@ export default function AdminSettingsPage() {
             { key: 'delivery_otp_enabled', label: 'Delivery OTP' },
             { key: 'ratings_enabled', label: 'Meal ratings' },
             { key: 'user_cancel_enabled', label: 'Allow users to cancel plans' },
+            { key: 'user_pause_enabled', label: 'Allow users to pause plans' },
+            { key: 'geo_check_enabled', label: 'Geo/pincode check at checkout' },
           ].map(f => (
             <label key={f.key} className="flex items-center gap-2 cursor-pointer">
               <input type="checkbox" checked={!!form[f.key]}
@@ -253,6 +273,67 @@ export default function AdminSettingsPage() {
               <span className="text-xs t-text-secondary">{f.label}</span>
             </label>
           ))}
+        </div>
+
+        <p className="text-xs font-semibold t-text-secondary pt-2">Capacity & Menu</p>
+        <div className="grid grid-cols-2 gap-3">
+          <div className="space-y-1">
+            <p className="text-xs t-text-muted">Max meals per slot</p>
+            <input type="number" min={1} value={form.max_meals_per_slot ?? ''}
+              onChange={e => setForm((s: any) => ({ ...s, max_meals_per_slot: e.target.value }))}
+              className="w-full glass border-transparent rounded px-2 py-1.5 t-text text-sm outline-none focus:border-teal-500" />
+            <p className="text-[10px] t-text-faint">Max bookings per meal slot across all subs</p>
+          </div>
+          <div className="space-y-1">
+            <p className="text-xs t-text-muted">Menu rotation index</p>
+            <input type="number" min={0} value={form.menu_rotation_index ?? 0}
+              onChange={e => setForm((s: any) => ({ ...s, menu_rotation_index: e.target.value }))}
+              className="w-full glass border-transparent rounded px-2 py-1.5 t-text text-sm outline-none focus:border-teal-500" />
+            <p className="text-[10px] t-text-faint">0 = Week 1, 7 = Week 2, etc.</p>
+          </div>
+        </div>
+
+        <p className="text-xs font-semibold t-text-secondary pt-2">Dietary Tags</p>
+        <div className="space-y-1">
+          <p className="text-xs t-text-muted">Available dietary options (comma-separated)</p>
+          <input
+            type="text"
+            value={form.available_dietary_tags_text ?? ''}
+            onChange={e => setForm((s: any) => ({ ...s, available_dietary_tags_text: e.target.value }))}
+            placeholder="Veg, Vegan, Non-Veg, Jain"
+            className="w-full glass border-transparent rounded px-2 py-1.5 t-text text-sm outline-none focus:border-teal-500"
+          />
+          <p className="text-[10px] t-text-faint">Shown as options when users set up person profiles</p>
+        </div>
+
+        <p className="text-xs font-semibold t-text-secondary pt-2">Global Banner</p>
+        <label className="flex items-center gap-2 cursor-pointer">
+          <input type="checkbox" checked={!!form.global_banner_active}
+            onChange={e => setForm((s: any) => ({ ...s, global_banner_active: e.target.checked }))}
+            className="accent-teal-500 w-4 h-4" />
+          <span className="text-xs t-text-secondary">Show banner to all users</span>
+        </label>
+        <div className="space-y-1">
+          <p className="text-xs t-text-muted">Banner text</p>
+          <input
+            type="text"
+            value={form.global_banner_text ?? ''}
+            onChange={e => setForm((s: any) => ({ ...s, global_banner_text: e.target.value }))}
+            placeholder="e.g. Kitchen closed on Monday due to holiday"
+            className="w-full glass border-transparent rounded px-2 py-1.5 t-text text-sm outline-none focus:border-teal-500"
+          />
+        </div>
+
+        <p className="text-xs font-semibold t-text-secondary pt-2">Serviceable Pincodes</p>
+        <div className="space-y-1">
+          <p className="text-xs t-text-muted">Comma-separated 6-digit pincodes (only used if geo check is ON)</p>
+          <textarea
+            rows={2}
+            value={form.serviceable_pincodes ?? ''}
+            onChange={e => setForm((s: any) => ({ ...s, serviceable_pincodes: e.target.value }))}
+            placeholder="110001, 110002, 110003"
+            className="w-full glass border-transparent rounded px-2 py-1.5 t-text text-sm outline-none resize-none focus:border-teal-500"
+          />
         </div>
 
         <button
