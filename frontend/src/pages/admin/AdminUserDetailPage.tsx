@@ -138,6 +138,41 @@ export default function AdminUserDetailPage() {
                   ))}
                </div>
             </div>
+
+            {/* Payment Requests */}
+            {user.payment_requests?.length > 0 && (
+              <div className="glass p-8 space-y-4" style={{ borderRadius: '2.5rem' }}>
+                <h3 className="text-xs font-black uppercase tracking-widest t-text-muted">Payment History</h3>
+                <div className="space-y-2 max-h-[300px] overflow-y-auto pr-2">
+                  {user.payment_requests.map((pr: any) => (
+                    <div key={pr.id} className="flex items-center justify-between p-4 bg-white/[0.03] rounded-2xl border border-white/5">
+                      <div className="space-y-1">
+                        <div className="flex items-center gap-2">
+                          <span className={`w-2 h-2 rounded-full ${
+                            pr.status === 'approved' ? 'bg-teal-500' :
+                            pr.status === 'denied' ? 'bg-red-500' : 'bg-amber-500'
+                          }`} />
+                          <p className="text-[11px] font-black t-text-primary uppercase tracking-wider">{pr.status}</p>
+                        </div>
+                        <p className="text-[10px] t-text-muted opacity-50">
+                          {new Date(pr.submitted_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
+                        </p>
+                        {pr.denial_reason && (
+                          <p className="text-[10px] text-red-400 opacity-70">Reason: {pr.denial_reason}</p>
+                        )}
+                      </div>
+                      <div className="text-right space-y-1">
+                        <p className="text-sm font-black text-accent">₹{(pr.amount / 100).toLocaleString('en-IN')}</p>
+                        <a href={pr.screenshot_url} target="_blank" rel="noopener noreferrer"
+                          className="text-[10px] t-text-muted opacity-50 hover:text-accent transition-colors">
+                          View screenshot ↗
+                        </a>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
          </div>
       </div>
     </div>

@@ -68,6 +68,9 @@ export default function AdminSettingsPage() {
         serviceable_pincodes: form.serviceable_pincodes || undefined,
         driver_pin: form.driver_pin || undefined,
         available_dietary_tags: tags.length > 0 ? tags : undefined,
+        upi_id: form.upi_id || undefined,
+        upi_name: form.upi_name || undefined,
+        upi_enabled: !!form.upi_enabled,
       });
     },
     onSuccess: () => {
@@ -611,6 +614,65 @@ export default function AdminSettingsPage() {
             {broadcast.isPending ? 'Sending…' : 'Broadcast to all users'}
           </button>
         </div>
+      </div>
+
+      {/* UPI Payment Settings */}
+      <div className="glass p-8 space-y-6" style={{ borderRadius: '2rem' }}>
+        <div className="flex items-center justify-between">
+          <h3 className="text-xs font-black uppercase tracking-widest t-text-muted">UPI Payment</h3>
+          <span className="text-xl">💳</span>
+        </div>
+
+        {form.upi_enabled && !form.upi_id && (
+          <div className="bg-amber-500/10 border border-amber-500/20 rounded-xl px-4 py-3">
+            <p className="text-[11px] font-bold text-amber-400">⚠️ UPI is enabled but no UPI ID is set. Users will see a broken payment screen.</p>
+          </div>
+        )}
+
+        <div className="space-y-4">
+          <div className="flex items-center justify-between py-3 border-b border-border/10">
+            <div>
+              <p className="text-sm font-bold t-text-primary">Enable UPI Payments</p>
+              <p className="text-[11px] t-text-muted opacity-50 mt-0.5">Show UPI flow instead of Razorpay at checkout</p>
+            </div>
+            <button
+              onClick={() => setForm((f: any) => ({ ...f, upi_enabled: !f.upi_enabled }))}
+              className={`relative w-12 h-6 rounded-full transition-colors ${form.upi_enabled ? 'bg-accent' : 'bg-border/30'}`}
+            >
+              <span className={`absolute top-0.5 w-5 h-5 rounded-full bg-white shadow transition-transform ${form.upi_enabled ? 'translate-x-6' : 'translate-x-0.5'}`} />
+            </button>
+          </div>
+
+          <div className="space-y-2">
+            <label className="text-[10px] font-black uppercase t-text-muted opacity-50">UPI ID</label>
+            <input
+              type="text"
+              value={form.upi_id || ''}
+              onChange={e => setForm((f: any) => ({ ...f, upi_id: e.target.value }))}
+              placeholder="yourname@upi"
+              className="w-full bg-white/5 border border-white/5 rounded-2xl px-6 py-4 text-sm font-bold focus:ring-2 ring-accent/50 outline-none"
+            />
+          </div>
+
+          <div className="space-y-2">
+            <label className="text-[10px] font-black uppercase t-text-muted opacity-50">Display Name (shown on UPI apps)</label>
+            <input
+              type="text"
+              value={form.upi_name || ''}
+              onChange={e => setForm((f: any) => ({ ...f, upi_name: e.target.value }))}
+              placeholder="TiffinPoint"
+              className="w-full bg-white/5 border border-white/5 rounded-2xl px-6 py-4 text-sm font-bold focus:ring-2 ring-accent/50 outline-none"
+            />
+          </div>
+        </div>
+
+        <button
+          onClick={() => updateSettings.mutate()}
+          disabled={updateSettings.isPending}
+          className="bg-teal-500 hover:bg-teal-400 disabled:opacity-50 text-white text-sm px-4 py-2 rounded-lg"
+        >
+          {updateSettings.isPending ? 'Saving…' : 'Save settings'}
+        </button>
       </div>
     </div>
   );
