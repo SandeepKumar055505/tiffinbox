@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { useAuth } from '../../context/AuthContext';
-import { persons as personsApi, menu as menuApi, subscriptions as subsApi, payments as paymentsApi, wallet as walletApi } from '../../services/api';
+import { persons as personsApi, menu as menuApi, subscriptions as subsApi, payments as paymentsApi, wallet as walletApi, track } from '../../services/api';
 import { Person, DaySelection, MealType, PriceSnapshot } from '../../types';
 import { calculatePriceSnapshot, buildDateRange, generateIdempotencyKey, formatRupees } from '../../utils/pricing';
 import { tomorrowIST } from '../../utils/time';
@@ -155,7 +155,7 @@ export default function SubscribePage() {
   }, [step, confirmedSub]);
 
   useEffect(() => {
-    import('../../services/api').then(m => m.track('/subscribe'));
+    track('/subscribe');
   }, []);
 
   async function applyPromo() {
