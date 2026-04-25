@@ -163,10 +163,12 @@ export default function AdminUserDetailPage() {
                       </div>
                       <div className="text-right space-y-1">
                         <p className="text-sm font-black text-accent">₹{(pr.amount / 100).toLocaleString('en-IN')}</p>
-                        <a href={pr.screenshot_url} target="_blank" rel="noopener noreferrer"
-                          className="text-[10px] t-text-muted opacity-50 hover:text-accent transition-colors">
-                          View screenshot ↗
-                        </a>
+                        {pr.screenshot_url && (
+                          <a href={pr.screenshot_url} target="_blank" rel="noopener noreferrer"
+                            className="text-[10px] t-text-muted opacity-50 hover:text-accent transition-colors">
+                            View screenshot ↗
+                          </a>
+                        )}
                       </div>
                     </div>
                   ))}

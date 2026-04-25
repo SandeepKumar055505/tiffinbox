@@ -1,11 +1,12 @@
 import React, { useState } from 'react';
+import { Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import api from '../../services/api';
 
 export default function AdminVisitorsPage() {
   const [page, setPage] = useState(1);
 
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, isError } = useQuery({
     queryKey: ['admin-visitors', page],
     queryFn: () => api.get(`/admin/visitors?page=${page}`).then(r => r.data),
     refetchInterval: 30_000,
@@ -14,8 +15,8 @@ export default function AdminVisitorsPage() {
   const fmtTime = (ts: string) =>
     new Date(ts).toLocaleString('en-IN', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
 
-  const deviceIcon = (dev: string) =>
-    dev === 'mobile' ? '📱' : dev === 'tablet' ? '📟' : '🖥️';
+  const deviceIcon = (dev: string | undefined) =>
+    dev === 'mobile' ? '📱' : dev === 'tablet' ? '📟' : dev === 'desktop' ? '🖥️' : '—';
 
   return (
     <div className="p-6 space-y-6">
@@ -30,12 +31,17 @@ export default function AdminVisitorsPage() {
         <div className="flex items-center justify-center h-64">
           <div className="w-8 h-8 rounded-full border-2 border-accent/20 border-t-accent animate-spin" />
         </div>
+      ) : isError ? (
+        <div className="text-center py-16 t-text-muted opacity-60">
+          <p className="text-2xl mb-2">⚠️</p>
+          <p className="font-bold text-sm">Failed to load visitor data</p>
+        </div>
       ) : (
         <div className="surface-glass ring-1 ring-border/15 rounded-[1.5rem] overflow-hidden">
           <table className="w-full text-[12px]">
             <thead>
               <tr className="border-b border-border/10">
-                {['Time', 'Page', 'Device', 'Browser', 'Location', 'User'].map(h => (
+                {['Time', 'Page', 'Device', 'Browser', 'Location', 'User', 'Session ID'].map(h => (
                   <th key={h} className="text-left px-4 py-3 text-[10px] font-black t-text-muted uppercase tracking-wider opacity-50">{h}</th>
                 ))}
               </tr>
@@ -51,10 +57,11 @@ export default function AdminVisitorsPage() {
                     {[ev.d?.city, ev.d?.country].filter(Boolean).join(', ') || '—'}
                   </td>
                   <td className="px-4 py-3">
-                    {ev.user_name
-                      ? <span className="text-accent font-bold">{ev.user_name}</span>
+                    {ev.user_id
+                      ? <Link to={`/admin/users/${ev.user_id}`} className="text-accent font-bold hover:underline">{ev.user_name}</Link>
                       : <span className="t-text-muted opacity-40">Anonymous</span>}
                   </td>
+                  <td className="px-4 py-3 font-mono text-[11px] t-text-muted">{ev.sid ? `${ev.sid.slice(0, 8)}…` : '—'}</td>
                 </tr>
               ))}
             </tbody>
@@ -68,12 +75,12 @@ export default function AdminVisitorsPage() {
         </div>
       )}
 
-      {data?.total > data?.limit && (
+      {!isLoading && !isError && data && data?.total > data?.limit && (
         <div className="flex justify-center gap-3">
           <button disabled={page === 1} onClick={() => setPage(p => p - 1)}
             className="px-4 py-2 rounded-xl surface-glass ring-1 ring-border/20 text-[12px] font-bold disabled:opacity-30">← Prev</button>
           <span className="px-4 py-2 text-[12px] t-text-muted">Page {page}</span>
-          <button disabled={page * (data?.limit ?? 50) >= data.total} onClick={() => setPage(p => p + 1)}
+          <button disabled={page * (data?.limit ?? 50) >= (data?.total ?? 0)} onClick={() => setPage(p => p + 1)}
             className="px-4 py-2 rounded-xl surface-glass ring-1 ring-border/20 text-[12px] font-bold disabled:opacity-30">Next →</button>
         </div>
       )}
