@@ -8,7 +8,7 @@ CREATE TABLE IF NOT EXISTS payment_requests (
                     CHECK (status IN ('pending','approved','denied')),
   submitted_at    TIMESTAMPTZ  NOT NULL DEFAULT NOW(),
   reviewed_at     TIMESTAMPTZ,
-  reviewed_by     INTEGER      REFERENCES admins(id),
+  reviewed_by     INTEGER      REFERENCES admins(id) ON DELETE SET NULL,
   denial_reason   TEXT,
   plan_snapshot   JSONB        NOT NULL DEFAULT '{}'
 );

@@ -1,7 +1,7 @@
 CREATE TABLE IF NOT EXISTS visitor_events (
   id      BIGSERIAL    PRIMARY KEY,
   sid     VARCHAR(32)  NOT NULL,
-  user_id INTEGER      REFERENCES users(id),
+  user_id INTEGER      REFERENCES users(id) ON DELETE SET NULL,
   page    VARCHAR(100) NOT NULL,
   ts      TIMESTAMPTZ  NOT NULL DEFAULT NOW(),
   d       JSONB        NOT NULL DEFAULT '{}'
