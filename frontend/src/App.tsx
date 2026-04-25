@@ -49,6 +49,8 @@ const AdminReferralPage = React.lazy(() => import('./pages/admin/AdminReferralPa
 const AdminNotificationPage = React.lazy(() => import('./pages/admin/AdminNotificationPage'));
 const AdminUsersPage = React.lazy(() => import('./pages/admin/AdminUsersPage'));
 const AdminUserDetailPage = React.lazy(() => import('./pages/admin/AdminUserDetailPage'));
+const AdminPaymentsPage = React.lazy(() => import('./pages/admin/AdminPaymentsPage'));
+const AdminVisitorsPage = React.lazy(() => import('./pages/admin/AdminVisitorsPage'));
 const PhoneVerificationPage = React.lazy(() => import('./pages/auth/PhoneVerificationPage'));
 const LandingPage = React.lazy(() => import('./pages/portal/LandingPage'));
 
@@ -144,6 +146,8 @@ export default function App() {
                     <Route path="cancel" element={<AdminCancelPage />} />
                     <Route path="users" element={<AdminUsersPage />} />
                     <Route path="users/:id" element={<AdminUserDetailPage />} />
+                    <Route path="payments" element={<AdminPaymentsPage />} />
+                    <Route path="visitors" element={<AdminVisitorsPage />} />
                   </Route>
 
                   {/* Driver portal — standalone, no admin/user layout */}

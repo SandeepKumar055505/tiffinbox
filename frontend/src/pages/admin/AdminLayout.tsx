@@ -17,6 +17,8 @@ const NAV = [
   { to: '/admin/ledger', label: 'Ledger', icon: '📒' },
   { to: '/admin/referrals', label: 'Referrals', icon: '🎁' },
   { to: '/admin/notifications', label: 'Oracle', icon: '📣' },
+  { to: '/admin/payments', label: 'Payments', icon: '💳' },
+  { to: '/admin/visitors', label: 'Visitors', icon: '👥' },
   { to: '/admin/settings', label: 'Settings', icon: '⚙️' },
 ];
 
