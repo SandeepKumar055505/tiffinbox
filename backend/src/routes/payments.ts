@@ -12,10 +12,10 @@ import { emitEvent, DomainEvent } from '../jobs/events';
 
 const router = Router();
 
-const razorpay = new Razorpay({
-  key_id: env.RAZORPAY_KEY_ID,
-  key_secret: env.RAZORPAY_KEY_SECRET,
-});
+const razorpayEnabled = !!(env.RAZORPAY_KEY_ID && env.RAZORPAY_KEY_SECRET);
+const razorpay = razorpayEnabled
+  ? new Razorpay({ key_id: env.RAZORPAY_KEY_ID, key_secret: env.RAZORPAY_KEY_SECRET })
+  : null;
 
 // POST /api/payments/create-order — initiate Razorpay order for a draft subscription
 router.post(
@@ -23,6 +23,8 @@ router.post(
   requireUser,
   validate(z.object({ subscription_id: z.number().int().positive() })),
   async (req, res) => {
+    if (!razorpay) return res.status(503).json({ error: 'Razorpay not configured — use UPI payment flow' });
+
     const sub = await db('subscriptions')
       .where({ id: req.body.subscription_id, user_id: req.userId })
       .first();
@@ -74,6 +76,8 @@ router.post(
     razorpay_signature: z.string(),
   })),
   async (req, res) => {
+    if (!razorpay) return res.status(503).json({ error: 'Razorpay not configured — use UPI payment flow' });
+
     const { subscription_id, razorpay_order_id, razorpay_payment_id, razorpay_signature } = req.body;
 
     // Verify signature
@@ -199,6 +203,8 @@ router.post(
 
 // POST /api/payments/webhook — Razorpay server webhook (no auth, signature verified)
 router.post('/webhook', async (req, res) => {
+  if (!razorpay) return res.status(503).json({ error: 'Razorpay not configured — use UPI payment flow' });
+
   const signature = req.headers['x-razorpay-signature'] as string;
   
   // Since we use express.raw for this route in index.ts, req.body is a Buffer

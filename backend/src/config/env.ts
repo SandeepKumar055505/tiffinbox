@@ -3,8 +3,6 @@ const required = [
   'JWT_SECRET',
   'GOOGLE_CLIENT_ID',
   'GOOGLE_CLIENT_SECRET',
-  'RAZORPAY_KEY_ID',
-  'RAZORPAY_KEY_SECRET',
 ];
 
 for (const key of required) {
@@ -24,9 +22,9 @@ export const env = {
   GOOGLE_REDIRECT_URI: process.env.GOOGLE_REDIRECT_URI || 'https://tiffinbox-api.onrender.com/api/auth/google/callback',
   ADMIN_SEED_EMAIL: process.env.ADMIN_SEED_EMAIL || 'admin@tiffinbox.in',
   ADMIN_SEED_PASSWORD: process.env.ADMIN_SEED_PASSWORD || 'admin123',
-  RAZORPAY_KEY_ID: process.env.RAZORPAY_KEY_ID!,
-  RAZORPAY_KEY_SECRET: process.env.RAZORPAY_KEY_SECRET!,
-  RAZORPAY_WEBHOOK_SECRET: process.env.RAZORPAY_WEBHOOK_SECRET || process.env.RAZORPAY_KEY_SECRET!,
+  RAZORPAY_KEY_ID: process.env.RAZORPAY_KEY_ID || '',
+  RAZORPAY_KEY_SECRET: process.env.RAZORPAY_KEY_SECRET || '',
+  RAZORPAY_WEBHOOK_SECRET: process.env.RAZORPAY_WEBHOOK_SECRET || process.env.RAZORPAY_KEY_SECRET || '',
   BREVO_API_KEY: process.env.BREVO_API_KEY,
   BREVO_FROM_EMAIL: process.env.BREVO_FROM_EMAIL || 'onboarding@brevo.com',
   BREVO_FROM_NAME: process.env.BREVO_FROM_NAME || 'TiffinBox',
