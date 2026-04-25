@@ -36,16 +36,17 @@ router.get('/:id', requireAdmin, async (req, res) => {
   const user = await db('users').where({ id: req.params.id }).first();
   if (!user) return res.status(404).json({ error: 'User not found' });
 
-  const [subscriptions, walletEntries, persons] = await Promise.all([
+  const [subscriptions, walletEntries, persons, paymentRequests] = await Promise.all([
     db('subscriptions').where({ user_id: req.params.id }).orderBy('created_at', 'desc').limit(10),
     db('ledger_entries').where({ user_id: req.params.id }).orderBy('created_at', 'desc').limit(20),
     db('persons').where({ user_id: req.params.id }).orderBy('created_at'),
+    db('payment_requests').where({ user_id: req.params.id }).orderBy('submitted_at', 'desc').limit(20),
   ]);
 
   const walletBalance = walletEntries.reduce((sum: number, e: any) =>
     sum + (e.type === 'credit' ? e.amount : -e.amount), 0);
 
-  res.json({ ...user, subscriptions, wallet_balance: walletBalance, wallet_entries: walletEntries, persons });
+  res.json({ ...user, subscriptions, wallet_balance: walletBalance, wallet_entries: walletEntries, persons, payment_requests: paymentRequests });
 });
 
 // PATCH /api/admin/users/:id/status — Suspend or reactivate a user

@@ -76,7 +76,12 @@ router.get('/public', async (_req, res) => {
     banner: {
       active: settings?.global_banner_active ?? false,
       text: settings?.global_banner_text ?? '',
-    }
+    },
+    payment: {
+      upi_enabled: settings?.upi_enabled ?? false,
+      upi_id: settings?.upi_id ?? null,
+      upi_name: settings?.upi_name ?? 'TiffinPoint',
+    },
   });
 });
 

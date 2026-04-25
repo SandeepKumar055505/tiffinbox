@@ -45,6 +45,9 @@ router.patch(
     max_meals_per_slot: z.number().int().min(1).optional(),
     menu_rotation_index: z.number().int().min(0).optional(),
     available_dietary_tags: z.array(z.string()).optional(),
+    upi_id: z.string().max(100).optional(),
+    upi_name: z.string().max(100).optional(),
+    upi_enabled: z.boolean().optional(),
   })),
   async (req, res) => {
     const validKeys = [
@@ -57,6 +60,7 @@ router.patch(
       'global_banner_text', 'global_banner_active',
       'geo_check_enabled', 'serviceable_pincodes', 'driver_pin',
       'user_pause_enabled', 'max_meals_per_slot', 'menu_rotation_index', 'available_dietary_tags',
+      'upi_id', 'upi_name', 'upi_enabled',
     ];
     
     const updateData: any = {};

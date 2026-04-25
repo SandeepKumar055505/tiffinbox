@@ -46,6 +46,7 @@ export async function startJobWorkers(): Promise<void> {
     'plan.expiry-check',
     'streak.daily-update',
     'plan.unlock-check',
+    'visitor.cleanup',   // ADD THIS LINE
     ...Object.values(DomainEvent),
   ];
   for (const q of queues) {
@@ -579,6 +580,66 @@ export async function startJobWorkers(): Promise<void> {
       });
     }
     console.log(`[sync] Palette Sync complete: Re-mapped ${updates.length}/${cells.length} meals for ${person.name}`);
+  });
+
+  // ── UPI payment submitted: notify user ─────────────────────────────────────
+  await boss.work(DomainEvent.UPI_PAYMENT_SUBMITTED, async (job: any) => {
+    const { user_id } = job.data;
+    await sendNotification(
+      user_id,
+      NotificationType.PAYMENTS,
+      'Payment screenshot received',
+      'We have received your payment screenshot. Our team will verify and activate your plan within a few hours.'
+    );
+  });
+
+  // ── UPI payment approved: wallet debit, promo, unlock, notify ──────────────
+  await boss.work(DomainEvent.UPI_PAYMENT_APPROVED, async (job: any) => {
+    const { subscription_id, user_id, wallet_applied, promo_code } = job.data;
+
+    if (wallet_applied && wallet_applied > 0) {
+      await debitWalletAtCheckout(user_id, subscription_id, wallet_applied)
+        .catch(err => console.error('[upi.approved] wallet debit failed:', err?.message));
+    }
+
+    if (promo_code) {
+      await db('offers')
+        .where({ code: promo_code.toUpperCase() })
+        .where(function() {
+          this.whereNull('usage_limit').orWhereRaw('used_count < usage_limit');
+        })
+        .increment('used_count', 1)
+        .catch(err => console.error('[upi.approved] promo increment failed:', err?.message));
+    }
+
+    await boss.send('plan.unlock-check', { user_id });
+
+    await sendNotification(
+      user_id,
+      NotificationType.PAYMENTS,
+      'Plan activated!',
+      'Your payment has been verified. Your meal plan is now active. Check your dashboard.'
+    );
+  });
+
+  // ── UPI payment denied: notify user with reason ────────────────────────────
+  await boss.work(DomainEvent.UPI_PAYMENT_DENIED, async (job: any) => {
+    const { user_id, reason } = job.data;
+    await sendNotification(
+      user_id,
+      NotificationType.PAYMENTS,
+      'Payment not verified',
+      `We could not verify your payment. Reason: ${reason}. Please try again or contact support.`
+    );
+  });
+
+  // ── Nightly: prune visitor_events older than 90 days ──────────────────────
+  await boss.schedule('visitor.cleanup', '0 3 * * *', {}, { tz: 'Asia/Kolkata' });
+  await boss.work('visitor.cleanup', async () => {
+    const deleted = await db('visitor_events')
+      .where('ts', '<', db.raw("NOW() - INTERVAL '90 days'"))
+      .delete();
+    console.log(`[visitor.cleanup] Deleted ${deleted} old visitor events`);
   });
 
   console.log('All job workers registered');
