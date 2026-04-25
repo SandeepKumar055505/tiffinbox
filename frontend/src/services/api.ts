@@ -94,6 +94,12 @@ export const payments = {
   createOrder: (subscription_id: number) => api.post('/payments/create-order', { subscription_id }),
   verify: (data: any) => api.post('/payments/verify', data),
   activateFree: (subscription_id: number) => api.post('/payments/activate-free', { subscription_id }),
+  uploadScreenshot: (base64Data: string) =>
+    api.post('/payments/upload-screenshot', { data: base64Data }),
+  upiSubmit: (subscription_id: number, screenshot_url: string) =>
+    api.post('/payments/upi-submit', { subscription_id, screenshot_url }),
+  upiStatus: (subscription_id: number) =>
+    api.get(`/payments/upi-status/${subscription_id}`),
 };
 
 // ── Wallet ────────────────────────────────────────────────────────────────────
@@ -161,6 +167,11 @@ export const addresses = {
   create: (data: { label: string; address: string; is_default: boolean }) => api.post('/addresses', data),
   update: (id: number, data: { label?: string; address?: string; is_default?: boolean }) => api.patch(`/addresses/${id}`, data),
   remove: (id: number) => api.delete(`/addresses/${id}`),
+};
+
+// ── Page tracking (fire-and-forget, no auth needed) ───────────────────────────
+export const track = (page: string, ref?: string) => {
+  api.post('/track', { page, ref: ref || document.referrer || undefined }).catch(() => {});
 };
 
 // ── Vouchers ──────────────────────────────────────────────────────────────────

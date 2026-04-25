@@ -23,7 +23,7 @@ import { ChevronLeft } from 'lucide-react';
 
 interface PromoResult { code: string; description: string; discount_type: 'flat' | 'percent'; value: number; min_order_amount?: number; }
 
-type Step = 'setup' | 'grid' | 'checkout' | 'processing' | 'success';
+type Step = 'setup' | 'grid' | 'checkout' | 'processing' | 'upi_pay' | 'upi_submitted' | 'success';
 
 const PLAN_OPTIONS = [
   { days: 1 as const, label: '1 Day', sub: 'Try it out', badge: null, saving: null },
@@ -37,6 +37,8 @@ const PHASE_CONFIG = {
   grid: { color: 'rgba(249, 115, 22, 0.1)', name: 'Step 2 of 3' },
   checkout: { color: 'rgba(99, 102, 241, 0.12)', name: 'Step 3 of 3' },
   processing: { color: 'rgba(20, 184, 166, 0.08)', name: 'Processing' },
+  upi_pay: { color: 'rgba(20, 184, 166, 0.12)', name: 'Pay via UPI' },
+  upi_submitted: { color: 'rgba(20, 184, 166, 0.15)', name: 'Under Review' },
   success: { color: 'rgba(20, 184, 166, 0.15)', name: 'Confirmed' },
 };
 
@@ -79,6 +81,9 @@ export default function SubscribePage() {
   const [confirmedSub, setConfirmedSub] = useState<any>(null);
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [gourmetError, setGourmetError] = useState<{ title: string; message: string } | null>(null);
+  const [screenshotUrl, setScreenshotUrl] = useState<string | null>(null);
+  const [screenshotPreview, setScreenshotPreview] = useState<string | null>(null);
+  const [uploadProgress, setUploadProgress] = useState(false);
 
   const { data: addresses = [] } = useQuery({
     queryKey: ['addresses'],
@@ -133,6 +138,25 @@ export default function SubscribePage() {
       };
     }));
   }, [startDate, planDays, pattern, step, weekMenu]);
+
+  // Poll for UPI payment approval every 60s when on upi_submitted step
+  useEffect(() => {
+    if (step !== 'upi_submitted' || !confirmedSub) return;
+    const interval = setInterval(async () => {
+      try {
+        const res = await paymentsApi.upiStatus(confirmedSub.id);
+        if (res.data.payment_request?.status === 'approved') {
+          clearInterval(interval);
+          setStep('success');
+        }
+      } catch { /* silent */ }
+    }, 60_000);
+    return () => clearInterval(interval);
+  }, [step, confirmedSub]);
+
+  useEffect(() => {
+    import('../../services/api').then(m => m.track('/subscribe'));
+  }, []);
 
   async function applyPromo() {
     if (!promoInput.trim()) return;
@@ -215,28 +239,21 @@ export default function SubscribePage() {
   });
 
   async function initiatePayment(sub: any) {
+    setConfirmedSub(sub);
+    setStep('upi_pay');
+
+    /* RAZORPAY — kept for reference, commented out
     try {
       const orderRes = await paymentsApi.createOrder(sub.id);
       const { order_id, amount, key_id } = orderRes.data;
-
       const Razorpay = (window as any).Razorpay;
       if (!Razorpay) {
-        sensorial.showError({
-          title: 'Payment unavailable',
-          message: 'The payment window couldn\'t load. Please refresh the page and try again.'
-        });
+        sensorial.showError({ title: 'Payment unavailable', message: 'The payment window couldn\'t load. Please refresh and try again.' });
         setStep('checkout');
         return;
       }
-
-      const rz = new Razorpay({
-        key: key_id,
-        amount,
-        currency: 'INR',
-        order_id,
-        name: 'TiffinPoint',
-        description: `${planDays}-day meal plan`,
-        prefill: { name: user?.name, email: user?.email },
+      const rz = new Razorpay({ key: key_id, amount, currency: 'INR', order_id, name: 'TiffinPoint',
+        description: `${planDays}-day meal plan`, prefill: { name: user?.name, email: user?.email },
         theme: { color: '#14b8a6' },
         handler: async (response: any) => {
           try {
@@ -244,23 +261,13 @@ export default function SubscribePage() {
             await api.post('/subscriptions/shadow-draft', { draft_data: null });
             setConfirmedSub(sub);
             setStep('success');
-          } catch {
-            setStep('checkout');
-            sensorial.showError({
-              title: "Payment received",
-              message: "Your payment went through, but we're still confirming your plan. If it's not active in a few minutes, please contact support."
-            });
-          }
+          } catch { setStep('checkout'); }
         },
-        modal: {
-          ondismiss: () => setStep('checkout'),
-        },
+        modal: { ondismiss: () => setStep('checkout') },
       });
       rz.open();
-    } catch (err: any) {
-      setStep('checkout');
-      setGourmetError(translateToGourmet(err));
-    }
+    } catch (err: any) { setStep('checkout'); setGourmetError(translateToGourmet(err)); }
+    */
   }
 
   const renderHeader = (title: string, subtitle: string, onBack?: () => void) => (
@@ -1011,6 +1018,200 @@ export default function SubscribePage() {
           </div>
           <div className="w-full h-1 bg-border/15 rounded-full overflow-hidden">
             <div className="h-full bg-accent animate-[progressBar_3s_ease-in-out_infinite]" />
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (step === 'upi_pay') {
+    const upiId = (pubConfig as any)?.payment?.upi_id ?? '';
+    const upiName = (pubConfig as any)?.payment?.upi_name ?? 'TiffinPoint';
+    const amountRupees = ((confirmedSub?.price_paid ?? 0) / 100).toFixed(2);
+    const upiUri = `upi://pay?pa=${encodeURIComponent(upiId)}&pn=${encodeURIComponent(upiName)}&am=${amountRupees}&cu=INR&tn=TiffinPoint`;
+
+    async function handleFileSelect(e: React.ChangeEvent<HTMLInputElement>) {
+      const file = e.target.files?.[0];
+      if (!file) return;
+      if (!file.type.startsWith('image/')) {
+        sensorial.showError({ title: 'Invalid file', message: 'Please upload an image file.' });
+        return;
+      }
+      if (file.size > 5 * 1024 * 1024) {
+        sensorial.showError({ title: 'File too large', message: 'Maximum screenshot size is 5MB.' });
+        return;
+      }
+      setUploadProgress(true);
+      try {
+        const reader = new FileReader();
+        reader.onload = async (ev) => {
+          const base64 = ev.target?.result as string;
+          setScreenshotPreview(base64);
+          const res = await paymentsApi.uploadScreenshot(base64);
+          setScreenshotUrl(res.data.url);
+          setUploadProgress(false);
+        };
+        reader.readAsDataURL(file);
+      } catch {
+        setUploadProgress(false);
+        sensorial.showError({ title: 'Upload failed', message: 'Could not upload screenshot. Please try again.' });
+      }
+    }
+
+    async function handleSubmit() {
+      if (!screenshotUrl || !confirmedSub) return;
+      try {
+        await paymentsApi.upiSubmit(confirmedSub.id, screenshotUrl);
+        await api.post('/subscriptions/shadow-draft', { draft_data: null });
+        setStep('upi_submitted');
+      } catch (err: any) {
+        setGourmetError(translateToGourmet(err));
+      }
+    }
+
+    return (
+      <div className="min-h-screen bg-bg-primary text-text-primary p-4 sm:p-8 relative overflow-x-hidden"
+        style={{ background: `radial-gradient(circle at top right, rgba(20,184,166,0.10), transparent)` }}>
+        <div className="max-w-md mx-auto space-y-8 relative z-10 pb-8">
+          {renderHeader('Pay via UPI', `Send exactly ₹${amountRupees} to complete your order.`, () => setStep('checkout'))}
+
+          <section className="surface-liquid ring-1 ring-border/15 rounded-[2rem] p-7 space-y-5">
+            <div className="text-center space-y-1">
+              <p className="text-[11px] font-black t-text-muted uppercase tracking-widest opacity-40">Amount to Pay</p>
+              <p className="text-[48px] font-black text-accent leading-none">₹{amountRupees}</p>
+            </div>
+
+            {upiId && (
+              <div className="flex justify-center">
+                <canvas
+                  ref={(canvas) => {
+                    if (canvas && upiUri) {
+                      import('qrcode').then(QRCode => {
+                        QRCode.toCanvas(canvas, upiUri, { width: 180, margin: 2 }, () => {});
+                      });
+                    }
+                  }}
+                  className="rounded-xl ring-1 ring-border/20"
+                />
+              </div>
+            )}
+
+            <div className="flex items-center gap-3 bg-bg-card rounded-2xl px-4 py-3.5 ring-1 ring-border/20">
+              <div className="flex-1 min-w-0">
+                <p className="text-[10px] font-black t-text-muted uppercase tracking-widest opacity-40 mb-0.5">UPI ID</p>
+                <p className="text-[16px] font-black t-text-primary truncate">{upiId || 'Not configured'}</p>
+              </div>
+              <button
+                onClick={() => { navigator.clipboard.writeText(upiId); haptics.success(); }}
+                disabled={!upiId}
+                className="shrink-0 px-4 py-2 rounded-xl bg-accent/10 text-accent text-[11px] font-black uppercase tracking-widest hover:bg-accent/20 transition-all active:scale-95 disabled:opacity-30"
+              >
+                Copy
+              </button>
+            </div>
+
+            <p className="text-[12px] t-text-muted text-center leading-relaxed opacity-60">
+              Open any UPI app (GPay, PhonePe, Paytm), scan the QR or enter the UPI ID, pay ₹{amountRupees}, then upload your payment screenshot below.
+            </p>
+          </section>
+
+          <section className="space-y-4">
+            <div className="flex items-center gap-3">
+              <div className="h-px flex-1 bg-border/15" />
+              <span className="text-[10px] font-black t-text-muted uppercase tracking-widest opacity-40">Upload Screenshot</span>
+              <div className="h-px flex-1 bg-border/15" />
+            </div>
+
+            <label className={`block w-full rounded-[1.8rem] border-2 border-dashed transition-all cursor-pointer
+              ${screenshotUrl ? 'border-accent/40 bg-accent/5' : 'border-border/30 hover:border-accent/30 bg-bg-card'}`}>
+              <input type="file" accept="image/*" className="sr-only" onChange={handleFileSelect} disabled={uploadProgress} />
+              <div className="p-6 text-center space-y-3">
+                {uploadProgress ? (
+                  <>
+                    <div className="w-8 h-8 rounded-full border-2 border-accent/20 border-t-accent animate-spin mx-auto" />
+                    <p className="text-[12px] t-text-muted">Uploading…</p>
+                  </>
+                ) : screenshotUrl ? (
+                  <>
+                    <img src={screenshotPreview!} alt="Screenshot preview" className="h-24 object-contain mx-auto rounded-xl ring-1 ring-border/20" />
+                    <p className="text-[11px] text-accent font-bold">Screenshot uploaded — tap to change</p>
+                  </>
+                ) : (
+                  <>
+                    <div className="w-12 h-12 rounded-2xl bg-bg-subtle flex items-center justify-center mx-auto text-2xl">📸</div>
+                    <p className="text-[13px] font-bold t-text-primary">Tap to upload payment screenshot</p>
+                    <p className="text-[11px] t-text-muted opacity-50">JPG, PNG, WebP · max 5MB</p>
+                  </>
+                )}
+              </div>
+            </label>
+
+            <button
+              onClick={handleSubmit}
+              disabled={!screenshotUrl || uploadProgress}
+              className="w-full py-5 rounded-[1.8rem] bg-accent text-white font-black text-[17px] tracking-tight shadow-glow-subtle hover:brightness-110 active:scale-[0.97] transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+            >
+              Submit Payment Screenshot →
+            </button>
+          </section>
+
+          <div className="flex items-center justify-center gap-6 opacity-40">
+            {['🔒 Secure', '✓ Verified', '24h Support'].map(t => (
+              <span key={t} className="text-[10px] font-bold t-text-muted uppercase tracking-wider">{t}</span>
+            ))}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (step === 'upi_submitted') {
+    const fmtD = (d: string) => new Date(d).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' });
+    const amountRupees = ((confirmedSub?.price_paid ?? 0) / 100).toFixed(0);
+
+    return (
+      <div className="min-h-screen flex items-center justify-center p-8 bg-bg-primary relative overflow-hidden">
+        <div className="absolute inset-0 pointer-events-none">
+          <div className="absolute top-[-20%] right-[-20%] w-[80rem] h-[80rem] bg-accent/10 blur-[250px] rounded-full" />
+        </div>
+        <div className="relative surface-liquid py-14 px-10 text-center max-w-sm w-full space-y-8 rounded-[3rem] shadow-elite ring-1 ring-border/20">
+          <div className="flex justify-center">
+            <div className="w-20 h-20 rounded-[2rem] bg-accent/15 border border-accent/20 flex items-center justify-center">
+              <svg className="w-10 h-10 text-accent" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+              </svg>
+            </div>
+          </div>
+          <div className="space-y-3">
+            <h2 className="text-[28px] font-black t-text-primary leading-tight">Payment Submitted</h2>
+            <p className="text-[14px] font-medium t-text-muted opacity-70 leading-relaxed">
+              Your screenshot has been received. Our team reviews payments within a few hours. You'll get a notification the moment your plan is activated.
+            </p>
+          </div>
+          {confirmedSub && (
+            <div className="surface-glass rounded-2xl p-5 ring-1 ring-border/15 text-left space-y-3">
+              <div className="flex justify-between text-[12px]">
+                <span className="t-text-muted opacity-60 font-medium">Plan</span>
+                <span className="font-black t-text-primary">{confirmedSub.plan_days}-day plan</span>
+              </div>
+              <div className="flex justify-between text-[12px]">
+                <span className="t-text-muted opacity-60 font-medium">Starts</span>
+                <span className="font-black t-text-primary">{fmtD(confirmedSub.start_date)}</span>
+              </div>
+              <div className="flex justify-between text-[12px]">
+                <span className="t-text-muted opacity-60 font-medium">Amount Paid</span>
+                <span className="font-black text-accent">₹{amountRupees}</span>
+              </div>
+            </div>
+          )}
+          <div className="space-y-3">
+            <button onClick={() => navigate('/')}
+              className="w-full py-4 bg-accent hover:brightness-110 text-white font-bold text-[15px] rounded-2xl transition-all active:scale-95 shadow-glow-subtle">
+              Go to Dashboard →
+            </button>
+            <p className="text-[11px] t-text-muted opacity-40 leading-relaxed">
+              We'll notify you once verified. Typically within 2–4 hours.
+            </p>
           </div>
         </div>
       </div>
