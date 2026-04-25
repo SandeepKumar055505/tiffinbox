@@ -1,0 +1,4 @@
+ALTER TABLE app_settings
+  ADD COLUMN IF NOT EXISTS upi_id      VARCHAR(100),
+  ADD COLUMN IF NOT EXISTS upi_name    VARCHAR(100) DEFAULT 'TiffinPoint',
+  ADD COLUMN IF NOT EXISTS upi_enabled BOOLEAN      NOT NULL DEFAULT false;
