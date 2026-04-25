@@ -1,8 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
-import { subscriptions, wallet, persons as personsApi, delivery, ratings } from '../../services/api';
+import { subscriptions, wallet, persons as personsApi, delivery, ratings, track } from '../../services/api';
 import { Subscription, MealCell, Person, PersonStreak, Voucher } from '../../types';
 import { formatRupees } from '../../utils/pricing';
 import NotificationPanel from '../../components/shared/NotificationPanel';
@@ -31,6 +31,8 @@ export default function DashboardPage() {
   const [ratingValue, setRatingValue] = useState(0);
   const [isWhatsAppModalOpen, setIsWhatsAppModalOpen] = useState(false);
   const [isRedirecting, setIsRedirecting] = useState(false);
+
+  useEffect(() => { track('/dashboard'); }, []);
 
   const { data: subs = [] } = useQuery<Subscription[]>({
     queryKey: ['subscriptions'],

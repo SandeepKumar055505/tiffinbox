@@ -33,6 +33,8 @@
 | `referrals` | Referrer → referred relationships + reward status |
 | `delivery_otps` | OTP per meal_cell for delivery verification |
 | `meal_ratings` | User star ratings (1-5) for delivered meals |
+| `payment_requests` | Manual UPI payment submissions pending admin review |
+| `visitor_events` | Page-visit tracking for analytics (auto-purged after 90 days) |
 
 ---
 
@@ -338,6 +340,10 @@ CREATE TABLE app_settings (
   dinner_enabled              BOOLEAN NOT NULL DEFAULT true,
   delivery_otp_enabled        BOOLEAN NOT NULL DEFAULT true,   -- OTP verification flow on/off
   ratings_enabled             BOOLEAN NOT NULL DEFAULT true,   -- meal rating feature on/off
+  -- migration 032 additions (UPI payment settings):
+  upi_id                      VARCHAR(100),                    -- UPI address (e.g. business@upi)
+  upi_name                    VARCHAR(100) DEFAULT 'TiffinPoint', -- display name shown in QR
+  upi_enabled                 BOOLEAN NOT NULL DEFAULT false,  -- controls whether UPI checkout is active
   updated_at                  TIMESTAMPTZ DEFAULT NOW()
 );
 
@@ -548,6 +554,51 @@ CREATE INDEX idx_meal_ratings_user_id ON meal_ratings(user_id);
 CREATE INDEX idx_meal_ratings_date ON meal_ratings(date);
 ```
 
+### payment_requests
+```sql
+-- Manual UPI payment submissions. Admin reviews and approves/denies.
+-- plan_snapshot freezes key plan details at submission time.
+CREATE TABLE payment_requests (
+  id              SERIAL PRIMARY KEY,
+  subscription_id INTEGER NOT NULL REFERENCES subscriptions(id),
+  user_id         INTEGER NOT NULL REFERENCES users(id),
+  amount          INTEGER NOT NULL,  -- in paise
+  screenshot_url  TEXT NOT NULL,
+  status          VARCHAR(10) NOT NULL DEFAULT 'pending'
+                    CHECK (status IN ('pending','approved','denied')),
+  submitted_at    TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  reviewed_at     TIMESTAMPTZ,
+  reviewed_by     INTEGER REFERENCES admins(id) ON DELETE SET NULL,
+  denial_reason   TEXT,
+  plan_snapshot   JSONB NOT NULL DEFAULT '{}'
+                    -- {plan_days, person_name, meals_count, start_date, end_date}
+);
+
+CREATE INDEX idx_pr_pending ON payment_requests(id) WHERE status = 'pending';
+CREATE INDEX idx_pr_user_id ON payment_requests(user_id);
+CREATE INDEX idx_pr_sub_id ON payment_requests(subscription_id);
+```
+
+### visitor_events
+```sql
+-- Page-visit records for admin analytics. Auto-purged after 90 days by nightly cron.
+-- sid = sha256(ip+ua+date).slice(0,32) — anonymous session fingerprint.
+CREATE TABLE visitor_events (
+  id      BIGSERIAL PRIMARY KEY,
+  sid     VARCHAR(32) NOT NULL,  -- sha256(ip+ua+date).slice(0,32)
+  user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+  page    VARCHAR(100) NOT NULL,
+  ts      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  d       JSONB NOT NULL DEFAULT '{}'
+            -- {dev: 'mobile'|'desktop'|'tablet', browser, country, city, ref}
+);
+
+CREATE INDEX idx_ve_ts ON visitor_events(ts);
+CREATE INDEX idx_ve_sid ON visitor_events(sid);
+CREATE INDEX idx_ve_user_id ON visitor_events(user_id) WHERE user_id IS NOT NULL;
+```
+Auto-purged after 90 days by nightly pg-boss cron (`visitor.cleanup`, runs at 3 AM IST).
+
 ---
 
 ## Migration File Order
@@ -584,6 +635,9 @@ CREATE INDEX idx_meal_ratings_date ON meal_ratings(date);
 029_create_referrals.sql               ← also adds referral_code + referred_by to users
 030_create_delivery_otps.sql
 031_create_meal_ratings.sql
+032_create_payment_requests.sql    ← UPI payment requests table
+033_create_visitor_events.sql      ← visitor analytics table
+034_add_upi_settings.sql           ← upi_id, upi_name, upi_enabled columns in app_settings
 ```
 
 ---

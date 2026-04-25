@@ -12,7 +12,7 @@ import { useAuth } from '../../context/AuthContext';
 import { usePublicConfig } from '../../hooks/usePublicConfig';
 import { useToast } from '../../context/ToastContext';
 import { formatRupees } from '../../utils/pricing';
-import { auth } from '../../services/api';
+import { auth, track } from '../../services/api';
 import { haptics } from '../../context/SensorialContext';
 
 // ─── Data ────────────────────────────────────────────────────────────────────
@@ -217,6 +217,7 @@ export default function LandingPage() {
   const [menuOpen, setMenuOpen] = useState(false);
   const todayShort = new Date().toLocaleDateString('en', { weekday: 'short' });
 
+  useEffect(() => { track('/'); }, []);
   useEffect(() => { const f = () => setScrolled(window.scrollY > 50); window.addEventListener('scroll', f, { passive: true }); return () => window.removeEventListener('scroll', f); }, []);
   useEffect(() => { if (user) navigate('/dashboard', { replace: true }); }, [user, navigate]);
   useEffect(() => {

@@ -350,6 +350,53 @@ Response 200: { verified: true }
 Response 400: { error: "Signature mismatch" }
 ```
 
+### POST /api/payments/upload-screenshot
+Upload a UPI payment screenshot (base64) to Cloudinary. Returns the hosted URL.
+Rate-limited to 20 uploads/hr per user.
+```
+Headers: Authorization: Bearer <user-token>
+Body: { image_base64: string }
+Response 200: { url: string }
+Response 429: Rate limit exceeded
+```
+
+### POST /api/payments/upi-submit
+Submit a UPI payment request for admin review. Idempotent per subscription.
+```
+Headers: Authorization: Bearer <user-token>
+Body: { subscription_id: number, screenshot_url: string }
+Response 201: { payment_request_id: number, status: 'pending' }
+Response 409: { error: "Payment request already submitted" }
+```
+
+### GET /api/payments/upi-status/:subscription_id
+Poll the current UPI payment status for a subscription.
+```
+Headers: Authorization: Bearer <user-token>
+Response 200: {
+  subscription_state: string,
+  payment_request: {
+    id: number, status: 'pending' | 'approved' | 'denied',
+    submitted_at: string,
+    reviewed_at?: string,
+    denial_reason?: string
+  } | null
+}
+Response 403: if not owner
+```
+
+---
+
+## Visitor Tracking Routes — `/api/track`
+
+### POST /api/track
+Record a page visit. Public endpoint — no auth required. Fire-and-forget (always returns 200).
+Rate-limited to 10 events/sid/hr.
+```
+Body: { page: string, ref?: string }
+Response 200: {}
+```
+
 ---
 
 ## Notification Routes — `/api/notifications`
@@ -668,6 +715,60 @@ Replace discount table.
 ```
 Body: { discounts: Array<Omit<PlanDiscount, 'id'>> }
 Response 200: PlanDiscount[]
+```
+
+---
+
+## Admin Payment Review — `/api/admin/payments`
+> All require admin JWT.
+
+### GET /api/admin/payments
+List payment requests with optional status filter.
+```
+Query: ?status=pending|approved|denied&page=1
+Response 200: PaginatedResponse<PaymentRequest & { user: AuthUser, subscription: Subscription }>
+```
+
+### GET /api/admin/payments/:id
+Get a single payment request with full subscription and user detail.
+```
+Response 200: PaymentRequest & { user: AuthUser, subscription: Subscription & { person: Person } }
+Response 404: Not found
+```
+
+### PATCH /api/admin/payments/:id/approve
+Approve a UPI payment. Activates the subscription atomically.
+```
+Body: { start_date?: string }   // optional override; defaults to subscription's original start_date
+Response 200: { payment_request: PaymentRequest, subscription: Subscription }
+Response 400: { error: "Already reviewed" }
+```
+
+### PATCH /api/admin/payments/:id/deny
+Deny a UPI payment with a required reason.
+```
+Body: { reason: string }
+Response 200: { payment_request: PaymentRequest }
+Response 400: { error: "Already reviewed" | "reason is required" }
+```
+
+---
+
+## Admin Visitor Analytics — `/api/admin/visitors`
+> Requires admin JWT.
+
+### GET /api/admin/visitors
+Paginated list of visitor events, most recent first (50/page).
+```
+Query: ?page=1
+Response 200: {
+  events: Array<{
+    id, sid, user_id, page, ts,
+    d: { dev, browser, country, city, ref }
+  }>,
+  total: number,
+  page: number
+}
 ```
 
 ---

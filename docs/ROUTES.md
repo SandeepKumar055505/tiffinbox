@@ -51,6 +51,8 @@
 | `/admin/holidays` | `admin/AdminHolidaysPage` | Holiday list + skip meals on holiday |
 | `/admin/ledger` | `admin/AdminLedgerPage` | Paginated ledger + manual credit/debit |
 | `/admin/settings` | `admin/AdminSettingsPage` | Pricing, cutoffs, feature flags, referral amounts |
+| `/admin/payments` | `admin/AdminPaymentsPage` | Payment review queue (Pending/Approved/Denied tabs) |
+| `/admin/visitors` | `admin/AdminVisitorsPage` | Visitor analytics table |
 
 ---
 

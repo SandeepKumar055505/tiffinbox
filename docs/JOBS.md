@@ -47,6 +47,9 @@ export enum DomainEvent {
   PLAN_EXPIRING          = 'plan.expiring',
   SKIP_REQUEST_CREATED   = 'skip_request.created',
   STREAK_MILESTONE       = 'streak.milestone',
+  UPI_PAYMENT_SUBMITTED  = 'upi_payment.submitted',  // notify admin (in-app), notify user (receipt)
+  UPI_PAYMENT_APPROVED   = 'upi_payment.approved',   // wallet debit, promo increment, 30-day plan unlock, activation notification
+  UPI_PAYMENT_DENIED     = 'upi_payment.denied',     // notify user with denial reason
 }
 
 export async function emitEvent(event: DomainEvent, payload: object) {
@@ -194,6 +197,43 @@ boss.work('plan.unlock-check', async (job) => {
   // 2. If count >= 1 AND users.monthly_plan_unlocked = false:
   //    UPDATE users SET monthly_plan_unlocked=true
   //    Send "You've unlocked Monthly — Best Value" notification
+});
+```
+
+### 10. Visitor Events Cleanup
+Runs daily at 3 AM IST. Deletes `visitor_events` rows older than 90 days to keep storage under control.
+At steady-state (~1,000 visits/day × 90 days × ~150 bytes/row ≈ 1.35 MB).
+
+```typescript
+// Schedule: '0 3 * * *'  (IST)
+boss.schedule('visitor.cleanup', '0 3 * * *', {});
+
+boss.work('visitor.cleanup', async () => {
+  await db.raw("DELETE FROM visitor_events WHERE ts < NOW() - INTERVAL '90 days'");
+});
+```
+
+### 11. UPI Payment Event Handlers
+Triggered when admin approves or denies a UPI payment request.
+
+```typescript
+boss.work(DomainEvent.UPI_PAYMENT_SUBMITTED, async (job) => {
+  const { payment_request_id, user_id, subscription_id } = job.data;
+  // 1. Send in-app notification to admin: "New UPI payment submitted"
+  // 2. Send receipt notification to user: "Payment submitted — under review"
+});
+
+boss.work(DomainEvent.UPI_PAYMENT_APPROVED, async (job) => {
+  const { payment_request_id, user_id, subscription_id, amount } = job.data;
+  // 1. INSERT ledger_entries (entry_type='checkout_debit', direction='debit') if wallet was applied
+  // 2. Increment promo used_count if promo was applied
+  // 3. Check 30-day plan unlock (same logic as PAYMENT_SUCCESS job)
+  // 4. Send activation notification to user: "Payment approved! Your plan is now active."
+});
+
+boss.work(DomainEvent.UPI_PAYMENT_DENIED, async (job) => {
+  const { payment_request_id, user_id, denial_reason } = job.data;
+  // 1. Send notification to user with denial_reason
 });
 ```
 
