@@ -7,6 +7,7 @@ import { env } from '../config/env';
 import { requireUser } from '../middleware/auth';
 import { validate } from '../middleware/validate';
 import { emitEvent, DomainEvent } from '../jobs/events';
+import rateLimit from 'express-rate-limit';
 
 const router = Router();
 
@@ -19,10 +20,20 @@ if (cloudinaryEnabled) {
   });
 }
 
+const uploadRateLimit = rateLimit({
+  windowMs: 60 * 60 * 1000, // 1 hour
+  max: 20,
+  keyGenerator: (req: any) => `upload:${req.userId || req.ip}`,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Too many uploads. Please try again later.' },
+});
+
 // POST /api/payments/upload-screenshot
 router.post(
   '/upload-screenshot',
   requireUser,
+  uploadRateLimit,
   async (req, res) => {
     if (!cloudinaryEnabled) {
       return res.status(503).json({ error: 'Image upload not configured' });
@@ -31,7 +42,9 @@ router.post(
     if (!data || !data.startsWith('data:image/')) {
       return res.status(422).json({ error: 'Invalid image data' });
     }
-    if (data.length > 7_000_000) {
+    // 5MB binary = ~6.67MB base64 (4/3 expansion ratio)
+    const MAX_BASE64_5MB = Math.ceil(5 * 1024 * 1024 * 4 / 3);
+    if (data.length > MAX_BASE64_5MB) {
       return res.status(422).json({ error: 'Image too large (max 5MB)' });
     }
     try {
@@ -53,7 +66,10 @@ router.post(
   requireUser,
   validate(z.object({
     subscription_id: z.number().int().positive(),
-    screenshot_url: z.string().url(),
+    screenshot_url: z.string().url().refine(
+      url => url.startsWith('https://res.cloudinary.com/'),
+      { message: 'screenshot_url must be a Cloudinary URL' }
+    ),
   })),
   async (req, res) => {
     const { subscription_id, screenshot_url } = req.body;
@@ -104,7 +120,7 @@ router.post(
       payment_request_id: req_record.id,
       subscription_id,
       user_id: req.userId,
-    }).catch(err => console.error('[upi-submit] event failed:', err.message));
+    }).catch(err => console.error('[upi-submit] event failed:', err?.message));
   }
 );
 
@@ -113,13 +129,16 @@ router.get(
   '/upi-status/:subscription_id',
   requireUser,
   async (req, res) => {
+    const subId = parseInt(req.params.subscription_id, 10);
+    if (isNaN(subId)) return res.status(400).json({ error: 'Invalid subscription id' });
+
     const sub = await db('subscriptions')
-      .where({ id: req.params.subscription_id, user_id: req.userId })
+      .where({ id: subId, user_id: req.userId })
       .first();
     if (!sub) return res.status(404).json({ error: 'Subscription not found' });
 
     const pr = await db('payment_requests')
-      .where({ subscription_id: req.params.subscription_id })
+      .where({ subscription_id: subId })
       .orderBy('submitted_at', 'desc')
       .first();
 
