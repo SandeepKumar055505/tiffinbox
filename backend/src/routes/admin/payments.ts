@@ -11,7 +11,8 @@ const router = Router();
 router.get('/', requireAdmin, async (req, res) => {
   const { status = 'pending', page = '1' } = req.query as Record<string, string>;
   const limit = 20;
-  const offset = (parseInt(page) - 1) * limit;
+  const p = Math.max(1, parseInt(page) || 1);
+  const offset = (p - 1) * limit;
 
   const validStatuses = ['pending', 'approved', 'denied', 'all'];
   const filterStatus = validStatuses.includes(status) ? status : 'pending';
@@ -42,7 +43,7 @@ router.get('/', requireAdmin, async (req, res) => {
     }),
   ]);
 
-  res.json({ data: rows, total: parseInt(total as string), page: parseInt(page), limit });
+  res.json({ data: rows, total: Number(total), page: p, limit });
 });
 
 // GET /api/admin/payments/:id
@@ -79,64 +80,89 @@ router.patch(
     start_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
   })),
   async (req, res) => {
-    const pr = await db('payment_requests')
-      .where({ id: req.params.id, status: 'pending' })
-      .first();
-    if (!pr) return res.status(404).json({ error: 'Pending payment request not found' });
+    let prForEvent: any;
+    let subForEvent: any;
+    let newStartForEvent: Date;
 
-    const sub = await db('subscriptions')
-      .where({ id: pr.subscription_id, state: 'pending_payment' })
-      .first();
-    if (!sub) return res.status(409).json({ error: 'Subscription is not in pending_payment state' });
+    try {
+      await db.transaction(async trx => {
+        const pr = await trx('payment_requests')
+          .where({ id: req.params.id, status: 'pending' })
+          .forUpdate()
+          .first();
+        if (!pr) {
+          const err: any = new Error('Pending payment request not found');
+          err.status = 404;
+          throw err;
+        }
 
-    const originalStart = new Date(sub.start_date);
-    const newStart = req.body.start_date ? new Date(req.body.start_date) : originalStart;
-    const deltaDays = Math.round((newStart.getTime() - originalStart.getTime()) / 86400000);
+        const sub = await trx('subscriptions')
+          .where({ id: pr.subscription_id, state: 'pending_payment' })
+          .forUpdate()
+          .first();
+        if (!sub) {
+          const err: any = new Error('Subscription is not in pending_payment state');
+          err.status = 409;
+          throw err;
+        }
 
-    await db.transaction(async trx => {
-      if (deltaDays !== 0) {
-        await trx.raw(
-          `UPDATE meal_cells SET date = date + INTERVAL '${deltaDays} days' WHERE subscription_id = ?`,
-          [sub.id]
-        );
+        const originalStart = new Date(sub.start_date);
+        const newStart = req.body.start_date ? new Date(req.body.start_date) : originalStart;
+        const deltaDays = Math.round((newStart.getTime() - originalStart.getTime()) / 86400000);
+
+        if (deltaDays !== 0) {
+          await trx.raw(
+            `UPDATE meal_cells SET date = date + (? * INTERVAL '1 day') WHERE subscription_id = ?`,
+            [deltaDays, sub.id]
+          );
+        }
+
+        await trx('subscriptions')
+          .where({ id: sub.id })
+          .update({
+            state: 'active',
+            start_date: newStart.toISOString().split('T')[0],
+            end_date: deltaDays !== 0
+              ? trx.raw(`end_date + (? * INTERVAL '1 day')`, [deltaDays])
+              : sub.end_date,
+            updated_at: trx.fn.now(),
+          });
+
+        await trx('payment_requests')
+          .where({ id: pr.id })
+          .update({
+            status: 'approved',
+            reviewed_by: req.adminId,
+            reviewed_at: trx.fn.now(),
+          });
+
+        prForEvent = pr;
+        subForEvent = sub;
+        newStartForEvent = newStart;
+      });
+    } catch (err: any) {
+      if (err.status === 404 || err.status === 409) {
+        return res.status(err.status).json({ error: err.message });
       }
-
-      await trx('subscriptions')
-        .where({ id: sub.id })
-        .update({
-          state: 'active',
-          start_date: newStart.toISOString().split('T')[0],
-          end_date: deltaDays !== 0
-            ? trx.raw(`end_date + INTERVAL '${deltaDays} days'`)
-            : sub.end_date,
-          updated_at: trx.fn.now(),
-        });
-
-      await trx('payment_requests')
-        .where({ id: pr.id })
-        .update({
-          status: 'approved',
-          reviewed_by: req.adminId,
-          reviewed_at: trx.fn.now(),
-        });
-    });
+      throw err;
+    }
 
     res.json({ success: true });
 
     emitEvent(DomainEvent.UPI_PAYMENT_APPROVED, {
-      payment_request_id: pr.id,
-      subscription_id: sub.id,
-      user_id: pr.user_id,
-      wallet_applied: sub.wallet_applied,
-      promo_code: sub.promo_code,
+      payment_request_id: prForEvent.id,
+      subscription_id: subForEvent.id,
+      user_id: prForEvent.user_id,
+      wallet_applied: subForEvent.wallet_applied,
+      promo_code: subForEvent.promo_code,
     }).catch(err => console.error('[approve] event failed:', err?.message));
 
     db('audit_logs').insert({
       admin_id: req.adminId,
       action: 'payment.approve',
       target_type: 'payment_request',
-      target_id: pr.id,
-      after_value: JSON.stringify({ start_date: newStart.toISOString().split('T')[0] }),
+      target_id: prForEvent.id,
+      after_value: JSON.stringify({ start_date: newStartForEvent!.toISOString().split('T')[0] }),
     }).catch(() => {});
   }
 );
@@ -153,6 +179,11 @@ router.patch(
       .where({ id: req.params.id, status: 'pending' })
       .first();
     if (!pr) return res.status(404).json({ error: 'Pending payment request not found' });
+
+    const sub = await db('subscriptions').where({ id: pr.subscription_id }).first();
+    if (!sub || !['draft', 'pending_payment'].includes(sub.state)) {
+      return res.status(409).json({ error: 'Subscription is not in a deniable state' });
+    }
 
     await db.transaction(async trx => {
       await trx('subscriptions')
