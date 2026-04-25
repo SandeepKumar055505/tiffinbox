@@ -41,6 +41,7 @@ import driverRoutes from './routes/driver';
 import ratingsRoutes from './routes/ratings';
 import referralsRoutes from './routes/referrals';
 import voucherRoutes from './routes/vouchers';
+import trackRoutes from './routes/track';
 
 // DB migrations
 import { runMigrations } from './db/migrate';
@@ -63,6 +64,7 @@ import adminLogisticsRoutes from './routes/admin/logistics';
 import adminAreaRoutes from './routes/admin/areas';
 import adminNarrativeRoutes from './routes/admin/narratives';
 import adminNotificationRoutes from './routes/admin/notifications';
+import adminVisitorRoutes from './routes/admin/visitors';
 
 const app = express();
 
@@ -164,6 +166,7 @@ app.use('/api/driver', driverRoutes);
 app.use('/api/ratings', ratingsRoutes);
 app.use('/api/referrals', referralsRoutes);
 app.use('/api/vouchers', voucherRoutes);
+app.use('/api/track', trackRoutes);
 
 // ── Admin routes ──────────────────────────────────────────────────────────────
 app.use('/api/admin/dashboard', adminDashboardRoutes);
@@ -183,6 +186,7 @@ app.use('/api/admin/logistics', adminLogisticsRoutes);
 app.use('/api/admin/areas', adminAreaRoutes);
 app.use('/api/admin/narratives', adminNarrativeRoutes);
 app.use('/api/admin/notifications', adminNotificationRoutes);
+app.use('/api/admin/visitors', adminVisitorRoutes);
 
 // ── 404 handler (must come after all routes) ─────────────────────────────────
 app.use((_req, res) => {
