@@ -29,6 +29,9 @@ router.post('/google', validate(z.object({
     if (!payload?.sub) return res.status(400).json({ error: 'Invalid Google token' });
 
     let user = await db('users').where({ google_id: payload.sub }).first();
+    if (user?.deleted_at) {
+      return res.status(403).json({ error: 'This account has been deleted. Please contact support to reactivate.' });
+    }
     const isNewUser = !user;
     let referrer_name: string | null = null;
     let referred_by_id: number | null = null;
@@ -196,23 +199,19 @@ router.patch('/me', requireUser, validate(z.object({
   res.json(safeUser(user));
 });
 
-// DELETE /api/auth/me — Close account
+// DELETE /api/auth/me — Soft-delete account
 router.delete('/me', requireUser, async (req, res) => {
   const user = await db('users').where({ id: req.userId }).first();
   if (!user) return res.status(404).json({ error: 'User not found' });
 
-  // 1. Cancel all active subscriptions
-  await db('subscriptions').where({ user_id: req.userId, state: 'active' }).update({ state: 'cancelled', updated_at: db.fn.now() });
+  await db('subscriptions')
+    .where({ user_id: req.userId, state: 'active' })
+    .update({ state: 'cancelled', updated_at: db.fn.now() });
 
-  // 2. Anonymize user data (GDPR/Compliance)
   await db('users').where({ id: req.userId }).update({
-    name: 'Deleted User',
-    email: `deleted_${req.userId}_${Date.now()}@tiffinbox.com`,
-    google_id: `deleted_${user.google_id}`,
-    phone: null,
-    avatar_url: null,
-    delivery_address: null,
-    updated_at: db.fn.now()
+    deleted_at: db.fn.now(),
+    is_active: false,
+    updated_at: db.fn.now(),
   });
 
   res.status(204).send();

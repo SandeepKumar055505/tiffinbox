@@ -40,8 +40,14 @@ export default function AdminUserDetailPage() {
                <p className="text-xs t-text-muted">UID: #{user.id} · Member since {new Date(user.created_at).toLocaleDateString()}</p>
             </div>
          </div>
-         <div className={`px-4 py-1.5 rounded-full border text-[10px] font-black uppercase tracking-widest ${user.is_active ? 'bg-teal-500/10 border-teal-500/20 text-teal-500' : 'bg-red-500/10 border-red-500/20 text-red-500'}`}>
-            {user.is_active ? 'Account Active' : 'Account Suspended'}
+         <div className={`px-4 py-1.5 rounded-full border text-[10px] font-black uppercase tracking-widest ${
+           user.deleted_at
+             ? 'bg-zinc-500/10 border-zinc-500/20 text-zinc-400'
+             : user.is_active
+               ? 'bg-teal-500/10 border-teal-500/20 text-teal-500'
+               : 'bg-red-500/10 border-red-500/20 text-red-500'
+         }`}>
+            {user.deleted_at ? 'Account Deleted' : user.is_active ? 'Account Active' : 'Account Suspended'}
          </div>
       </header>
 

@@ -9,6 +9,7 @@ interface AdminUser {
   email: string;
   phone?: string;
   is_active: boolean;
+  deleted_at?: string | null;
   created_at: string;
   monthly_plan_unlocked: boolean;
 }
@@ -106,13 +107,19 @@ export default function AdminUsersPage() {
                   <td className="px-4 py-3 t-text-muted">{user.email}</td>
                   <td className="px-4 py-3 t-text-muted">{user.phone || '—'}</td>
                   <td className="px-4 py-3">
-                    <span className={`text-[10px] font-black uppercase px-2 py-0.5 rounded-full ${
-                      user.is_active
-                        ? 'bg-teal-500/10 text-teal-400'
-                        : 'bg-red-500/10 text-red-400'
-                    }`}>
-                      {user.is_active ? 'Active' : 'Suspended'}
-                    </span>
+                    {user.deleted_at ? (
+                      <span className="text-[10px] font-black uppercase px-2 py-0.5 rounded-full bg-zinc-500/10 text-zinc-400">
+                        Deleted
+                      </span>
+                    ) : user.is_active ? (
+                      <span className="text-[10px] font-black uppercase px-2 py-0.5 rounded-full bg-teal-500/10 text-teal-400">
+                        Active
+                      </span>
+                    ) : (
+                      <span className="text-[10px] font-black uppercase px-2 py-0.5 rounded-full bg-red-500/10 text-red-400">
+                        Suspended
+                      </span>
+                    )}
                   </td>
                   <td className="px-4 py-3 t-text-muted opacity-70">{fmtDate(user.created_at)}</td>
                 </tr>
