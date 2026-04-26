@@ -17,7 +17,7 @@ export default function AdminUserDetailPage() {
   });
 
   const giftMutation = useMutation({
-    mutationFn: (data: { amount: number; description: string }) => 
+    mutationFn: (data: { amount: number; description: string }) =>
       adminUsers.giftWallet(parseInt(id!), data.amount, data.description),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['admin-user', id] });
@@ -25,6 +25,15 @@ export default function AdminUserDetailPage() {
       setGiftNote('');
       haptics.success();
     }
+  });
+
+  const statusMutation = useMutation({
+    mutationFn: (is_active: boolean) =>
+      adminUsers.updateStatus(parseInt(id!), { is_active }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['admin-user', id] });
+      haptics.success();
+    },
   });
 
   if (isLoading) return <div className="p-20 text-center animate-pulse text-xs font-black tracking-widest uppercase opacity-20">Manifesting Identity...</div>;
@@ -71,6 +80,16 @@ export default function AdminUserDetailPage() {
                   <div className="space-y-1">
                      <p className="text-[9px] font-black uppercase opacity-20">Device Fingerprint</p>
                      <p className="text-[10px] font-mono opacity-40 truncate">{user.last_fingerprint || 'Generic Substrate'}</p>
+                  </div>
+                  {user.delivery_address && (
+                    <div className="space-y-1">
+                      <p className="text-[9px] font-black uppercase opacity-20">Delivery Address</p>
+                      <p className="text-sm font-bold">{user.delivery_address}</p>
+                    </div>
+                  )}
+                  <div className="space-y-1">
+                    <p className="text-[9px] font-black uppercase opacity-20">Referral Code</p>
+                    <p className="text-sm font-mono font-bold tracking-widest">{user.referral_code || '—'}</p>
                   </div>
                </div>
             </div>
@@ -174,6 +193,89 @@ export default function AdminUserDetailPage() {
                             className="text-[10px] t-text-muted opacity-50 hover:text-accent transition-colors">
                             View screenshot ↗
                           </a>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Account Management */}
+            {!user.deleted_at && (
+              <div className="glass p-8 space-y-4" style={{ borderRadius: '2.5rem' }}>
+                <h3 className="text-xs font-black uppercase tracking-widest t-text-muted">Account Management</h3>
+                <p className="text-[11px] t-text-muted opacity-60">
+                  {user.is_active
+                    ? 'Suspending will block the user from logging in and placing orders.'
+                    : 'Reactivating will restore full account access.'}
+                </p>
+                <button
+                  disabled={statusMutation.isPending}
+                  onClick={() => statusMutation.mutate(!user.is_active)}
+                  className={`w-full py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all disabled:opacity-30 ${
+                    user.is_active
+                      ? 'bg-red-500/10 text-red-400 hover:bg-red-500/20 border border-red-500/20'
+                      : 'bg-teal-500/10 text-teal-400 hover:bg-teal-500/20 border border-teal-500/20'
+                  }`}
+                >
+                  {statusMutation.isPending ? 'Updating...' : user.is_active ? 'Suspend Account' : 'Reactivate Account'}
+                </button>
+              </div>
+            )}
+
+            {/* Subscriptions */}
+            {user.subscriptions?.length > 0 && (
+              <div className="glass p-8 space-y-4" style={{ borderRadius: '2.5rem' }}>
+                <h3 className="text-xs font-black uppercase tracking-widest t-text-muted">Subscription History</h3>
+                <div className="space-y-2 max-h-[300px] overflow-y-auto pr-2 custom-scrollbar">
+                  {user.subscriptions.map((sub: any) => (
+                    <div key={sub.id} className="flex items-center justify-between p-4 bg-white/[0.03] rounded-2xl border border-white/5">
+                      <div className="space-y-0.5">
+                        <p className="text-[11px] font-black t-text-primary">{sub.plan_days}-Day Plan</p>
+                        <p className="text-[10px] t-text-muted opacity-50">
+                          {sub.start_date ? new Date(sub.start_date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }) : '—'}
+                          {sub.end_date ? ` → ${new Date(sub.end_date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}` : ''}
+                        </p>
+                      </div>
+                      <div className="text-right space-y-0.5">
+                        <span className={`text-[10px] font-black uppercase px-2 py-0.5 rounded-full ${
+                          sub.state === 'active' ? 'bg-teal-500/10 text-teal-400' :
+                          sub.state === 'completed' ? 'bg-blue-500/10 text-blue-400' :
+                          sub.state === 'cancelled' ? 'bg-red-500/10 text-red-400' :
+                          'bg-zinc-500/10 text-zinc-400'
+                        }`}>{sub.state}</span>
+                        {sub.price_snapshot?.final_total && (
+                          <p className="text-[10px] t-text-muted opacity-50">₹{(sub.price_snapshot.final_total / 100).toLocaleString('en-IN')}</p>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Persons */}
+            {user.persons?.length > 0 && (
+              <div className="glass p-8 space-y-4" style={{ borderRadius: '2.5rem' }}>
+                <h3 className="text-xs font-black uppercase tracking-widest t-text-muted">Meal Plan Members</h3>
+                <div className="space-y-2">
+                  {user.persons.map((person: any) => (
+                    <div key={person.id} className="flex items-center justify-between p-4 bg-white/[0.03] rounded-2xl border border-white/5">
+                      <div className="flex items-center gap-3">
+                        <div className="w-8 h-8 rounded-full bg-accent/10 flex items-center justify-center text-sm font-black text-accent">
+                          {person.name.charAt(0)}
+                        </div>
+                        <div>
+                          <p className="text-[11px] font-black t-text-primary">{person.name}</p>
+                          {person.dietary_tag && (
+                            <p className="text-[9px] t-text-muted opacity-50 uppercase">{person.dietary_tag}</p>
+                          )}
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        {person.current_streak > 0 && (
+                          <p className="text-[10px] text-orange-400 font-black">🔥 {person.current_streak} streak</p>
                         )}
                       </div>
                     </div>

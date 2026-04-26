@@ -75,13 +75,22 @@ export default function AdminVisitorsPage() {
         </div>
       )}
 
-      {!isLoading && !isError && data && data?.total > data?.limit && (
-        <div className="flex justify-center gap-3">
-          <button disabled={page === 1} onClick={() => setPage(p => p - 1)}
-            className="px-4 py-2 rounded-xl surface-glass ring-1 ring-border/20 text-[12px] font-bold disabled:opacity-30">← Prev</button>
-          <span className="px-4 py-2 text-[12px] t-text-muted">Page {page}</span>
-          <button disabled={page * (data?.limit ?? 50) >= (data?.total ?? 0)} onClick={() => setPage(p => p + 1)}
-            className="px-4 py-2 rounded-xl surface-glass ring-1 ring-border/20 text-[12px] font-bold disabled:opacity-30">Next →</button>
+      {/* Always show count; pagination controls only when multiple pages */}
+      {!isLoading && !isError && data && (
+        <div className="flex items-center justify-center gap-3">
+          {data.total > data.limit && (
+            <button disabled={page === 1} onClick={() => setPage(p => p - 1)}
+              className="px-4 py-2 rounded-xl surface-glass ring-1 ring-border/20 text-[12px] font-bold disabled:opacity-30">← Prev</button>
+          )}
+          <span className="px-4 py-2 text-[12px] t-text-muted">
+            {data.total > data.limit
+              ? `Page ${page} of ${Math.ceil(data.total / data.limit)}`
+              : `${data.total} record${data.total !== 1 ? 's' : ''}`}
+          </span>
+          {data.total > data.limit && (
+            <button disabled={page * (data?.limit ?? 50) >= (data?.total ?? 0)} onClick={() => setPage(p => p + 1)}
+              className="px-4 py-2 rounded-xl surface-glass ring-1 ring-border/20 text-[12px] font-bold disabled:opacity-30">Next →</button>
+          )}
         </div>
       )}
     </div>
