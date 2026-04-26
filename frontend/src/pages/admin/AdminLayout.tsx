@@ -12,6 +12,7 @@ const NAV = [
   { to: '/admin/cancel', label: 'Cancel Requests', icon: '🚫' },
   { to: '/admin/areas', label: 'Sovereign Zones', icon: '🗺️' },
   { to: '/admin/menu', label: 'Menu', icon: '🍱' },
+  { to: '/admin/users', label: 'Users', icon: '👤' },
   { to: '/admin/support', label: 'Support', icon: '💬' },
   { to: '/admin/holidays', label: 'Holidays', icon: '🎉' },
   { to: '/admin/ledger', label: 'Ledger', icon: '📒' },
