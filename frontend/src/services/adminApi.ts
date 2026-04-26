@@ -68,7 +68,7 @@ export const adminRewards = {
 };
 
 export const adminUsers = {
-  list: () => api.get('/admin/users'),
+  list: (params?: { q?: string; page?: number }) => api.get('/admin/users', { params }),
   get: (id: number) => api.get(`/admin/users/${id}`),
   updateStatus: (id: number, data: any) => api.patch(`/admin/users/${id}/status`, data),
   giftWallet: (id: number, amount: number, description: string) => api.post(`/admin/users/${id}/wallet/gift`, { amount, description }),

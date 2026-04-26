@@ -1,164 +1,145 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery, keepPreviousData } from '@tanstack/react-query';
 import { adminUsers } from '../../services/adminApi';
-import { useSensorial, haptics } from '../../context/SensorialContext';
+
+interface AdminUser {
+  id: number;
+  name: string;
+  email: string;
+  phone?: string;
+  is_active: boolean;
+  created_at: string;
+  monthly_plan_unlocked: boolean;
+}
+
+interface UsersResponse {
+  data: AdminUser[];
+  total: number;
+  page: number;
+  limit: number;
+}
 
 export default function AdminUsersPage() {
-  const qc = useQueryClient();
-  const { showSuccess, showError, confirm } = useSensorial();
-  const [selectedUserId, setSelectedUserId] = useState<number | null>(null);
+  const [page, setPage] = useState(1);
+  const [q, setQ] = useState('');
+  const [search, setSearch] = useState('');  // committed search (on Enter/button)
 
-  const { data: users = [] } = useQuery({
-    queryKey: ['admin-users'],
-    queryFn: () => adminUsers.list().then(r => r.data),
+  const { data, isLoading, isError } = useQuery<UsersResponse>({
+    queryKey: ['admin-users', page, search],
+    queryFn: () => adminUsers.list({ q: search || undefined, page }).then(r => r.data),
+    placeholderData: keepPreviousData,
   });
 
-  const { data: userDetail } = useQuery({
-    queryKey: ['admin-user', selectedUserId],
-    queryFn: () => adminUsers.get(selectedUserId!).then(r => r.data),
-    enabled: !!selectedUserId,
-  });
+  const handleSearch = (e: React.FormEvent) => {
+    e.preventDefault();
+    setPage(1);
+    setSearch(q);
+  };
 
-  const grantElite = useMutation({
-    mutationFn: (id: number) => adminUsers.updateStatus(id, { monthly_plan_unlocked: true }),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['admin-user', selectedUserId] });
-      showSuccess('Elite Status Granted', 'This household now possesses absolute 30-day plan sovereignty.');
-      haptics.confirm();
-    },
-  });
-
-  const giftWallet = useMutation({
-    mutationFn: ({ id, amount }: { id: number, amount: number }) => 
-      adminUsers.giftWallet(id, amount, 'Executive administrative gift manifested.'),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['admin-user', selectedUserId] });
-      showSuccess('Wallet Gifted', 'Incentive credits have been manifested in the user wallet.');
-      haptics.confirm();
-    },
-  });
+  const fmtDate = (d: string) =>
+    new Date(d).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
 
   return (
-    <div className="grid grid-cols-12 h-[calc(100vh-140px)] gap-6 p-6 animate-in fade-in duration-700">
-      {/* User Manifest List */}
-      <div className="col-span-4 glass flex flex-col overflow-hidden" style={{ borderRadius: '2.5rem' }}>
-        <div className="p-6 border-b border-white/5 space-y-1">
-           <h3 className="text-sm font-black t-text tracking-widest uppercase">Household Manifest</h3>
-           <p className="text-[10px] t-text-muted">Orchestrating {users.length} Active Households</p>
+    <div className="p-6 space-y-6">
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-black t-text-primary">Users</h1>
+          <p className="text-[12px] t-text-muted mt-1">
+            {data?.total ?? '—'} registered users
+          </p>
         </div>
-        
-        <div className="flex-1 overflow-y-auto p-4 space-y-2 custom-scrollbar">
-           {users.map((user: any) => (
-             <button
-               key={user.id}
-               onClick={() => { setSelectedUserId(user.id); haptics.light(); }}
-               className={`w-full text-left p-4 rounded-2xl transition-all border ${selectedUserId === user.id ? 'bg-white/10 border-white/10 shadow-lg' : 'hover:bg-white/5 border-transparent'}`}
-             >
-                <div className="flex justify-between items-center">
-                   <p className="text-xs font-black t-text">{user.name}</p>
-                   {user.monthly_plan_unlocked && <span className="text-[8px] bg-teal-500/10 text-teal-400 px-1.5 py-0.5 rounded-full font-black uppercase">Elite</span>}
-                </div>
-                <p className="text-[10px] t-text-muted mt-0.5">{user.email}</p>
-             </button>
-           ))}
-        </div>
+        {/* Search */}
+        <form onSubmit={handleSearch} className="flex gap-2">
+          <input
+            value={q}
+            onChange={e => setQ(e.target.value)}
+            placeholder="Search name, email, phone…"
+            className="px-4 py-2 rounded-xl surface-glass ring-1 ring-border/20 text-[12px] t-text-primary placeholder:t-text-muted bg-transparent outline-none focus:ring-accent/40 w-64"
+          />
+          <button type="submit"
+            className="px-4 py-2 rounded-xl surface-glass ring-1 ring-border/20 text-[12px] font-bold t-text-primary hover:ring-accent/40">
+            Search
+          </button>
+          {search && (
+            <button type="button" onClick={() => { setQ(''); setSearch(''); setPage(1); }}
+              className="px-4 py-2 rounded-xl surface-glass ring-1 ring-border/20 text-[12px] font-bold t-text-muted">
+              Clear
+            </button>
+          )}
+        </form>
       </div>
 
-      {/* User Sovereignty Center */}
-      <div className="col-span-8 flex flex-col gap-6">
-         {selectedUserId && userDetail ? (
-           <>
-             <div className="glass p-8 space-y-8" style={{ borderRadius: '2.5rem' }}>
-                <div className="flex justify-between items-start">
-                   <div className="flex items-center gap-6">
-                      <div className="w-16 h-16 rounded-[1.8rem] bg-white/5 flex items-center justify-center text-3xl font-black t-text border border-white/10 shadow-xl">
-                         {userDetail.user.name.charAt(0)}
-                      </div>
-                      <div className="space-y-1">
-                         <h2 className="text-2xl font-black t-text tracking-tight">{userDetail.user.name}</h2>
-                         <div className="flex items-center gap-3">
-                            <span className="text-[10px] font-black uppercase tracking-widest text-teal-500">Active Manifest</span>
-                            <span className="w-1 h-1 rounded-full bg-white/20" />
-                            <span className="text-[10px] font-black uppercase tracking-widest opacity-30">Member since {new Date(userDetail.user.created_at).toLocaleDateString()}</span>
-                         </div>
-                      </div>
-                   </div>
-                   <div className="flex gap-3">
-                      <Link to={`/users/${userDetail.user.id}`} className="glass p-3 rounded-full hover:scale-110 active:scale-95 transition-all text-xl">👤</Link>
-                      <button className="glass p-3 rounded-full hover:scale-110 active:scale-95 transition-all text-xl">💬</button>
-                      <button className="glass p-3 rounded-full hover:scale-110 active:scale-95 transition-all text-xl">💳</button>
-                   </div>
-                </div>
+      {/* Table */}
+      {isLoading ? (
+        <div className="flex items-center justify-center h-64">
+          <div className="w-8 h-8 rounded-full border-2 border-accent/20 border-t-accent animate-spin" />
+        </div>
+      ) : isError ? (
+        <div className="text-center py-16 t-text-muted opacity-60">
+          <p className="text-2xl mb-2">⚠️</p>
+          <p className="font-bold text-sm">Failed to load users</p>
+        </div>
+      ) : (
+        <div className="surface-glass ring-1 ring-border/15 rounded-[1.5rem] overflow-hidden">
+          <table className="w-full text-[12px]">
+            <thead>
+              <tr className="border-b border-border/10">
+                {['Name', 'Email', 'Phone', 'Status', 'Joined'].map(h => (
+                  <th key={h} className="text-left px-4 py-3 text-[10px] font-black t-text-muted uppercase tracking-wider opacity-50">{h}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-border/5">
+              {data?.data?.map((user: any) => (
+                <tr key={user.id} className="hover:bg-bg-subtle transition-colors">
+                  <td className="px-4 py-3">
+                    <Link to={`/admin/users/${user.id}`}
+                      className="font-bold t-text-primary hover:text-accent hover:underline transition-colors">
+                      {user.name}
+                    </Link>
+                    {user.monthly_plan_unlocked && (
+                      <span className="ml-2 text-[9px] bg-teal-500/10 text-teal-400 px-1.5 py-0.5 rounded-full font-black uppercase">Elite</span>
+                    )}
+                  </td>
+                  <td className="px-4 py-3 t-text-muted">{user.email}</td>
+                  <td className="px-4 py-3 t-text-muted">{user.phone || '—'}</td>
+                  <td className="px-4 py-3">
+                    <span className={`text-[10px] font-black uppercase px-2 py-0.5 rounded-full ${
+                      user.is_active
+                        ? 'bg-teal-500/10 text-teal-400'
+                        : 'bg-red-500/10 text-red-400'
+                    }`}>
+                      {user.is_active ? 'Active' : 'Suspended'}
+                    </span>
+                  </td>
+                  <td className="px-4 py-3 t-text-muted opacity-70">{fmtDate(user.created_at)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          {!data?.data?.length && (
+            <div className="text-center py-16 t-text-muted opacity-40">
+              <p className="text-3xl mb-3">👤</p>
+              <p className="font-bold">{search ? 'No users match your search' : 'No users yet'}</p>
+            </div>
+          )}
+        </div>
+      )}
 
-                <div className="grid grid-cols-4 gap-4">
-                   <div className="p-5 bg-white/5 border border-white/5 rounded-[2rem] space-y-1">
-                      <p className="text-[9px] uppercase font-black tracking-widest opacity-20">Wallet Pulse</p>
-                      <p className="text-lg font-black t-text">₹{userDetail.user.wallet_balance / 100}</p>
-                   </div>
-                   <div className="p-5 bg-white/5 border border-white/5 rounded-[2rem] space-y-1">
-                      <p className="text-[9px] uppercase font-black tracking-widest opacity-20">Peak Streak</p>
-                      <p className="text-lg font-black t-text">{userDetail.stats?.longest_streak || 0}d</p>
-                   </div>
-                   <div className="p-5 bg-white/5 border border-white/5 rounded-[2rem] space-y-1">
-                      <p className="text-[9px] uppercase font-black tracking-widest opacity-20">Life Value</p>
-                      <p className="text-lg font-black t-text">₹{userDetail.stats?.ltv || 0}</p>
-                   </div>
-                   <div className="p-5 bg-white/5 border border-white/5 rounded-[2rem] space-y-1">
-                      <p className="text-[9px] uppercase font-black tracking-widest opacity-20">Status</p>
-                      <p className={`text-[10px] font-black uppercase tracking-widest ${userDetail.user.monthly_plan_unlocked ? 'text-teal-400' : 't-text-muted'}`}>
-                         {userDetail.user.monthly_plan_unlocked ? 'Elite Sovereign' : 'Standard'}
-                      </p>
-                   </div>
-                </div>
-
-                <div className="flex gap-4">
-                   <button 
-                     disabled={userDetail.user.monthly_plan_unlocked || grantElite.isPending}
-                     onClick={async () => {
-                        const ok = await confirm({ title: 'Grant Elite Sovereignty?', message: 'This will unlock the 30-day Elite plan manifest for this household permanently.' });
-                        if (ok) grantElite.mutate(userDetail.user.id);
-                     }}
-                     className="flex-1 bg-white text-black font-black py-4 rounded-2xl text-[10px] uppercase tracking-widest hover:scale-102 transition-all disabled:opacity-30"
-                   >
-                      Grant Elite Plan Status
-                   </button>
-                   <button 
-                     onClick={() => giftWallet.mutate({ id: userDetail.user.id, amount: 5000 })}
-                     className="flex-1 glass glass-hover border-white/10 font-black py-4 rounded-2xl text-[10px] uppercase tracking-widest transition-all"
-                   >
-                      Gift ₹50.00 Credits
-                   </button>
-                </div>
-             </div>
-
-             <div className="flex-1 glass p-8 space-y-6 overflow-hidden flex flex-col" style={{ borderRadius: '2.5rem' }}>
-                <h3 className="text-[10px] font-black uppercase tracking-widest opacity-30">Active Manifest History</h3>
-                <div className="flex-1 overflow-y-auto space-y-3 custom-scrollbar">
-                   {userDetail.subscriptions?.map((sub: any) => (
-                     <div key={sub.id} className="p-5 bg-black/20 rounded-3xl border border-white/5 flex justify-between items-center group hover:bg-black/40 transition-colors">
-                        <div>
-                           <p className="text-xs font-bold t-text">{sub.plan_days}-Day Culinary Manifest</p>
-                           <p className="text-[10px] t-text-muted">{sub.start_date} → {sub.end_date}</p>
-                        </div>
-                        <div className="text-right">
-                           <p className="text-xs font-black t-text">₹{sub.price_snapshot?.final_total || 0}</p>
-                           <p className="text-[9px] uppercase font-black tracking-widest text-teal-400">{sub.state}</p>
-                        </div>
-                     </div>
-                   ))}
-                </div>
-             </div>
-           </>
-         ) : (
-           <div className="flex-1 glass flex items-center justify-center border-dashed border-white/5" style={{ borderRadius: '2.5rem' }}>
-              <div className="text-center space-y-2 opacity-20">
-                 <p className="text-6xl">👤</p>
-                 <p className="text-sm font-bold tracking-widest uppercase">Select a Household to Manifest Sovereignty</p>
-              </div>
-           </div>
-         )}
-      </div>
+      {/* Pagination */}
+      {!isLoading && !isError && data && data.total > data.limit && (
+        <div className="flex items-center justify-center gap-3">
+          <button disabled={page === 1} onClick={() => setPage(p => p - 1)}
+            className="px-4 py-2 rounded-xl surface-glass ring-1 ring-border/20 text-[12px] font-bold disabled:opacity-30">← Prev</button>
+          <span className="px-4 py-2 text-[12px] t-text-muted">
+            Page {page} of {Math.ceil(data.total / data.limit)}
+          </span>
+          <button disabled={page * data.limit >= data.total} onClick={() => setPage(p => p + 1)}
+            className="px-4 py-2 rounded-xl surface-glass ring-1 ring-border/20 text-[12px] font-bold disabled:opacity-30">Next →</button>
+        </div>
+      )}
     </div>
   );
 }
