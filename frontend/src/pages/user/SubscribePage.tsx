@@ -239,6 +239,12 @@ export default function SubscribePage() {
   });
 
   async function initiatePayment(sub: any) {
+    const upiEnabled = (pubConfig as any)?.payment?.upi_enabled;
+    if (!upiEnabled) {
+      setStep('checkout');
+      sensorial.showError({ title: 'Payment unavailable', message: 'Online payment is not available right now. Please contact support.' });
+      return;
+    }
     setConfirmedSub(sub);
     setStep('upi_pay');
 
@@ -1042,20 +1048,21 @@ export default function SubscribePage() {
         return;
       }
       setUploadProgress(true);
-      try {
-        const reader = new FileReader();
-        reader.onload = async (ev) => {
-          const base64 = ev.target?.result as string;
-          setScreenshotPreview(base64);
+      const reader = new FileReader();
+      reader.onload = async (ev) => {
+        const base64 = ev.target?.result as string;
+        setScreenshotPreview(base64);
+        try {
           const res = await paymentsApi.uploadScreenshot(base64);
           setScreenshotUrl(res.data.url);
+        } catch {
+          setScreenshotPreview(null);
+          sensorial.showError({ title: 'Upload failed', message: 'Could not upload screenshot. Please try again.' });
+        } finally {
           setUploadProgress(false);
-        };
-        reader.readAsDataURL(file);
-      } catch {
-        setUploadProgress(false);
-        sensorial.showError({ title: 'Upload failed', message: 'Could not upload screenshot. Please try again.' });
-      }
+        }
+      };
+      reader.readAsDataURL(file);
     }
 
     async function handleSubmit() {
